@@ -23,8 +23,11 @@ public final class ItemSearchMenus {
     /** The wardrobe, "(1/3) Armor Sets" since Hypixel renamed it, "Wardrobe (1/2)" before. */
     private static final Pattern WARDROBE = Pattern.compile("^(?:\\((\\d{1,4})/\\d+\\) Armor Sets|Wardrobe \\((\\d{1,4})/\\d+\\))$");
     private static final Pattern ACCESSORY_BAG = Pattern.compile("^Accessory Bag(?: \\((\\d{1,4})/\\d+\\))?$");
-    /** "Mining Sack", "Enchanted Agronomy Sack", "Gemstones Sack", with a page where it has more than one. */
-    private static final Pattern SACK = Pattern.compile("^((?:.+ )?Sack)(?: \\((\\d{1,4})/\\d+\\))?$");
+    /**
+     * "Mining Sack", "Enchanted Agronomy Sack", "Gemstones Sack", with a page where it has more than
+     * one: after the name, or before it, as in "(1/2) Runes Sack".
+     */
+    private static final Pattern SACK = Pattern.compile("^(?:\\((\\d{1,4})/\\d+\\) )?((?:.+ )?Sack)(?: \\((\\d{1,4})/\\d+\\))?$");
 
     /** The menu a title names, or null for one Item Search does not read. Island chests are told by their block, not here. */
     public static Menu parseTitle(String title) {
@@ -41,10 +44,11 @@ public final class ItemSearchMenus {
         }
         if (t.equals("Personal Vault")) return new Menu(ItemSearchSource.VAULT, 1, null);
         if ((m = SACK.matcher(t)).matches()) {
-            String name = m.group(1);
+            String name = m.group(2);
             // The Sack of Sacks lists the sacks themselves, not what is in them.
             if (name.equals("Sack of Sacks") || name.equals("Sack")) return null;
-            return new Menu(ItemSearchSource.SACKS, m.group(2) == null ? 1 : Integer.parseInt(m.group(2)), name);
+            String page = m.group(1) != null ? m.group(1) : m.group(3);
+            return new Menu(ItemSearchSource.SACKS, page == null ? 1 : Integer.parseInt(page), name);
         }
         return null;
     }

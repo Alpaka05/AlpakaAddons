@@ -20,8 +20,8 @@ import java.util.concurrent.CompletableFuture;
 /**
  * The dashboard's own record of how a profile grew: a snapshot of its numbers each time it was
  * looked at. Nothing is asked for in the background while playing: that would be polling a
- * player's data, which Hypixel's API policy rules out. Elite keeps a
- * history of skills only; networth, Catacombs, slayers and everything else come from here.
+ * player's data, which Hypixel's API policy rules out. What other sites kept of
+ * the past (Soopy, SkyKings) is added to it in the graphs.
  *
  * Kept in {@code config/alpaka-profile-history.json}, one entry per player and profile. Recent
  * snapshots are kept close together, older ones thinned to one a day, so a year of play stays a
@@ -39,6 +39,8 @@ public final class ProfileHistory {
     static final class Entry {
         String player;
         String profile;
+        /** When a look last found this the player's selected profile; 0 for never. */
+        long selectedAt;
         List<Snapshot> points = new ArrayList<>();
         /** When the dashboard was last opened on this profile, and the numbers then. */
         long lastViewed;
@@ -148,6 +150,76 @@ public final class ProfileHistory {
             if (v != null && !v.isNaN()) out.add(new Point(s.t(), v));
         }
         return out;
+    }
+
+    /**
+     * The profile of a player the dashboard last looked at, or null if it never did: the id of the
+     * profile whose newest snapshot is the latest. {@code player} is a UUID without dashes, or a name.
+     */
+    public static synchronized String lastProfile(String player) {
+        return lastProfile(entries(), player);
+    }
+
+    static String lastProfile(Map<String, Entry> entries, String player) {
+        if (player == null) return null;
+        String best = null;
+        long newest = Long.MIN_VALUE;
+        // The profile last seen selected in the game is the one the API will pick; one only looked
+        // at in the dashboard since is not.
+        String selected = null;
+        long selectedAt = 0;
+        for (Map.Entry<String, Entry> e : entries.entrySet()) {
+            // "uuid:profile"
+            int cut = e.getKey().indexOf(':');
+            Entry entry = e.getValue();
+            if (cut <= 0 || entry.points.isEmpty()) continue;
+            boolean byUuid = e.getKey().substring(0, cut).equalsIgnoreCase(player);
+            if (!byUuid && (entry.player == null || !entry.player.equalsIgnoreCase(player))) continue;
+            long t = entry.points.get(entry.points.size() - 1).t();
+            if (t > newest) {
+                newest = t;
+                best = e.getKey().substring(cut + 1);
+            }
+            if (entry.selectedAt > selectedAt) {
+                selectedAt = entry.selectedAt;
+                selected = e.getKey().substring(cut + 1);
+            }
+        }
+        return selected != null ? selected : best;
+    }
+
+    /** The players looked up before, by name, the last looked at first; for completing names. */
+    public static synchronized java.util.List<String> players() {
+        return players(entries());
+    }
+
+    static java.util.List<String> players(Map<String, Entry> entries) {
+        Map<String, Long> newest = new HashMap<>();
+        Map<String, String> names = new HashMap<>();
+        for (Entry entry : entries.values()) {
+            if (entry.player == null || entry.points.isEmpty()) continue;
+            String key = entry.player.toLowerCase(java.util.Locale.ROOT);
+            long t = entry.points.get(entry.points.size() - 1).t();
+            if (t >= newest.getOrDefault(key, Long.MIN_VALUE)) {
+                newest.put(key, t);
+                names.put(key, entry.player);
+            }
+        }
+        java.util.List<String> out = new ArrayList<>(names.keySet());
+        out.sort((a, b) -> Long.compare(newest.get(b), newest.get(a)));
+        out.replaceAll(names::get);
+        return out;
+    }
+
+    /** Notes that a look found this the player's selected profile, for {@link #lastProfile}. */
+    public static synchronized void selected(String uuid, String profileId) {
+        if (uuid == null || profileId == null) return;
+        Entry entry = entries().get(key(uuid, profileId));
+        // Only a profile with a history: one never shown has nothing to remember it by.
+        if (entry == null || entry.points.isEmpty()) return;
+        entry.selectedAt = System.currentTimeMillis();
+        dirty = true;
+        saveAsync();
     }
 
     /** How many snapshots there are of this profile. */

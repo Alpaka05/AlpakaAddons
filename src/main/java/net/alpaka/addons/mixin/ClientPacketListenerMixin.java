@@ -1,7 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
-import net.alpaka.addons.features.explosion.HideExplosionsFeature;
+import net.alpaka.addons.features.clutter.HideVisualClutterFeature;
 import net.alpaka.addons.features.ragnarock.RagnarockFeature;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -21,8 +21,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * in on the network thread, which hands it to the client thread and bails out there, so the head would see
  * every sound twice.
  *
- * Also where Hide Explosions drops explosion particles and explode packets, see
- * {@link HideExplosionsFeature}.
+ * Also where Hide Visual Clutter drops explosion particles and explode packets, see
+ * {@link HideVisualClutterFeature}.
  */
 @Mixin(ClientPacketListener.class)
 public class ClientPacketListenerMixin {
@@ -47,7 +47,7 @@ public class ClientPacketListenerMixin {
             cancellable = true
     )
     private void alpaka$hideExplosionParticles(ClientboundLevelParticlesPacket packet, CallbackInfo ci) {
-        if (HideExplosionsFeature.shouldHideParticlePacket(packet.getParticle())) {
+        if (HideVisualClutterFeature.shouldHideParticlePacket(packet.getParticle())) {
             ci.cancel();
         }
     }
@@ -58,7 +58,7 @@ public class ClientPacketListenerMixin {
                     target = "Lnet/minecraft/client/multiplayer/ClientLevel;addParticle(Lnet/minecraft/core/particles/ParticleOptions;DDDDDD)V")
     )
     private boolean alpaka$hideExplosionFlash(ClientLevel level, ParticleOptions options, double x, double y, double z, double xd, double yd, double zd) {
-        return !HideExplosionsFeature.shouldHideExplodePacket();
+        return !HideVisualClutterFeature.shouldHideExplodePacket();
     }
 
     @WrapWithCondition(
@@ -67,6 +67,6 @@ public class ClientPacketListenerMixin {
                     target = "Lnet/minecraft/client/multiplayer/ClientLevel;trackExplosionEffects(Lnet/minecraft/world/phys/Vec3;FILnet/minecraft/util/random/WeightedList;)V")
     )
     private boolean alpaka$hideExplosionDebris(ClientLevel level, Vec3 center, float radius, int blockCount, WeightedList<ExplosionParticleInfo> blockParticles) {
-        return !HideExplosionsFeature.shouldHideExplodePacket();
+        return !HideVisualClutterFeature.shouldHideExplodePacket();
     }
 }

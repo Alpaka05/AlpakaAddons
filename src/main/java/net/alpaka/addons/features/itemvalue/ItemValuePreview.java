@@ -55,6 +55,21 @@ public final class ItemValuePreview {
     }
 
     /**
+     * A Sack of Sacks with four sacks, for Chest Value adding up what they hold: the Mining and
+     * Gemstone sacks are known from Item Search's preview, the Dungeon and Rune sacks were never opened.
+     */
+    public static ContainerScreen sackOfSacks() {
+        SimpleContainer c = new SimpleContainer(27);
+        c.setItem(10, item(Items.PLAYER_HEAD, 1, "§aLarge Mining Sack", "{id:\"LARGE_MINING_SACK\"}", "", "§9§lRARE"));
+        c.setItem(11, item(Items.PLAYER_HEAD, 1, "§aLarge Gemstone Sack", "{id:\"LARGE_GEMSTONE_SACK\"}", "", "§6§lLEGENDARY"));
+        c.setItem(12, item(Items.PLAYER_HEAD, 1, "§aDungeon Sack", "{id:\"DUNGEON_SACK\"}", "", "§9§lRARE"));
+        c.setItem(13, item(Items.PLAYER_HEAD, 1, "§aRune Sack", "{id:\"RUNE_SACK\"}", "", "§5§lEPIC"));
+        c.setItem(22, item(Items.BARRIER, 1, "§cClose", null));
+        ChestMenu menu = new ChestMenu(MenuType.GENERIC_9x3, 9_002, Minecraft.getInstance().player.getInventory(), c, 3);
+        return new ContainerScreen(menu, Minecraft.getInstance().player.getInventory(), Component.literal("Sack of Sacks"));
+    }
+
+    /**
      * The same items in the player's own inventory, a few stacks more, for the Chest Value panel in
      * the inventory. Only on this client: the tour's world never hears of them.
      */

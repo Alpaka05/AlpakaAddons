@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 /**
  * Pets as the game shows them: the head of the pet, or of the skin it wears.
  *
- * Neither Elite nor Hypixel's resources carry the heads, so they come from the NEU item repository
+ * Hypixel's API and resources don't carry the heads, so they come from the NEU item repository
  * (NotEnoughUpdates-REPO), which the profile viewer mods all draw theirs from: one small file per
  * pet and rarity, and one per skin. A head's texture never changes, so every one found is kept in
  * {@code config/alpaka-pet-heads.json} and asked for only once.

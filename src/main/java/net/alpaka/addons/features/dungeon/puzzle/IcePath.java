@@ -151,7 +151,7 @@ public final class IcePath extends PuzzleSolver {
         int ice = 0;
         for (int cell = 0; cell < IcePathSearch.CELLS; cell++) {
             BlockPos pos = f.toWorld(IcePathSearch.relX(cell), IcePathSearch.WALK_Y - 1, IcePathSearch.relZ(cell));
-            if (!level.hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) return false;
+            if (!level.getChunkSource().hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) return false;
             if (level.getBlockState(pos).is(BlockTags.ICE)) ice++;
         }
         return 2 * ice >= IcePathSearch.CELLS;
@@ -162,7 +162,7 @@ public final class IcePath extends PuzzleSolver {
         boolean[] blocked = new boolean[IcePathSearch.CELLS];
         for (int cell = 0; cell < IcePathSearch.CELLS; cell++) {
             BlockPos pos = f.toWorld(IcePathSearch.relX(cell), IcePathSearch.WALK_Y, IcePathSearch.relZ(cell));
-            if (!level.hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) return null;
+            if (!level.getChunkSource().hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) return null;
             blocked[cell] = !level.getBlockState(pos).isAir();
         }
         return blocked;

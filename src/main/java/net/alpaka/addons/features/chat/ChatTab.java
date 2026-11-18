@@ -118,10 +118,13 @@ public enum ChatTab {
     }
 
     private static String withoutLeadingRule(String text) {
+        // Classified per chat line; only a line starting with a rule character can lose anything.
+        if (text.isEmpty() || (text.charAt(0) != '-' && text.charAt(0) != '▬')) return text;
         return LEADING_RULE.matcher(text).replaceFirst("");
     }
 
     static String strip(String raw) {
+        if (raw.indexOf('§') < 0) return raw.trim();
         return COLOR_CODES.matcher(raw).replaceAll("").trim();
     }
 }

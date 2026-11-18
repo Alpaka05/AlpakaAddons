@@ -16,8 +16,10 @@ import java.util.Locale
 /**
  * The notes of the mod's newest release, for the main menu's What's New card.
  *
- * One GET to GitHub's public "latest release" of this repository - drafts and pre-releases are
- * never the latest - the first time the menu opens in a game session, with no key and nothing
+ * One GET to GitHub's public list of this repository's releases, of which the newest that is not a
+ * draft is shown - and not a pre-release either, unless the running build is one itself (the
+ * alpha, a beta), whose player would otherwise read the notes of an older line - the first time
+ * the menu opens in a game session, with no key and nothing
  * about the player; a failed request is tried again on a later open, but not more than once every
  * few minutes. Nothing is asked while "Allow Network Features" or the card itself is off, and the
  * card stays away.
@@ -27,7 +29,7 @@ import java.util.Locale
  */
 object ReleaseNotes {
 
-    private const val ENDPOINT = "https://api.github.com/repos/Alpaka05/AlpakaAddons/releases/latest"
+    private const val ENDPOINT = "https://api.github.com/repos/Alpaka05/AlpakaAddons/releases?per_page=10"
     private const val RETRY_MS = 5 * 60_000L
     private val DATE = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
 
@@ -63,9 +65,9 @@ object ReleaseNotes {
             .header("Accept", "application/vnd.github+json")
             .GET()
             .build()
-        client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete { response, error ->
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).whenComplete { response, error ->
             val read = try {
-                if (error == null && response?.statusCode() == 200) read(response.body()) else {
+                if (error == null && response?.statusCode() == 200) read(response.body(), runningPreRelease()) else {
                     AlpakaAddons.LOGGER.warn("Could not load the release notes ({})",
                         error?.toString() ?: "HTTP ${response?.statusCode()}")
                     null
@@ -96,8 +98,24 @@ object ReleaseNotes {
         AlpakaConfig.save()
     }
 
-    private fun read(body: String): Notes? {
-        val release = JsonParser.parseString(body).asJsonObject
+    private fun runningPreRelease(): Boolean =
+        net.alpaka.addons.utils.ReleaseVersion.parse(net.alpaka.addons.utils.ModVersion.mod())?.isPreRelease == true
+
+    /** The release to show from GitHub's list, newest first: the first that is not a draft, nor a pre-release unless [preReleases]. */
+    @JvmStatic
+    fun pick(body: String, preReleases: Boolean): com.google.gson.JsonObject? =
+        JsonParser.parseString(body).asJsonArray.asSequence()
+            .filter { it.isJsonObject }
+            .map { it.asJsonObject }
+            .firstOrNull { r ->
+                r.get("draft")?.takeIf { it.isJsonPrimitive }?.asBoolean != true &&
+                    (preReleases || (r.get("prerelease")?.takeIf { it.isJsonPrimitive }?.asBoolean != true &&
+                        r.get("tag_name")?.takeIf { it.isJsonPrimitive }?.asString
+                            ?.let { net.alpaka.addons.utils.ReleaseVersion.parse(it)?.isPreRelease } != true))
+            }
+
+    private fun read(body: String, preReleases: Boolean): Notes? {
+        val release = pick(body, preReleases) ?: return null
         val version = release.get("tag_name")?.asString?.removePrefix("v") ?: return null
         val url = release.get("html_url")?.asString ?: return null
         val date = release.get("published_at")?.takeIf { it.isJsonPrimitive }?.asString

@@ -3,7 +3,6 @@ package net.alpaka.addons.client;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.alpaka.addons.features.chat.ScreenshotPreview;
 import net.alpaka.addons.features.mainmenu.CustomMainMenuScreen;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.CameraType;
@@ -64,6 +63,28 @@ public final class DevScreenshotTour {
             screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
             screen("leap-menu-map", () -> leapMenuPreview(true)),
             screen("leap-menu-buttons", () -> leapMenuPreview(false))
+    ) : "sack-value".equals(System.getenv(ENV)) ? List.of(
+            // Chest Value in the Sack of Sacks: what the sacks hold, from Item Search's made-up sacks,
+            // with the two never opened named above the list; a line pointed at, lighting up its sack;
+            // then the sacks themselves, as the Contents switch has it.
+            new Stop(null, DevScreenshotTour::enterWorld,
+                    () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.chestValueEnabled = true;
+                AlpakaConfig.instance.chestValueSackContents = true;
+                net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen(null);
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.sackOfSacks());
+                net.alpaka.addons.features.chestvalue.ChestValueFeature.devShow();
+                placeMouse(0.5, 0.97);
+            }, net.alpaka.addons.features.itemvalue.ItemValuePreview::settled, 40),
+            new Stop("sack-value-contents", () -> {}, () -> true, 10),
+            new Stop("sack-value-line", () -> placeMouseAt(net.alpaka.addons.features.chestvalue.ChestValuePanel.devRowPoint(0)),
+                    () -> true, 20),
+            new Stop("sack-value-sacks", () -> {
+                placeMouse(0.5, 0.97);
+                AlpakaConfig.instance.chestValueSackContents = false;
+            }, () -> true, 10),
+            new Stop(null, () -> AlpakaConfig.instance.chestValueSackContents = true, () -> true, 1)
     ) : "dungeon-map".equals(System.getenv(ENV)) ? List.of(
             screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
             screen("dungeon-map-player-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_icons")),
@@ -122,7 +143,10 @@ public final class DevScreenshotTour {
             screen("config-zoom-key", () -> AlpakaConfigScreen.openOn("World", "Zoom")),
             screen("config-chest-value-key", () -> AlpakaConfigScreen.openOn("Markets", "Chest Value")),
             screen("config-alignment-helper", () -> AlpakaConfigScreen.openOn("Garden", "Alignment Helper")),
+            screen("config-slot-highlight", () -> AlpakaConfigScreen.openOn("Tools", "Slot Highlight")),
             screen("config-damage-tags", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Damage Tags")),
+            screen("config-sensei-hat", () -> AlpakaConfigScreen.openOn("Cosmetics", "Sensei Hat")),
+            screen("config-name-tag", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Name Tag")),
             screen("config-aura", () -> AlpakaConfigScreen.openOn("Cosmetics", "Aura")),
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
             screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),
@@ -130,7 +154,6 @@ public final class DevScreenshotTour {
             screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
             screen("config-better-chat", () -> AlpakaConfigScreen.openOn("Chat", "Better Chat")),
             screen("config-style-timer", () -> AlpakaConfigScreen.openOn("Slayer", "Slayer Boss Timer")),
-            screen("config-screenshot", () -> AlpakaConfigScreen.openOn("Chat", "Better Screenshots")),
             screen("config-reset-all", () -> AlpakaConfigScreen.openOn("Main", "Reset All Settings")),
             screen("config-notification", () -> AlpakaConfigScreen.openOn("Main", "Notifications")),
             new Stop("config-notification-test", () -> net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification",
@@ -140,7 +163,7 @@ public final class DevScreenshotTour {
             screen("config-tooltips", () -> AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips")),
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
-            screen("config-world-sky", () -> AlpakaConfigScreen.openOn("World", "Sky Effects")),
+            screen("config-world-clutter", () -> AlpakaConfigScreen.openOn("World", "Hide Visual Clutter")),
             screen("config-dungeon", () -> AlpakaConfigScreen.openOn("Dungeon", "Solvers")),
             // Further down Solvers' settings: the Water Board ones below the puzzle list.
             new Stop("config-dungeon-water-board", () -> scroll(0.75, 0.6, -6), () -> true, 30),
@@ -156,6 +179,12 @@ public final class DevScreenshotTour {
             new Stop(null, () -> scroll(0.97, 0.5, -10), () -> true, 10),
             new Stop("config-viewmodel-scrolled-end", () -> scroll(0.97, 0.5, -10), () -> true, 30),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
+            // A picker whose option offers a rainbow, once with Chroma off and once with it on.
+            screen("color-picker-chroma-off", () -> chromaPicker(false)),
+            screen("color-picker-chroma-on", () -> chromaPicker(true)),
+            screen("color-picker-gradient", () -> new ColorPickerScreen(null, "Name Tag Color", 0xFF55FFFF, 0xFF55FFFF, color -> {},
+                    new ColorPickerScreen.ChromaSpec(new net.alpaka.addons.config.Chroma(), new net.alpaka.addons.config.Chroma(), true),
+                    new ColorPickerScreen.GradientSpec(0xFFFF55FF, 0xFFFF55FF, true, true, (on, end) -> {}))),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             new Stop("shortcuts-editor", () -> {
                 AlpakaConfig.instance.commandAliases = new java.util.ArrayList<>(List.of(
@@ -210,10 +239,10 @@ public final class DevScreenshotTour {
             screen("theme-oled-config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
             screen("theme-oled-color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
-                    net.alpaka.addons.client.gui.AlpakaStyle.Theme.CAPPUCCINO), () -> true, 1),
-            screen("theme-cappuccino-config", () -> AlpakaConfigScreen.openOn("Design", "Menu Theme").withChoiceOpen()),
-            screen("theme-cappuccino-config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
-            screen("theme-cappuccino-color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
+                    net.alpaka.addons.client.gui.AlpakaStyle.Theme.ALPAKA), () -> true, 1),
+            screen("theme-alpaka-config", () -> AlpakaConfigScreen.openOn("Design", "Menu Theme").withChoiceOpen()),
+            screen("theme-alpaka-config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
+            screen("theme-alpaka-color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
                     net.alpaka.addons.client.gui.AlpakaStyle.Theme.DARK), () -> true, 1),
             // The page list with more pages than fit above its field: it scrolls, its edges fading.
@@ -250,7 +279,42 @@ public final class DevScreenshotTour {
                 config.activeItemPresetIndex = 0;
                 Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Viewmodel", "Presets"));
             }, () -> true, 30),
-            screen("confirm-config-player-scale", () -> AlpakaConfigScreen.openOn("Cosmetics", "Player Scale")),
+            // Editing a text setting: a click puts the caret where it lands, typing goes in there,
+            // Shift+Left selects, Ctrl+A selects all, typing replaces the selection, Ctrl+Z undoes.
+            new Stop(null, () -> {
+                AlpakaConfig.instance.bridgeBotName = "CultureGround";
+                Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Social", "Bridge Bot Formatter"));
+            }, () -> true, 30),
+            new Stop("textedit-config-click", () -> click(((AlpakaConfigScreen) screen()).devTextFieldPoint("bridge_bot_name", 0.4)),
+                    () -> true, 2),
+            new Stop("textedit-config-type", () -> type("XY"), () -> true, 2),
+            new Stop("textedit-config-shift-left", () -> {
+                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT);
+                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT);
+                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT);
+            }, () -> true, 2),
+            new Stop("textedit-config-home", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_HOME, 0), () -> true, 2),
+            new Stop("textedit-config-select-all", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_A, org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL),
+                    () -> true, 2),
+            new Stop("textedit-config-replace", () -> type("Bot"), () -> true, 2),
+            new Stop("textedit-config-undo", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_Z, org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL),
+                    () -> true, 2),
+            new Stop(null, () -> {
+                key(org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE, 0);
+                AlpakaConfig.instance.bridgeBotName = "";
+                java.util.List<java.util.List<String>> pages = new java.util.ArrayList<>();
+                pages.add(new java.util.ArrayList<>(java.util.List.of("/hub")));
+                AlpakaConfig.instance.commandWheelPages = pages;
+                Minecraft.getInstance().gui.setScreen(new CommandWheelConfigScreen(new CustomMainMenuScreen()));
+            }, () -> true, 30),
+            new Stop(null, () -> {
+                click(((CommandWheelConfigScreen) screen()).devInputPoint(0.5));
+                type("warp garden");
+                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL);
+            }, () -> true, 2),
+            new Stop("textedit-wheel-word-select", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT,
+                    org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL | org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT), () -> true, 2),
+            screen("confirm-config-player-scale",() -> AlpakaConfigScreen.openOn("Cosmetics", "Player Scale")),
             new Stop("confirm-dialog-player-scale", () -> trigger("player_scale_reset"), () -> true, 30),
             // Quick commands with one of the player's own: Reset asks, Cancel keeps it, Reset for
             // real puts the default set back and returns to the editor.
@@ -268,7 +332,7 @@ public final class DevScreenshotTour {
                     () -> true, 10),
             new Stop("confirm-quick-commands-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
                     () -> true, 30),
-            // The Profile Dashboard on real profiles from Elite, every page, a mid-game one and a name that does not exist.
+            // The Profile Dashboard on real profiles, every page, a mid-game one and a name that does not exist.
             profile("profile-overview", "Refraction", "OVERVIEW"),
             profile("profile-skills", "Refraction", "SKILLS"),
             profile("profile-dungeons", "Refraction", "DUNGEONS"),
@@ -303,16 +367,6 @@ public final class DevScreenshotTour {
             new Stop("custom-tab-plain", () -> customTab(0, false), () -> true, 20),
             new Stop(null, () -> net.alpaka.addons.features.tablist.CustomTabFeature.devShow(null), () -> true, 2),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
-            // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
-            // A run that leaves out world-hud never gets its picture, so these two pass then.
-            new Stop(null, () -> {}, () -> !shoots("world-hud") || tourShot("world-hud").isFile(), 2),
-            new Stop(null, () -> {
-                if (!shoots("world-hud")) return;
-                ScreenshotPreview.devFreezeAt(1150.0f);
-                ScreenshotPreview.show(tourShot("world-hud"));
-            }, () -> !shoots("world-hud") || ScreenshotPreview.isOnScreen(), 2),
-            new Stop("screenshot-preview", () -> {}, () -> true, 2),
-            new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
             // The pets with their heads and skins, which only exist once a world is loaded; then the
             // Skills page with the item icons.
             profile("profile-pets-in-world", "Refraction", "PETS"),
@@ -383,7 +437,6 @@ public final class DevScreenshotTour {
                 placeMouse(0.02, 0.02);
             }, () -> true, 200),
             new Stop("profile-page-acc-tooltip", () -> placeMouse(0.40, 0.55), () -> true, 20),
-            new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             // The Auction House and the Bazaar in the market screens, on chests filled locally.
             screen("market-ah-main", net.alpaka.addons.features.market.MarketPreview::auctionHouse),
             screen("market-ah-browser", net.alpaka.addons.features.market.MarketPreview::auctionBrowser),
@@ -509,6 +562,9 @@ public final class DevScreenshotTour {
                     net.alpaka.addons.features.dungeon.terminal.TerminalKind.SELECT_ALL)),
             screen("terminal-gui-melody", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
                     net.alpaka.addons.features.dungeon.terminal.TerminalKind.MELODY)),
+            // Terminal practice ("/alpakaterminal"): a dealt terminal with the timer in the header.
+            new Stop("terminal-practice-rubix", () -> net.alpaka.addons.features.dungeon.terminal.TerminalPractice.open(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.RUBIX, 0), () -> true, 30),
             // The same terminals in the vanilla chest, with the Terminal Solvers overlay (the default
             // mode). Switched on for the tour only; not saved.
             new Stop(null, () -> AlpakaConfig.instance.terminalSolversEnabled = true, () -> true, 1),
@@ -716,18 +772,6 @@ public final class DevScreenshotTour {
                 Minecraft.getInstance().gui.hud.getChat().resetChatScroll();
                 Minecraft.getInstance().gui.setScreen(null);
             }, () -> true, 5),
-            // A screenshot's preview mid-shrink, then resting in the corner.
-            new Stop(null, () -> {
-                Minecraft mc = Minecraft.getInstance();
-                Screenshot.grab(mc.gameDirectory, "preview-source.png", mc.gameRenderer.mainRenderTarget(), 1,
-                        message -> mc.execute(() -> mc.gui.hud.getChat().addClientSystemMessage(message)));
-            }, () -> true, 3),
-            new Stop(null, () -> {}, () -> net.alpaka.addons.features.chat.ScreenshotPreview.isOnScreen(), 2),
-            new Stop("shot-preview-flash", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(60), () -> true, 40),
-            new Stop("shot-preview-shrink", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(200), () -> true, 40),
-            new Stop("shot-preview-settle", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(420), () -> true, 40),
-            new Stop("shot-preview-exit", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(650 + 3000 + 250), () -> true, 40),
-            new Stop("shot-preview-corner", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(-1), () -> true, 40),
             new Stop("chat-share", () -> net.alpaka.addons.features.slayer.SlayerDropTracker.devShareSample(), () -> true, 10),
             new Stop("font-chat-scoreboard", DevScreenshotTour::fontInChatAndScoreboard, () -> true, 20),
             new Stop("third-person", DevScreenshotTour::thirdPerson, () -> true, 40),
@@ -800,37 +844,13 @@ public final class DevScreenshotTour {
             // swing also tells the server, which only Outbound may.
             new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
-            // Sky Effects, without the HUD: the Overworld at night looking north at the aurora and
-            // in the morning towards the sun, the Nether's firestorm above its roof and the End's
-            // nebula; most twice, to see them move. Then back where the player stood, as they were.
-            new Stop(null, () -> skyAt("overworld", 0.5, 120.0, 18000L, 180.0f, -20.0f), () -> true, 40),
-            new Stop("sky-overworld-night", () -> {}, () -> true, 5),
-            new Stop("sky-overworld-night-later", () -> {}, () -> true, 40),
-            new Stop("sky-overworld-day", () -> skyAt("overworld", 0.5, 120.0, 2000L, -90.0f, -30.0f), () -> true, 40),
-            new Stop(null, () -> skyAt("the_nether", 0.5, 140.0, -1L, 30.0f, -15.0f), () -> inDimension(net.minecraft.world.level.Level.NETHER), 60),
-            new Stop("sky-nether", () -> {}, () -> true, 5),
-            new Stop("sky-nether-later", () -> {}, () -> true, 40),
-            new Stop("sky-nether-up", () -> Minecraft.getInstance().player.setXRot(-65.0f), () -> true, 10),
-            // Far out from the main island: within reach of the dragon its boss bar fogs the sky
-            // away, and vanilla draws none.
-            new Stop(null, () -> skyAt("the_end", 1000.5, 100.0, -1L, 0.0f, -10.0f), () -> inDimension(net.minecraft.world.level.Level.END), 60),
-            new Stop("sky-end", () -> {}, () -> true, 5),
-            new Stop("sky-end-up", () -> Minecraft.getInstance().player.setXRot(-60.0f), () -> true, 10),
-            // SkyBlock's End island, which Hypixel sends as an Overworld: the End's sky comes from the
-            // sidebar's zone line alone. At noon, where the Overworld's clouds and blue fog would show.
-            new Stop(null, () -> {
-                skyAt("overworld", 0.5, 120.0, 6000L, 0.0f, -10.0f);
-                endIslandSidebar(true);
-            }, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 40),
-            new Stop("sky-end-island", () -> {}, () -> true, 5),
-            new Stop(null, DevScreenshotTour::skyDone, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 20),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
             new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
             // Every aura effect in third person, each after a moment to get going.
             new Stop(null, DevScreenshotTour::auraPreview, () -> true, 5),
             new Stop("aura-spirit-orbs", () -> AlpakaConfig.instance.auraEffect = 0, () -> true, 20),
-            new Stop("aura-twin-helix", () -> AlpakaConfig.instance.auraEffect = 1, () -> true, 20),
+            new Stop("aura-matrix", () -> AlpakaConfig.instance.auraEffect = 1, () -> true, 20),
             new Stop("aura-arcane-sigil", () -> AlpakaConfig.instance.auraEffect = 2, () -> true, 20),
             new Stop("aura-inferno", () -> AlpakaConfig.instance.auraEffect = 3, () -> true, 20),
             new Stop("aura-galaxy", () -> AlpakaConfig.instance.auraEffect = 4, () -> true, 20),
@@ -848,11 +868,42 @@ public final class DevScreenshotTour {
             new Stop("aura-night-galaxy", () -> AlpakaConfig.instance.auraEffect = 4, () -> true, 20),
             new Stop("aura-night-inferno", () -> AlpakaConfig.instance.auraEffect = 3, () -> true, 20),
             new Stop("aura-night-storm", () -> AlpakaConfig.instance.auraEffect = 6, () -> true, 20),
+            new Stop("aura-night-matrix", () -> AlpakaConfig.instance.auraEffect = 1, () -> true, 20),
             new Stop(null, () -> {
                 AlpakaConfig.instance.auraEnabled = false;
                 AlpakaConfig.instance.auraColorMode = 0;
                 Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
             }, () -> true, 1),
+            // The rare drop animation, still at night, from the pop to the slow turn; then by day.
+            new Stop(null, () -> {
+                Minecraft.getInstance().player.setXRot(-8.0f);
+                net.alpaka.addons.features.cosmetics.RareDropAnimation.test();
+            }, () -> true, 4),
+            new Stop("rare-drop-pop", () -> {}, () -> true, 6),
+            new Stop("rare-drop-spin", () -> {}, () -> true, 30),
+            new Stop("rare-drop-hover", () -> {}, () -> true, 30),
+            new Stop(null, () -> {
+                net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+                if (server != null) server.execute(() -> server.getCommands().performPrefixedCommand(
+                        server.createCommandSourceStack(), "time set noon"));
+                net.alpaka.addons.features.cosmetics.RareDropAnimation.test();
+            }, () -> true, 20),
+            new Stop("rare-drop-day", () -> {}, () -> true, 20),
+            // Every slayer's drop in turn, from the mod's own textures; the two above were the first two.
+            // At night, where the slayer colors show best.
+            new Stop(null, () -> {
+                net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+                if (server != null) server.execute(() -> server.getCommands().performPrefixedCommand(
+                        server.createCommandSourceStack(), "time set midnight"));
+            }, () -> true, 10),
+            new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),
+            new Stop("rare-drop-item-2", () -> {}, () -> true, 40),
+            new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),
+            new Stop("rare-drop-item-3", () -> {}, () -> true, 40),
+            new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),
+            new Stop("rare-drop-item-4", () -> {}, () -> true, 40),
+            new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),
+            new Stop("rare-drop-item-5", () -> {}, () -> true, 40),
             // Last, as it ends the world: confirming the leave dialog leaves for the title screen
             // rather than going back to the pause menu.
             screen("confirm-pause-before-leaving", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
@@ -870,6 +921,16 @@ public final class DevScreenshotTour {
     private static void scroll(double x, double y, double amount) {
         net.minecraft.client.gui.screens.Screen screen = screen();
         if (screen != null) screen.mouseScrolled(screen.width * x, screen.height * y, 0, amount);
+    }
+
+    /** A key press on the open screen, with these GLFW modifier bits held. */
+    private static void key(int key, int modifiers) {
+        screen().keyPressed(new net.minecraft.client.input.KeyEvent(key, 0, modifiers));
+    }
+
+    /** Typing this text into the open screen, one character at a time. */
+    private static void type(String text) {
+        text.codePoints().forEach(c -> screen().charTyped(new net.minecraft.client.input.CharacterEvent(c)));
     }
 
     /** A left click at this point of the open screen, as the player's mouse would deliver it. */
@@ -894,6 +955,14 @@ public final class DevScreenshotTour {
     private static int ticks = 0;
     private static int stop = -1;
     private static boolean done = false;
+
+    /** The Max Level Color picker on a copy of its chroma, so nothing the tour shows is saved. */
+    private static ColorPickerScreen chromaPicker(boolean on) {
+        net.alpaka.addons.config.Chroma chroma = new net.alpaka.addons.config.Chroma();
+        chroma.enabled = on;
+        return new ColorPickerScreen(null, "Max Level Color", 0xFFFFAA00, 0xFFFFAA00, color -> {},
+                new ColorPickerScreen.ChromaSpec(chroma, new net.alpaka.addons.config.Chroma(), true));
+    }
 
     /** A focused map tour uses the normal HUD editor and only changes this dev client's config. */
     private static HudEditorScreen dungeonMapPreview(boolean both, boolean transparent) {
@@ -985,10 +1054,6 @@ public final class DevScreenshotTour {
         begin(mc, stop + 1);
     }
 
-    private static java.io.File tourShot(String name) {
-        return Minecraft.getInstance().gameDirectory.toPath().resolve("screenshots/tour-" + name + ".png").toFile();
-    }
-
     private static void begin(Minecraft mc, int index) {
         // Any value other than "1" picks the stops whose picture starts with it, so a change to one
         // screen can be looked at without the whole tour: ALPAKA_SCREENSHOT_TOUR=config.
@@ -1001,12 +1066,6 @@ public final class DevScreenshotTour {
         stop = index;
         ticks = 0;
         if (index < STOPS.size()) STOPS.get(index).action().run();
-    }
-
-    /** Whether this run takes the named picture: every picture, or those the filter picks. */
-    private static boolean shoots(String shot) {
-        String only = System.getenv(ENV);
-        return only == null || only.equals("1") || shot.startsWith(only);
     }
 
     private static boolean picked(int index, String only) {
@@ -1194,41 +1253,6 @@ public final class DevScreenshotTour {
     }
 
     /**
-     * Sky Effects on and the HUD off, and the player flying high in this dimension, looking this
-     * way, at this time of day (-1 leaves the time alone).
-     */
-    private static void skyAt(String dimension, double x, double y, long dayTime, float yaw, float pitch) {
-        Minecraft mc = Minecraft.getInstance();
-        AlpakaConfig.instance.skyEffectsEnabled = true;
-        if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
-        java.util.UUID id = mc.player.getUUID();
-        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
-        if (server == null) return;
-        server.execute(() -> {
-            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
-            if (player == null) return;
-            if (beforeSky == null) {
-                beforeSky = new SkyReturn(player.gameMode(), player.getX(), player.getY(), player.getZ(),
-                        player.getYRot(), player.getXRot(), player.level().getOverworldClockTime());
-            }
-            player.setGameMode(GameType.CREATIVE);
-            player.getAbilities().flying = true;
-            player.onUpdateAbilities();
-            net.minecraft.commands.CommandSourceStack source = server.createCommandSourceStack();
-            if (dayTime >= 0) server.getCommands().performPrefixedCommand(source, "time set " + dayTime);
-            server.getCommands().performPrefixedCommand(source, "weather clear");
-            server.getCommands().performPrefixedCommand(source, String.format(java.util.Locale.ROOT,
-                    "execute in minecraft:%s run tp @a %.1f %.1f 0.5 %.1f %.1f", dimension, x, y, yaw, pitch));
-        });
-    }
-
-    /** In this dimension, with the terrain screen gone. */
-    private static boolean inDimension(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
-        Minecraft mc = Minecraft.getInstance();
-        return mc.level != null && mc.player != null && mc.level.dimension() == dimension && mc.gui.screen() == null;
-    }
-
-    /**
      * The tour's sidebar zone line reads "⏣ The End", as on SkyBlock's End island, or its dungeon
      * again. The space needs a team prefix: score holder names cannot hold one.
      */
@@ -1250,39 +1274,6 @@ public final class DevScreenshotTour {
             for (String command : commands) {
                 server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
             }
-        });
-    }
-
-    /** Where the player stood, in which game mode and at what time, before the sky stops. */
-    private record SkyReturn(GameType mode, double x, double y, double z, float yRot, float xRot, long time) {}
-
-    private static SkyReturn beforeSky = null;
-
-    /**
-     * Back in the Overworld where the player was, as they were and at the time it was, with the HUD
-     * on and Sky Effects off - and without the advancement toasts the trip brought.
-     */
-    private static void skyDone() {
-        Minecraft mc = Minecraft.getInstance();
-        AlpakaConfig.instance.skyEffectsEnabled = false;
-        if (mc.gui.hud.isHidden()) mc.gui.hud.toggle();
-        mc.gui.toastManager().clear();
-        java.util.UUID id = mc.player.getUUID();
-        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
-        if (server == null) return;
-        server.execute(() -> {
-            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
-            SkyReturn back = beforeSky;
-            beforeSky = null;
-            if (player == null || back == null) return;
-            player.setGameMode(back.mode());
-            player.getAbilities().flying = false;
-            player.onUpdateAbilities();
-            net.minecraft.commands.CommandSourceStack source = server.createCommandSourceStack();
-            server.getCommands().performPrefixedCommand(source, "time set " + back.time() % 24000L);
-            server.getCommands().performPrefixedCommand(source, String.format(java.util.Locale.ROOT,
-                    "execute in minecraft:overworld run tp @a %.3f %.3f %.3f %.1f %.1f",
-                    back.x(), back.y(), back.z(), back.yRot(), back.xRot()));
         });
     }
 

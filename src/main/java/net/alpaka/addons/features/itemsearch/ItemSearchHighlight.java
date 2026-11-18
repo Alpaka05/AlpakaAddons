@@ -3,10 +3,8 @@ package net.alpaka.addons.features.itemsearch;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.alpaka.addons.client.gui.AlpakaStyle;
-import net.alpaka.addons.mixin.AbstractContainerScreenAccessor;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.inventory.Slot;
@@ -56,26 +54,23 @@ public final class ItemSearchHighlight {
         if (chests.contains(pos)) chests.clear();
     }
 
-    /** Draws the outline over every slot holding the marked item. */
-    static void drawSlots(AbstractContainerScreen<?> screen, GuiGraphicsExtractor graphics) {
+    /**
+     * Marks one slot if it holds the marked item. Called as the slot is drawn, before its item, so
+     * the item stays on top and the tooltip, drawn after every slot, covers the mark.
+     */
+    public static void drawSlot(GuiGraphicsExtractor graphics, Slot slot) {
         if (target == null) return;
         if (System.currentTimeMillis() > targetUntil) {
             target = null;
             return;
         }
-        AbstractContainerScreenAccessor a = (AbstractContainerScreenAccessor) screen;
-        int left = a.alpaka$leftPos();
-        int top = a.alpaka$topPos();
+        ItemStack stack = slot.getItem();
+        if (stack.isEmpty() || !target.equals(keys.computeIfAbsent(stack, ItemSearchResults::groupKey))) return;
         int color = AlpakaStyle.accent();
         int fill = (color & 0x00FFFFFF) | 0x50000000;
-        for (Slot slot : screen.getMenu().slots) {
-            ItemStack stack = slot.getItem();
-            if (stack.isEmpty() || !target.equals(keys.computeIfAbsent(stack, ItemSearchResults::groupKey))) continue;
-            int sx = left + slot.x;
-            int sy = top + slot.y;
-            graphics.fill(sx, sy, sx + 16, sy + 16, fill);
-            graphics.outline(sx - 1, sy - 1, 18, 18, color);
-        }
+        // The slot's own pose already starts at the menu's corner.
+        graphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, fill);
+        graphics.outline(slot.x - 1, slot.y - 1, 18, 18, color);
     }
 
     /** The outlined chests, as see-through boxes with a brighter edge. */

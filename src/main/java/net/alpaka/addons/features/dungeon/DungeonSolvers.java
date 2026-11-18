@@ -165,7 +165,7 @@ public final class DungeonSolvers {
             WAS_ENABLED[i] = on;
         }
 
-        if (mc.level == null || mc.player == null || !SkyblockUtils.isOnSkyblock() || !DungeonState.inDungeon()) return;
+        if (mc.level == null || mc.player == null || !DungeonState.inDungeon() || !SkyblockUtils.isOnSkyblock()) return;
         long t = AlpakaPerf.begin(AlpakaPerf.Section.DUNGEON_SOLVERS_TICK);
         try {
             long now = Util.getMillis();

@@ -1,13 +1,14 @@
 package net.alpaka.addons.features.blaze
 
 import net.alpaka.addons.config.AlpakaConfig
-import net.alpaka.addons.features.slayer.SlayerDropTracker
 import net.alpaka.addons.features.slayer.SlayerSessionTracker
 import net.alpaka.addons.features.slayer.SlayerType
+import net.alpaka.addons.utils.EntityCache
 import net.alpaka.addons.utils.SkyblockUtils
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.entity.state.EntityRenderState
 import net.minecraft.core.particles.ParticleOptions
+import net.minecraft.network.chat.Component
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LightningBolt
@@ -38,8 +39,7 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
  *
  * SkyHanni's Blaze Slayer Clear View does much the same; running both is harmless but redundant.
  *
- * Besides the looks, two kinds of boss fight chatter can go too: the wrong dagger attunement lines
- * and the damage lines. The general slayer chatter (quest, radio, level up) has its own setting in
+ * The boss fight's chat lines (wrong dagger, damage) are the Message Filter's, in
  * [net.alpaka.addons.features.slayer.SlayerChatFilter].
  */
 object CleanBlazeFeature {
@@ -75,46 +75,11 @@ object CleanBlazeFeature {
         return inScope
     }
 
-    /** "Strike using the CRYSTAL attunement on your dagger!", sent on every hit with the wrong one. */
-    private val WRONG_DAGGER = Regex("""^Strike using the \w+ attunement on your dagger!$""")
-
-    /**
-     * "Your hit was reduced by Hellion Shield!" and the boss's damage reports, such as "You took
-     * 1,500 true damage from Quazii's beam!". Anchored at the start, so a player quoting one in
-     * chat keeps their line.
-     */
-    private val DAMAGE = listOf(
-        Regex("""^Your hit was reduced by Hellion Shield!$"""),
-        Regex("""^You took [\d,.]+ (?:true )?damage from .+!$"""),
-    )
-
-    /**
-     * Whether a chat line is boss fight chatter the player switched off. Takes the line as Hypixel
-     * sent it; only the visible chat log loses it, the slayer tracking still reads it.
-     */
-    @JvmStatic
-    fun shouldHideChat(rawMessage: String): Boolean {
-        val config = AlpakaConfig.instance
-        if (!config.cleanBlazeWrongDaggerChat && !config.cleanBlazeDamageChat) return false
-        val kind = chatKind(SlayerDropTracker.cleanColor(rawMessage).trim()) ?: return false
-        val wanted = when (kind) {
-            ChatKind.WRONG_DAGGER -> config.cleanBlazeWrongDaggerChat
-            ChatKind.DAMAGE -> config.cleanBlazeDamageChat
-        }
-        return wanted && active()
-    }
-
-    internal enum class ChatKind { WRONG_DAGGER, DAMAGE }
-
-    /** Which kind of boss fight chatter a color-stripped line is, if any. Switches aside, for tests. */
-    internal fun chatKind(cleanText: String): ChatKind? = when {
-        WRONG_DAGGER.matches(cleanText) -> ChatKind.WRONG_DAGGER
-        DAMAGE.any { it.matches(cleanText) } -> ChatKind.DAMAGE
-        else -> null
-    }
-
     @JvmStatic
     fun shouldCancelParticle(options: ParticleOptions): Boolean {
+        // Every particle the game makes comes through here; with the feature off nothing below can
+        // say yes, so skip the type checks.
+        if (!AlpakaConfig.instance.cleanBlazeEnabled) return false
         val type = options.type
         if (type === ParticleTypes.FLAME || type === ParticleTypes.SMALL_FLAME ||
             type === ParticleTypes.SMOKE || type === ParticleTypes.LARGE_SMOKE ||
@@ -155,9 +120,25 @@ object CleanBlazeFeature {
     private fun isDemon(entity: Entity): Boolean {
         if (entity !is LivingEntity || entity is ArmorStand) return false
         val tag = Minecraft.getInstance().level?.getEntity(entity.id + 1) as? ArmorStand ?: return false
-        val raw = tag.customName?.string ?: return false
-        return DEMON_NAMES.any { SkyblockUtils.containsIgnoringFormatting(raw, it) }
+        val name = tag.customName ?: return false
+        val cached = demonTags.get(tag.id)
+        if (cached != null && cached.first === name) return cached.second
+        val raw = name.string
+        val demon = DEMON_NAMES.any { SkyblockUtils.containsIgnoringFormatting(raw, it) }
+        if (demonTags.size() >= TAG_CACHE_LIMIT) demonTags.clear()
+        demonTags.put(tag.id, name to demon)
+        return demon
     }
+
+    /**
+     * Verdicts on name tags, kept with the name object they were read from. Both checks run per
+     * entity and frame in a Blaze fight, and a name only changes when the server sends a new object,
+     * so the answer depends on that object alone; the identity check also keeps a reused id from
+     * another world from getting an old answer. Render thread only.
+     */
+    private val demonTags = EntityCache<Pair<Component, Boolean>>()
+    private val smolderingTags = EntityCache<Pair<Component, Boolean>>()
+    private const val TAG_CACHE_LIMIT = 512
 
     /** A part of Clean Blaze, but anywhere on SkyBlock: blazes spin outside the slayer zones too. */
     @JvmStatic
@@ -170,9 +151,15 @@ object CleanBlazeFeature {
     fun shouldHideEntity(entity: Entity): Boolean {
         if (entity is SmallFireball) return AlpakaConfig.instance.cleanBlazeFireballs && active()
         if (entity is LightningBolt) return hideLightning()
-        if (!entity.hasCustomName() || !AlpakaConfig.instance.cleanBlazeNameTags || !active()) return false
+        // The setting before the entity: this runs for every entity on every frame.
+        if (!AlpakaConfig.instance.cleanBlazeNameTags || !entity.hasCustomName() || !active()) return false
         val customName = entity.customName ?: return false
-        return SkyblockUtils.containsIgnoringFormatting(customName.string, "Smoldering Blaze")
+        val cached = smolderingTags.get(entity.id)
+        if (cached != null && cached.first === customName) return cached.second
+        val hide = SkyblockUtils.containsIgnoringFormatting(customName.string, "Smoldering Blaze")
+        if (smolderingTags.size() >= TAG_CACHE_LIMIT) smolderingTags.clear()
+        smolderingTags.put(entity.id, customName to hide)
+        return hide
     }
 
     /** Lightning in the Blaze zones: the bolt itself and the sky flash it causes. The thunder stays. */

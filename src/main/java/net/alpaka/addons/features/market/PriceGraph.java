@@ -115,7 +115,7 @@ public final class PriceGraph {
             return;
         }
         int max = kind == MarketKind.BAZAAR ? MAX_POINTS : MAX_AUCTION_POINTS;
-        chart(graphics, font, kind, tag.tag(), range, downsample(result.points(), max), x, bodyY, w, bodyH, mx, my, clicks);
+        chart(graphics, font, kind, tag.tag(), range, downsampled(result.points(), max), x, bodyY, w, bodyH, mx, my, clicks);
     }
 
     /** Opens the item's page on SkyCofl's site, after asking, as every link out of the game does. */
@@ -171,7 +171,7 @@ public final class PriceGraph {
         int lx = x + 8;
         lx = legend(graphics, font, lx, y + 1, firstColor, firstName, lastFirst);
         lx = legend(graphics, font, lx + 8, y + 1, secondColor, secondName, lastSecond);
-        double[] ends = trend(points);
+        double[] ends = points == memoPoints ? memoTrend : trend(points);
         if (ends != null) {
             double change = (ends[1] - ends[0]) / ends[0] * 100.0;
             String text = String.format(Locale.ROOT, "%s%.1f%%", change >= 0 ? "+" : "", change);
@@ -182,7 +182,7 @@ public final class PriceGraph {
         }
 
         // The plot, with its scale on the right and the range's ends below.
-        double[] scale = scale(points);
+        double[] scale = points == memoPoints ? memoScale : scale(points);
         if (scale == null) return;
         double min = scale[0];
         double max = scale[1];
@@ -415,6 +415,28 @@ public final class PriceGraph {
         }
         return best;
     }
+
+    /**
+     * {@link #downsample} with its {@link #scale} and {@link #trend}, kept while the history is the
+     * same list: a history is replaced, never changed, when a new answer comes in, and the graph is
+     * drawn every frame from the same one. Render thread only.
+     */
+    private static List<PriceHistory.Point> downsampled(List<PriceHistory.Point> source, int max) {
+        if (source != memoSource || max != memoMax) {
+            memoSource = source;
+            memoMax = max;
+            memoPoints = downsample(source, max);
+            memoScale = scale(memoPoints);
+            memoTrend = trend(memoPoints);
+        }
+        return memoPoints;
+    }
+
+    private static List<PriceHistory.Point> memoSource;
+    private static int memoMax;
+    private static List<PriceHistory.Point> memoPoints;
+    private static double[] memoScale;
+    private static double[] memoTrend;
 
     /** At most {@code max} points, each an average of the ones it stands for. */
     static List<PriceHistory.Point> downsample(List<PriceHistory.Point> points, int max) {

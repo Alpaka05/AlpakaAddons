@@ -91,6 +91,8 @@ object FirePitFeature {
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
         LevelRenderEvents.COLLECT_SUBMITS.register { context ->
+            // Nothing to draw on nearly every frame: skip the timing too.
+            if (pits.isEmpty()) return@register
             val t = AlpakaPerf.begin(AlpakaPerf.Section.LEVEL_OVERLAYS)
             try {
                 submit(context)
@@ -103,6 +105,7 @@ object FirePitFeature {
     @JvmStatic
     fun reset() {
         pits.clear()
+        drawn = null
         active = false
     }
 
@@ -111,12 +114,13 @@ object FirePitFeature {
         active = cfg.blazeFirePitsEnabled && mc.level != null && (preview || inOwnBlazeFight())
         if (!active) {
             pits.clear()
+            drawn = null
             return
         }
         // A pit ends when its block stops being clay. An unloaded chunk reads as air, so pits there
         // go too.
         val level = mc.level ?: return
-        pits.keys.removeIf { !isPitBlock(level.getBlockState(it)) }
+        if (pits.keys.removeIf { !isPitBlock(level.getBlockState(it)) }) drawn = null
     }
 
     private fun inOwnBlazeFight(): Boolean =
@@ -137,6 +141,7 @@ object FirePitFeature {
         if (player.distanceToSqr(pos.x + 0.5, pos.y + 0.5, pos.z + 0.5) > RADIUS * RADIUS) return
         // The packet's position may be a mutable one that is reused for the next block.
         pits[pos.immutable()] = System.currentTimeMillis()
+        drawn = null
     }
 
     private fun isPitBlock(state: BlockState): Boolean =
@@ -148,16 +153,40 @@ object FirePitFeature {
         val poseStack = context.poseStack()
         val now = System.currentTimeMillis()
 
-        // Copied: the geometry is built later in the frame, and the set may change before then.
-        val snapshot = pits.entries.map { it.key to fadeIn(now - it.value) }
-        val members = HashSet(pits.keys)
+        // The pits with their open sides, worked out again only when the set changed. The list is
+        // never changed once made, so it also serves as this frame's copy: the geometry is built
+        // later in the frame, and the set may change before then.
+        val columns = drawn ?: buildColumns().also { drawn = it }
         val camX = camera.x
         val camY = camera.y
         val camZ = camera.z
-        val tint = Tint(AlpakaConfig.instance.blazeFirePitColor)
+        val argb = AlpakaConfig.instance.blazeFirePitColor
+        // The same tint every frame until the color setting changes.
+        val tint = lastTint?.takeIf { lastTintArgb == argb } ?: Tint(argb).also { lastTint = it; lastTintArgb = argb }
         context.submitNodeCollector().submitCustomGeometry(poseStack, RenderTypes.debugQuads()) { pose, buffer ->
-            for ((pos, fade) in snapshot) drawColumn(buffer, pose, tint, pos, fade, members, camX, camY, camZ)
+            for (column in columns) {
+                drawColumn(buffer, pose, tint, column.pos, fadeIn(now - column.bornMs), column.openSides, camX, camY, camZ)
+            }
         }
+    }
+
+    /** A pit as drawn: where, since when, and which sides border something other than a pit (bit per [SIDES] index). */
+    private class Column(val pos: BlockPos, val bornMs: Long, val openSides: Int)
+
+    /** The columns for [pits], in its order; null when the set changed since. */
+    private var drawn: List<Column>? = null
+
+    /** In Direction.Plane.HORIZONTAL's order, the order the walls have always been drawn in. */
+    private val SIDES = arrayOf(Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
+
+    private fun buildColumns(): List<Column> {
+        val out = ArrayList<Column>(pits.size)
+        for ((pos, born) in pits) {
+            var open = 0
+            for (i in SIDES.indices) if (!pits.containsKey(pos.relative(SIDES[i]))) open = open or (1 shl i)
+            out.add(Column(pos, born, open))
+        }
+        return out
     }
 
     /** 0..1 strength of a pit that appeared [ageMs] ago, eased out. */
@@ -174,7 +203,7 @@ object FirePitFeature {
      * column would shake as the camera moves.
      */
     private fun drawColumn(buffer: VertexConsumer, pose: PoseStack.Pose, tint: Tint, pos: BlockPos, fade: Float,
-                           members: Set<BlockPos>, camX: Double, camY: Double, camZ: Double) {
+                           openSides: Int, camX: Double, camY: Double, camZ: Double) {
         val x0 = (pos.x - camX).toFloat()
         val z0 = (pos.z - camZ).toFloat()
         val x1 = x0 + 1.0f
@@ -186,14 +215,14 @@ object FirePitFeature {
         val top = TOP_ALPHA * tint.a * fade
         quad(buffer, pose, tint, x0, y0, z0, x0, y0, z1, x1, y0, z1, x1, y0, z0, top, top, top, top)
 
-        for (side in Direction.Plane.HORIZONTAL) {
-            if (pos.relative(side) in members) continue
-            when (side) {
-                Direction.NORTH -> wall(buffer, pose, tint, x0, z0, x1, z0, y0, y1, floor)
-                Direction.SOUTH -> wall(buffer, pose, tint, x0, z1, x1, z1, y0, y1, floor)
-                Direction.WEST -> wall(buffer, pose, tint, x0, z0, x0, z1, y0, y1, floor)
-                Direction.EAST -> wall(buffer, pose, tint, x1, z0, x1, z1, y0, y1, floor)
-                else -> {}
+        // North, east, south, west: Direction.Plane.HORIZONTAL's order, as the walls were always drawn.
+        for (i in 0..3) {
+            if (openSides and (1 shl i) == 0) continue
+            when (i) {
+                0 -> wall(buffer, pose, tint, x0, z0, x1, z0, y0, y1, floor)
+                1 -> wall(buffer, pose, tint, x1, z0, x1, z1, y0, y1, floor)
+                2 -> wall(buffer, pose, tint, x0, z1, x1, z1, y0, y1, floor)
+                else -> wall(buffer, pose, tint, x0, z0, x0, z1, y0, y1, floor)
             }
         }
     }
@@ -229,6 +258,9 @@ object FirePitFeature {
     }
 
     /** An ARGB config color split into 0..1 channels. */
+    private var lastTint: Tint? = null
+    private var lastTintArgb = 0
+
     private class Tint(argb: Int) {
         val r = (argb ushr 16 and 0xFF) / 255.0f
         val g = (argb ushr 8 and 0xFF) / 255.0f

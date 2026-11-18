@@ -70,8 +70,10 @@ class DungeonMapSnapshot {
         private set
 
     fun update(incoming: ByteArray?, inBoss: Boolean): Boolean {
+        // Called every tick with a map that mostly hasn't changed: the cheap comparison goes first,
+        // so the blank-map scan only runs on a map that did change.
         if (inBoss || incoming == null || incoming.size != DungeonMapPixels.SIZE ||
-            incoming.all { (it.toInt() and 255) < 4 } || incoming.contentEquals(colors)) return false
+            incoming.contentEquals(colors) || incoming.all { (it.toInt() and 255) < 4 }) return false
         colors = incoming.copyOf()
         inks = DungeonMapPixels.classify(incoming)
         revision++

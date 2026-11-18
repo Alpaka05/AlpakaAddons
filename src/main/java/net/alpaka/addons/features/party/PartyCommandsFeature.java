@@ -100,7 +100,11 @@ public final class PartyCommandsFeature {
 
     static void onChat(Component message) {
         if (!isEnabled()) return;
-        for (String line : SkyblockUtils.cleanColor(message.getString()).split("\n")) {
+        String raw = message.getString();
+        // Every request holds a '!', and stripping color codes only removes characters, so a message
+        // without one is turned away before the strip and the split, as nearly every message is.
+        if (raw.indexOf('!') < 0) return;
+        for (String line : SkyblockUtils.cleanColor(raw).split("\n")) {
             PartyChatCommand request = PartyChatCommand.parse(line);
             if (request == null) continue;
             PartyCommand command = PartyCommand.byAlias(request.name());
@@ -161,7 +165,11 @@ public final class PartyCommandsFeature {
         autoRequest = null;
         if (!isEnabled() || !answersDirectly(command)) return;
         String answer = command.answer(request);
-        if (answer != null) Outbound.command(answer, Outbound.Cause.PARTY_CHAT_REQUEST);
+        // The gap counts from the answer sent too, as Outbound does, so a request that came 2 s after
+        // the last one but would be sent less than 2 s after its answer is turned away here, up front.
+        if (answer != null && Outbound.command(answer, Outbound.Cause.PARTY_CHAT_REQUEST)) {
+            lastAutoAtMs = System.currentTimeMillis();
+        }
     }
 
     /** Whether a request is up and its keys should answer. Clears one that has run out. */

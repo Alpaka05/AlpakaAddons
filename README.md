@@ -55,7 +55,6 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Expand Chat History:** keeps 1000 messages (up to 5000), even after leaving a server.
 - **Smooth Chat:** messages slide in, scrolling glides, and an optional blurred, rounded background.
 - **Chat Mentions**, **Custom Guild Tag** and a **Bridge Bot Formatter** that shows relayed Discord messages as `[Discord]`.
-- **Better Screenshots**: a preview that shrinks into the corner, and Open, Copy and Delete buttons.
 
 </details>
 
@@ -138,11 +137,12 @@ When a server offers a resource pack, the mod's pack cache answers it the way Mi
 
 **What it contacts.** With "Allow Network Features" on (it can be turned off in General), the mod asks these services. Each request is made because you opened something or because the feature needs it right then. None of them gets your Minecraft login.
 
-- **Hypixel's public API** (api.hypixel.net): the current mayor, for slayer XP; Bazaar prices and the list of SkyBlock items, collections, skills and Bingo dates, for prices, icons and the Profile Dashboard. These need no key and send nothing about you.
+- **Hypixel's public API** (api.hypixel.net): the current mayor, for slayer XP; the list of SkyBlock items, collections, skills and Bingo dates, for icons and the Profile Dashboard; Bazaar prices when the AlpakaAddons API can't be reached. These need no key and send nothing about you.
 - **The Hypixel server's status**, for the player count on the main menu.
 - **SkyCofl** (sky.coflnet.com): auction prices and price history, for Item Value, the Auction House price suggestions and the market graphs. Requests name the item, never you.
 - **The NotEnoughUpdates repository** on GitHub: item looks, pet heads and the lists behind the Bestiary, Museum, skill trees and rabbits.
-- **For the Profile Dashboard**, only when you open it on a player: **Elite** (api.elitebot.dev) for the profile itself, **Soopy** (api.soopy.dev) for its history, and **SkyKings** (api.skykings.net) only if you entered your own SkyKings key. They are asked for the player you look up, by name or UUID.
+- **The AlpakaAddons API** (api.alpaka.yt), the mod's own server (its code is in `backend/`). For prices it hands out the Bazaar's, Hypixel's public list cut down to what the mod reads, without a login. When you open the Profile Dashboard on a player, it asks Hypixel's API for that player's profile with a key that stays on that server, and answers only with what the dashboard shows of the player you look up, by name or UUID. To log in, the API hands out a one-time id, the game tells Mojang's session server that you join a server with that id, the way joining any server works, and the API asks Mojang whether you did. Your access token only goes to Mojang, never to the API. The login lasts 12 hours and is kept in `config/alpaka-api-login.json`; once you have used the dashboard, the mod renews it in the background when the game starts, so the dashboard opens without waiting for it. The API keeps its answers for an hour (your own profile for 10 minutes) and nothing about who asked for what; it is reached through Cloudflare, which sees your address and the request like any website's host. Your own profile's last look is kept in `config/alpaka-profile-cache/` and shown at once the next time you open the dashboard, while the new one loads.
+- **For the Profile Dashboard's graphs**, only when you open it on a player: **Soopy** (api.soopy.dev) for the profile's history, and **SkyKings** (api.skykings.net) only if you entered your own SkyKings key. They are asked for the player you look up, by UUID.
 - **GitHub**, with "Update Check" on: once per start, whether a newer release is out. Only after you click Install and confirm does it download that release's jar from GitHub, check it against GitHub's checksum and swap it in when you close the game.
 
 Player heads load their skins from Mojang, as everywhere in Minecraft. With "Allow Network Features" off, the mod makes none of these requests.
@@ -151,7 +151,6 @@ Player heads load their skins from Mojang, as everywhere in Minecraft. With "All
 
 - Smooth perspective only eases between the vanilla camera views. There is no free look, and every transition ends exactly where vanilla's camera is.
 - Commands that delete or move your data (`/alpakaslayer reset`, `/alpakastats folder`, `/alpakapreset save`) work only when you type them. A clickable chat message cannot run them.
-- Screenshot buttons only act on screenshots this session posted, and Delete needs a second click.
 - An update installs only after you confirm it on a screen. The chat button and `/alpakaupdate install` just open that screen, and the command works only when you type it.
 
 ## Feedback & Bugs
@@ -164,7 +163,7 @@ Found a bug or have an idea? Open an [issue](https://github.com/Alpaka05/AlpakaA
 ./gradlew build -Pdeploy_target=none
 ```
 
-The jar ends up in `build/libs`. `deploy_target` in `gradle.properties` can also copy it straight into a Modrinth App or OneClient profile.
+The jar ends up in `build/libs`. The AlpakaAddons API behind the Profile Dashboard's Rift page is a build of its own in `backend/`: `./gradlew -p backend build`. `deploy_target` in `gradle.properties` can also copy it straight into a Modrinth App or OneClient profile.
 
 ### Versions
 

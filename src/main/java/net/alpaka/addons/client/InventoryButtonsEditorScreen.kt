@@ -1,6 +1,7 @@
 package net.alpaka.addons.client
 
 import net.alpaka.addons.client.InventoryButtonsSkin as Skin
+import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.EditableText
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.config.AlpakaConfig
@@ -55,6 +56,8 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     private val commandText = EditableText(256)
     private val labelText = EditableText(64)
     private val searchText = EditableText(40)
+    /** Whether Shift was held for the click being handled, which selects up to it in a focused field. */
+    private var clickShift = false
     private var focus = Field.NONE
 
     /** The picker's full list as last searched; it grows once SkyBlock's items have loaded. */
@@ -85,7 +88,8 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
 
     private fun panelW() = minOf(PANEL_W, maxOf(120, (width - IMAGE_W) / 2 - 12))
     private fun panelH() = minOf(height - 2 * MARGIN, PANEL_MAX_H)
-    private fun panelX() = if (panelLeft) MARGIN else width - MARGIN - panelW()
+    private fun panelX() = panelX(panelLeft)
+    private fun panelX(left: Boolean) = if (left) MARGIN else width - MARGIN - panelW()
     private fun panelY() = (height - panelH()) / 2
     private fun inPanel(mx: Double, my: Double) =
         mx >= panelX() && mx < panelX() + panelW() && my >= panelY() && my < panelY() + panelH()
@@ -111,7 +115,8 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     private fun commandY() = backY() + ROW_STEP
     private fun labelY() = commandY() + ROW_STEP
     private fun showInY() = labelY() + ROW_STEP
-    private fun searchY() = showInY() + ROW_STEP
+    private fun doubleY() = showInY() + ROW_STEP
+    private fun searchY() = doubleY() + ROW_STEP
     private fun fieldX() = contentX() + labelW()
     private fun fieldW() = contentW() - labelW()
     /** The labels' column: as wide as the widest label in the menu font, which differs by font. */
@@ -171,11 +176,11 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         // Down the left of the panel, under the last button there, or the first free spot of that column.
         val taken = buttons.map { InventoryButtonLayout.place(it, box, width, height) }
         var y = box.top
-        while (taken.any { it[0] == box.left - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP && it[1] == y } &&
+        while (taken.any { it[0] == InventoryButtonLayout.columnX(box, -1) && it[1] == y } &&
             y + InventoryButtonLayout.SIZE < height) {
-            y += InventoryButtonLayout.SIZE + InventoryButtonLayout.GAP
+            y += InventoryButtonLayout.SIZE + InventoryButtonLayout.GAP_Y
         }
-        InventoryButtonLayout.store(button, box.left - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP, y, box)
+        InventoryButtonLayout.store(button, InventoryButtonLayout.columnX(box, -1), y, box)
         buttons.add(button)
         AlpakaConfig.save()
         select(button)
@@ -229,7 +234,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             if (button === selected) Skin.outline(graphics, p[0] - 2, p[1] - 2, InventoryButtonLayout.SIZE + 4, InventoryButtonLayout.SIZE + 4, Skin.accent())
         }
 
-        if (dragging == null) panelLeft = selected?.let { InventoryButtonLayout.place(it, box, width, height)[0] + InventoryButtonLayout.SIZE / 2 > width / 2 } ?: false
+        if (dragging == null && cover(!panelLeft, box) < cover(panelLeft, box)) panelLeft = !panelLeft
         drawPanel(graphics, mx, my)
 
         if (hovered != null) {
@@ -238,6 +243,25 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             lines.add(GuiFont.text(InventoryButtonsFeature.displayCommand(hovered.command)))
             graphics.setTooltipForNextFrame(font, lines, java.util.Optional.empty(), mouseX, mouseY)
         }
+    }
+
+    /**
+     * How much the panel would hide on the [left] or right side: the picked button above all, then
+     * every other button under it. The panel stays where it is unless the other side hides less, so
+     * it doesn't jump across when nothing is in its way.
+     */
+    private fun cover(left: Boolean, box: Box): Int {
+        val x = panelX(left)
+        val w = panelW()
+        val y = panelY()
+        val h = panelH()
+        val s = InventoryButtonLayout.SIZE
+        var score = 0
+        for (button in buttons) {
+            val p = InventoryButtonLayout.place(button, box, width, height)
+            if (p[0] < x + w && p[0] + s > x && p[1] < y + h && p[1] + s > y) score += if (button === selected) 1000 else 1
+        }
+        return score
     }
 
     /** The container as the game draws it, so the buttons can be placed against the real thing. */
@@ -308,16 +332,19 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         val fx = fieldX()
         val fw = fieldW()
         Skin.label(graphics, font, "Command", cx, commandY() + 5)
-        Skin.textField(graphics, font, fx, commandY(), fw, Skin.BUTTON_H, commandText.text, "/command",
+        Skin.textField(graphics, font, fx, commandY(), fw, Skin.BUTTON_H, commandText, "/command",
             focus == Field.COMMAND, inside(mx, my, fx, commandY(), fw, Skin.BUTTON_H))
         Skin.label(graphics, font, "Tooltip", cx, labelY() + 5)
-        Skin.textField(graphics, font, fx, labelY(), fw, Skin.BUTTON_H, labelText.text, "Optional",
+        Skin.textField(graphics, font, fx, labelY(), fw, Skin.BUTTON_H, labelText, "Optional",
             focus == Field.LABEL, inside(mx, my, fx, labelY(), fw, Skin.BUTTON_H))
         Skin.label(graphics, font, "Show In", cx, showInY() + 5)
         Skin.button(graphics, font, fx, showInY(), fw, Skin.BUTTON_H, SHOW_IN[button.showIn.coerceIn(0, SHOW_IN.size - 1)],
             inside(mx, my, fx, showInY(), fw, Skin.BUTTON_H), Skin.PLAIN)
+        Skin.label(graphics, font, "Double Click", cx, doubleY() + 5)
+        Skin.button(graphics, font, fx, doubleY(), fw, Skin.BUTTON_H, if (button.doubleClick) "On" else "Off",
+            inside(mx, my, fx, doubleY(), fw, Skin.BUTTON_H), Skin.PLAIN)
         Skin.label(graphics, font, "Icon", cx, searchY() + 5)
-        Skin.textField(graphics, font, fx, searchY(), fw, Skin.BUTTON_H, searchText.text, "Search",
+        Skin.textField(graphics, font, fx, searchY(), fw, Skin.BUTTON_H, searchText, "Search",
             focus == Field.SEARCH, inside(mx, my, fx, searchY(), fw, Skin.BUTTON_H))
 
         // The icon grid.
@@ -373,6 +400,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         val mx = event.x()
         val my = event.y()
         if (event.button() != 0) return super.mouseClicked(event, isDoubleClick)
+        clickShift = event.hasShiftDown()
 
         if (inPanel(mx, my)) {
             panelClick(mx, my)
@@ -441,12 +469,17 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         val fx = fieldX()
         val fw = fieldW()
         when {
-            inside(mx, my, fx, commandY(), fw, Skin.BUTTON_H) -> focusField(Field.COMMAND, commandText, mx - fx - 4, previousFocus)
-            inside(mx, my, fx, labelY(), fw, Skin.BUTTON_H) -> focusField(Field.LABEL, labelText, mx - fx - 4, previousFocus)
-            inside(mx, my, fx, searchY(), fw, Skin.BUTTON_H) -> focusField(Field.SEARCH, searchText, mx - fx - 4, previousFocus)
+            inside(mx, my, fx, commandY(), fw, Skin.BUTTON_H) -> focusField(Field.COMMAND, commandText, fx, fw, mx, previousFocus)
+            inside(mx, my, fx, labelY(), fw, Skin.BUTTON_H) -> focusField(Field.LABEL, labelText, fx, fw, mx, previousFocus)
+            inside(mx, my, fx, searchY(), fw, Skin.BUTTON_H) -> focusField(Field.SEARCH, searchText, fx, fw, mx, previousFocus)
             inside(mx, my, fx, showInY(), fw, Skin.BUTTON_H) -> {
                 Skin.click()
                 button.showIn = (button.showIn + 1) % SHOW_IN.size
+                AlpakaConfig.save()
+            }
+            inside(mx, my, fx, doubleY(), fw, Skin.BUTTON_H) -> {
+                Skin.click()
+                button.doubleClick = !button.doubleClick
                 AlpakaConfig.save()
             }
             inside(mx, my, cx, gridY(), cw, gridH()) -> {
@@ -466,12 +499,15 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         }
     }
 
-    private fun focusField(field: Field, text: EditableText, localX: Double, previousFocus: Field) {
+    private fun focusField(field: Field, text: EditableText, fieldX: Int, fieldW: Int, mouseX: Double, previousFocus: Field) {
         focus = field
-        // A click into a field that already had the focus places the caret; the first one selects
-        // nothing and puts it at the end, ready to type on.
-        if (previousFocus == field) text.setCaretFromX(localX.toInt()) { GuiFont.width(font, it) }
-        else text.keyPressed(GLFW.GLFW_KEY_END, false, false)
+        // A click into a field that already had the focus places the caret (Shift selects up to
+        // it); the first one selects nothing and puts it at the end, ready to type on.
+        if (previousFocus == field) {
+            AlpakaStyle.clickTextField(font, text, null, fieldX, fieldW, mouseX, true, clickShift)
+        } else {
+            text.keyPressed(GLFW.GLFW_KEY_END, false, false)
+        }
     }
 
     override fun mouseDragged(event: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean {
@@ -561,7 +597,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
                     return true
                 }
             }
-            if (text.keyPressed(key, event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+            if (text.keyPressed(event)) {
                 afterEdit()
                 return true
             }
@@ -599,7 +635,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     companion object {
         private val CHEST_LOCATION: Identifier = Identifier.withDefaultNamespace("textures/gui/container/generic_54.png")
         private val SHOW_IN = arrayOf("All", "Inventory", "Chests")
-        private val LABELS = listOf("Preview", "Command", "Tooltip", "Show In", "Icon")
+        private val LABELS = listOf("Preview", "Command", "Tooltip", "Show In", "Double Click", "Icon")
 
         private const val IMAGE_W = 176
         private const val MARGIN = 6

@@ -14,5 +14,6 @@
   "key.alpaka.zoom": "Zoom",
   "key.alpaka.command_wheel": "Befehlsrad",
   "key.alpaka.inventory_hud": "Inventar-HUD",
-  "key.alpaka.item_value": "Item-Wert"
+  "key.alpaka.item_value": "Item-Wert",
+  "key.alpaka.price_tooltip": "Preis-Tooltip"
 }

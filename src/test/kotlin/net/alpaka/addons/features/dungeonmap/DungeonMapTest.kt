@@ -70,9 +70,9 @@ class DungeonMapTest {
         assertEquals(64f, view.mapY(30.0))
         assertEquals(0f, view.mapX(-84.0))
         assertEquals(128f, view.mapY(94.0))
-        for (i in 0 until 64) {
-            assertEquals(i * 2f + 1, view.mapX(view.worldX(i).toDouble()))
-            assertEquals(i * 2f + 1, view.mapY(view.worldZ(i).toDouble()))
+        for (i in 0 until BossMapProjection.STEPS) {
+            assertEquals(i.toFloat(), view.mapX(view.worldX(i).toDouble()))
+            assertEquals(i.toFloat(), view.mapY(view.worldZ(i).toDouble()))
         }
     }
 }

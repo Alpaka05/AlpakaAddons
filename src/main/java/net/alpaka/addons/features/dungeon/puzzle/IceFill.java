@@ -117,7 +117,7 @@ public final class IceFill extends PuzzleSolver {
         long packed = 0L;
         for (int cell = 0; cell < floor.cells(); cell++) {
             BlockPos walk = frame.toWorld(floor.relX(cell), floor.walkY(), floor.relZ(cell));
-            if (!level.hasChunk(walk.getX() >> 4, walk.getZ() >> 4)) return;
+            if (!level.getChunkSource().hasChunk(walk.getX() >> 4, walk.getZ() >> 4)) return;
             if (!level.getBlockState(walk).isAir()) continue;
             BlockState ice = level.getBlockState(walk.below());
             // Air on both: this part of the floor has not arrived yet.
@@ -158,7 +158,7 @@ public final class IceFill extends PuzzleSolver {
     private static boolean looksLikeIceFill(ClientLevel level, RoomFrame f) {
         for (Floor floor : IceFillBoard.FLOORS) {
             BlockPos start = f.toWorld(floor.relX(floor.start()), floor.walkY(), floor.relZ(floor.start()));
-            if (!level.hasChunk(start.getX() >> 4, start.getZ() >> 4)) return false;
+            if (!level.getChunkSource().hasChunk(start.getX() >> 4, start.getZ() >> 4)) return false;
             if (!level.getBlockState(start).isAir() || !level.getBlockState(start.below()).is(BlockTags.ICE)) return false;
         }
         return true;

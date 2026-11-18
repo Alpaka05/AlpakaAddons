@@ -126,12 +126,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.menuTheme = AlpakaStyle.Theme.MENU_ORDER[Math.round(v)].ordinal(); AlpakaConfig.save(); AlpakaConfig.applyMenuTheme(); },
                 0.0f, (float) (AlpakaStyle.THEME_NAMES.length - 1),
                 val -> AlpakaStyle.THEME_NAMES[Math.round(val)],
-                "menu theme look mode dark light white bright oled black amoled night day appearance gui colors cappuccino coffee brown espresso mocha warm").choices(AlpakaStyle.THEME_NAMES));
+                "menu theme look mode dark light white bright oled black amoled night day appearance gui colors alpaka cappuccino coffee brown espresso mocha warm").choices(AlpakaStyle.THEME_NAMES));
 
         // How the HUDs look, chat and scoreboard included: main switches for the blurred panel and
         // the menu font, and the one blur strength they share. Each HUD's own switches sit in its
         // settings; see registerHudStyleToggles.
         OPTIONS.add(new ConfigOption("HUD Style", ConfigCategory.GENERAL));
+
+        OPTIONS.add(new ConfigOption("hud_blur_strength", "Blur Strength",
+                "How strongly the world is blurred behind every blurred panel, the command wheel's included.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.chatBlurStrength,
+                v -> { AlpakaConfig.instance.chatBlurStrength = v; AlpakaConfig.save(); },
+                0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
+                "blur strength radius amount intensity frosted glass background lighter clearer sharp"));
 
         OPTIONS.add(new ConfigOption("hud_blur_all", "Blur",
                 "Main switch for the blurred panels behind the HUDs, chat and scoreboard included. Each HUD also has its own Blur switch.",
@@ -146,14 +154,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.hudSmoothFontAll,
                 v -> { AlpakaConfig.instance.hudSmoothFontAll = v; AlpakaConfig.save(); GuiFont.refreshChat(); },
                 "smooth font menu font typeface text nunito hud all main own settings"));
-
-        OPTIONS.add(new ConfigOption("hud_blur_strength", "Blur Strength",
-                "How strongly the world is blurred behind every blurred panel, the command wheel's included.",
-                ConfigCategory.GENERAL,
-                () -> AlpakaConfig.instance.chatBlurStrength,
-                v -> { AlpakaConfig.instance.chatBlurStrength = v; AlpakaConfig.save(); },
-                0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
-                "blur strength radius amount intensity frosted glass background lighter clearer sharp"));
 
         OPTIONS.add(ConfigOption.color("menu_accent_color", "Menu Accent Color",
                 "The highlight color of every Alpaka menu.",
@@ -236,45 +236,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.fullbrightEnabled = v; AlpakaConfig.save(); },
                 "gamma brightness light fullbright vision enables maximum everywhere torches"));
 
-        OPTIONS.add(new ConfigOption("sky_effects", "Sky Effects",
-                "Animates the sky: a firestorm over the Nether, auroras and shooting stars over the Overworld at night and a glowing sun by day, a swirling nebula in the End.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.skyEffectsEnabled,
-                v -> { AlpakaConfig.instance.skyEffectsEnabled = v; AlpakaConfig.save(); },
-                "sky skies animated fancy firestorm fire storm nether crimson isle aurora northern lights borealis shooting stars meteor milky way galaxy nebula end space sun rays glow embers"));
-
-        OPTIONS.add(new ConfigOption("sky_effects_skies", "Animated Skies",
-                "Pick which skies are animated.",
-                ConfigCategory.VISUALS,
-                java.util.List.of(
-                        new ConfigOption.ToggleEntry("Nether Firestorm",
-                                () -> AlpakaConfig.instance.skyEffectsNether,
-                                v -> { AlpakaConfig.instance.skyEffectsNether = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Overworld Aurora",
-                                () -> AlpakaConfig.instance.skyEffectsOverworld,
-                                v -> { AlpakaConfig.instance.skyEffectsOverworld = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("End Nebula",
-                                () -> AlpakaConfig.instance.skyEffectsEnd,
-                                v -> { AlpakaConfig.instance.skyEffectsEnd = v; AlpakaConfig.save(); })
-                ),
-                "sky skies nether firestorm overworld aurora sun rays end nebula dimension pick which"));
-
-        OPTIONS.add(new ConfigOption("sky_effects_intensity", "Sky Intensity",
-                "How strongly the effects show over the plain sky.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.skyEffectsIntensity,
-                v -> { AlpakaConfig.instance.skyEffectsIntensity = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
-                0.1f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
-                "sky intensity strength opacity brightness subtle strong effects"));
-
-        OPTIONS.add(new ConfigOption("sky_effects_speed", "Sky Animation Speed",
-                "How fast the clouds, lights and stars move.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.skyEffectsSpeed,
-                v -> { AlpakaConfig.instance.skyEffectsSpeed = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
-                0.25f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
-                "sky animation speed fast slow motion clouds drift"));
-
         OPTIONS.add(new ConfigOption("clean_blaze", "Clean Blaze",
                 "Hides visual clutter in the Blaze slayer's zones, on SkyBlock only.",
                 ConfigCategory.VISUALS,
@@ -306,15 +267,9 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.cleanBlazeLightning = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Name Tags",
                                 () -> AlpakaConfig.instance.cleanBlazeNameTags,
-                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Wrong Dagger Messages",
-                                () -> AlpakaConfig.instance.cleanBlazeWrongDaggerChat,
-                                v -> { AlpakaConfig.instance.cleanBlazeWrongDaggerChat = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Damage Messages",
-                                () -> AlpakaConfig.instance.cleanBlazeDamageChat,
-                                v -> { AlpakaConfig.instance.cleanBlazeDamageChat = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); })
                 ),
-                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell attunement dust ashen spirit crystal auric hellion shield fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon chat message wrong dagger strike damage true damage beam reduced clean hide"));
+                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell attunement dust ashen spirit crystal auric hellion shield fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
 
         OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
                 "Stops blaze rods from spinning around blaze mobs.",
@@ -372,12 +327,60 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideMobDeathSmoke = v; AlpakaConfig.save(); },
                 "hide mob death smoke poof particles cloud puff"));
 
-        OPTIONS.add(new ConfigOption("hide_explosions", "Hide Explosions",
-                "Hides the flash, smoke and debris of explosions.",
+        OPTIONS.add(new ConfigOption("hide_visual_clutter", "Hide Visual Clutter",
+                "Hides effects that only cost frames: explosions, falling blocks, block particles, hit sparks, fireworks, experience orbs, dying dragons and stuck arrows.",
                 ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.hideExplosions,
-                v -> { AlpakaConfig.instance.hideExplosions = v; AlpakaConfig.save(); },
+                () -> AlpakaConfig.instance.hideVisualClutter,
+                v -> { AlpakaConfig.instance.hideVisualClutter = v; AlpakaConfig.save(); },
+                "hide visual clutter performance fps lag particles effects explosions falling blocks fireworks orbs dragon arrows"));
+        OPTIONS.add(new ConfigOption("hide_clutter_explosions", "Explosions",
+                "The flash, smoke and debris of explosions, like Hyperion, Bonzo's Staff, TNT and creepers.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterExplosions,
+                v -> { AlpakaConfig.instance.clutterExplosions = v; AlpakaConfig.save(); },
                 "hide explosion explosions explode tnt creeper hyperion wither impact implosion bonzo particles flash cloud smoke"));
+        OPTIONS.add(new ConfigOption("hide_clutter_falling_blocks", "Falling Blocks",
+                "Blocks flying through the air, like the gold of Molten Wave. What they hit is decided by the server either way.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterFallingBlocks,
+                v -> { AlpakaConfig.instance.clutterFallingBlocks = v; AlpakaConfig.save(); },
+                "hide falling blocks block entity sand gravel molten wave midas staff seismic wave debris"));
+        OPTIONS.add(new ConfigOption("hide_clutter_block_break", "Block Break Particles",
+                "The bits that fly off broken and mined blocks, yours and everyone else's. The cracks on the block stay.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterBlockBreak,
+                v -> { AlpakaConfig.instance.clutterBlockBreak = v; AlpakaConfig.save(); },
+                "hide block break breaking particles mining farming garden crops terrain dig destroy"));
+        OPTIONS.add(new ConfigOption("hide_clutter_hit_particles", "Hit Particles",
+                "The sparks of critical and enchanted hits, and the sparkle trail behind fully drawn arrows.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterHitParticles,
+                v -> { AlpakaConfig.instance.clutterHitParticles = v; AlpakaConfig.save(); },
+                "hide hit particles crit critical enchanted sparks magic stars arrow trail terminator"));
+        OPTIONS.add(new ConfigOption("hide_clutter_fireworks", "Fireworks",
+                "The bursts of firework rockets, with their sound.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterFireworks,
+                v -> { AlpakaConfig.instance.clutterFireworks = v; AlpakaConfig.save(); },
+                "hide fireworks firework rocket burst explosion stars sparkle"));
+        OPTIONS.add(new ConfigOption("hide_clutter_experience_orbs", "Experience Orbs",
+                "Experience orbs on the ground, like the ones from Experience Bottles. The experience still counts.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterExperienceOrbs,
+                v -> { AlpakaConfig.instance.clutterExperienceOrbs = v; AlpakaConfig.save(); },
+                "hide experience orbs xp exp bottle orb green"));
+        OPTIONS.add(new ConfigOption("hide_clutter_dragon_death", "Dragon Death",
+                "A dying Ender Dragon with its light rays and explosions, in the End and in Master Mode 7.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterDragonDeath,
+                v -> { AlpakaConfig.instance.clutterDragonDeath = v; AlpakaConfig.save(); },
+                "hide ender dragon death animation rays beams light explosion end m7 wither king"));
+        OPTIONS.add(new ConfigOption("hide_clutter_attached_arrows", "Attached Arrows",
+                "Arrows stuck in players and in the ground. Arrows in flight stay.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterAttachedArrows,
+                v -> { AlpakaConfig.instance.clutterAttachedArrows = v; AlpakaConfig.save(); },
+                "hide attached stuck arrows arrow body player ground wall block bow pincushion"));
 
         OPTIONS.add(new ConfigOption("Hide Fire Overlay", ConfigCategory.VISUALS));
 
@@ -473,7 +476,7 @@ public class AlpakaConfigRegistry {
                 "zoom optifine spyglass binoculars magnify fov camera scroll hold"));
 
         OPTIONS.add(ConfigOption.keybind("zoom_key", "Key",
-                "The key to hold for zooming. C by default.",
+                "The key to hold for zooming. Unbound by default.",
                 ConfigCategory.VISUALS,
                 () -> net.alpaka.addons.features.zoom.ZoomFeature.ZOOM_KEY,
                 "zoom optifine"));
@@ -906,11 +909,20 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Stash Reminders",
                                 () -> AlpakaConfig.instance.messageFilterStash,
                                 v -> { AlpakaConfig.instance.messageFilterStash = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Event Rewards",
+                                () -> AlpakaConfig.instance.messageFilterEventRewards,
+                                v -> { AlpakaConfig.instance.messageFilterEventRewards = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Sacks",
                                 () -> AlpakaConfig.instance.messageFilterSacks,
-                                v -> { AlpakaConfig.instance.messageFilterSacks = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.messageFilterSacks = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Sky Mall",
+                                () -> AlpakaConfig.instance.messageFilterSkyMall,
+                                v -> { AlpakaConfig.instance.messageFilterSkyMall = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Server Switch",
+                                () -> AlpakaConfig.instance.messageFilterServerTransfer,
+                                v -> { AlpakaConfig.instance.messageFilterServerTransfer = v; AlpakaConfig.save(); })
                 ),
-                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder sacks sack items added removed"));
+                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder event rewards unclaimed claim deleted sacks sack items added removed sky mall skymall buff new day hotm mining perk warping warp sending to server switch transfer mini"));
 
         OPTIONS.add(new ConfigOption("message_filter_dungeon", "Dungeon Messages",
                 "Which dungeon messages the filter hides during a Catacombs run.",
@@ -952,6 +964,34 @@ public class AlpakaConfigRegistry {
                 ),
                 "message filter dungeon dungeons catacombs mort ready countdown class buff ambience pickup superboom revive stone wither essence orb fairy key door blessing not possible damage ability abilities heal tether cooldown mana puzzle quiz oruo end run team bonus"));
 
+        OPTIONS.add(new ConfigOption("message_filter_slayer", "Slayer Messages",
+                "Which slayer messages the filter hides. The Blaze ones only in the Blaze slayer's zones.",
+                ConfigCategory.VISUALS,
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Quest & Boss Slain",
+                                () -> AlpakaConfig.instance.messageFilterSlayerQuest,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerQuest = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Radio Signal",
+                                () -> AlpakaConfig.instance.messageFilterSlayerRadio,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerRadio = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Level-Ups",
+                                () -> AlpakaConfig.instance.messageFilterSlayerLevelUp,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerLevelUp = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Kill Healing",
+                                () -> AlpakaConfig.instance.messageFilterSlayerHealing,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerHealing = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Sunshade Drop",
+                                () -> AlpakaConfig.instance.messageFilterSlayerSunshade,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerSunshade = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Blaze Wrong Dagger",
+                                () -> AlpakaConfig.instance.messageFilterBlazeWrongDagger,
+                                v -> { AlpakaConfig.instance.messageFilterBlazeWrongDagger = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Blaze Damage",
+                                () -> AlpakaConfig.instance.messageFilterBlazeDamage,
+                                v -> { AlpakaConfig.instance.messageFilterBlazeDamage = v; AlpakaConfig.save(); })
+                ),
+                "message filter slayer chat spam quest started complete boss slain slay combat xp radio signal enjoyer level up lvl healing heal hp sunshade netherrack rare drop blaze wrong dagger attunement strike damage true damage beam hellion shield reduced hide"));
+
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
                 "Slides in a notification when somebody says your name in chat.",
                 ConfigCategory.VISUALS,
@@ -985,83 +1025,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.chatPeekInMenus,
                 v -> { AlpakaConfig.instance.chatPeekInMenus = v; AlpakaConfig.save(); },
                 "chat peek menu inventory gui screen container open hold key foreground peek chat"));
-
-        OPTIONS.add(new ConfigOption("better_screenshot_message", "Better Screenshots",
-                "Adds a preview in the corner and Open, Copy and Delete buttons to every screenshot.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.betterScreenshotMessageEnabled,
-                v -> { AlpakaConfig.instance.betterScreenshotMessageEnabled = v; AlpakaConfig.save(); },
-                "better screenshots screenshot message notice open copy delete clipboard f2 buttons preview"));
-
-        OPTIONS.add(new ConfigOption("screenshot_preview", "Corner Preview",
-                "Shrinks the screenshot into the corner for a moment, like on a phone.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.screenshotPreviewEnabled,
-                v -> { AlpakaConfig.instance.screenshotPreviewEnabled = v; AlpakaConfig.save(); },
-                "screenshot preview thumbnail corner flash animation ios phone screen preview"));
-
-        OPTIONS.add(new ConfigOption("screenshot_preview_seconds", "Preview Duration",
-                "How long the preview stays in the corner.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.screenshotPreviewSeconds,
-                v -> { AlpakaConfig.instance.screenshotPreviewSeconds = Math.round(v * 2.0f) / 2.0f; AlpakaConfig.save(); },
-                1.0f, 10.0f,
-                val -> String.format(java.util.Locale.ROOT, "%.1f s", val),
-                "screenshot preview duration time seconds"));
-
-        OPTIONS.add(new ConfigOption("screenshot_preview_size", "Preview Size",
-                "How wide the preview is, as a share of the screen's width.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.screenshotPreviewSize,
-                v -> { AlpakaConfig.instance.screenshotPreviewSize = (float) Math.round(v); AlpakaConfig.save(); },
-                10.0f, 40.0f,
-                val -> Math.round(val) + "%",
-                "screenshot preview size width thumbnail"));
-
-        OPTIONS.add(new ConfigOption("screenshot_preview_click", "Preview Click",
-                "What clicking the preview does while a menu or the chat is open.",
-                ConfigCategory.VISUALS,
-                () -> (float) AlpakaConfig.instance.screenshotPreviewClickAction,
-                v -> { AlpakaConfig.instance.screenshotPreviewClickAction = Math.round(v); AlpakaConfig.save(); },
-                0.0f, (float) (net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES.length - 1),
-                val -> net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES[Math.clamp(Math.round(val), 0, net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES.length - 1)],
-                "screenshot preview click mouse open copy folder action thumbnail").choices(net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES));
-
-        OPTIONS.add(new ConfigOption("screenshot_chat_buttons", "Chat Buttons",
-                "Shows Open, Copy and Delete buttons on the screenshot message in chat.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.screenshotChatButtons,
-                v -> { AlpakaConfig.instance.screenshotChatButtons = v; AlpakaConfig.save(); },
-                "screenshot message notice open copy delete buttons chat line"));
-
-        OPTIONS.add(new ConfigOption("screenshot_line_parts", "Line Parts",
-                "Which parts the screenshot line shows.",
-                ConfigCategory.VISUALS,
-                java.util.List.of(
-                        new ConfigOption.ToggleEntry("File Name",
-                                () -> AlpakaConfig.instance.screenshotShowFileName,
-                                v -> { AlpakaConfig.instance.screenshotShowFileName = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Open Button",
-                                () -> AlpakaConfig.instance.screenshotShowOpen,
-                                v -> { AlpakaConfig.instance.screenshotShowOpen = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Folder Button",
-                                () -> AlpakaConfig.instance.screenshotShowFolder,
-                                v -> { AlpakaConfig.instance.screenshotShowFolder = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Copy Button",
-                                () -> AlpakaConfig.instance.screenshotShowCopy,
-                                v -> { AlpakaConfig.instance.screenshotShowCopy = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Delete Button",
-                                () -> AlpakaConfig.instance.screenshotShowDelete,
-                                v -> { AlpakaConfig.instance.screenshotShowDelete = v; AlpakaConfig.save(); })
-                ),
-                "screenshot line parts file name open folder copy delete button show hide"));
-
-        OPTIONS.add(new ConfigOption("auto_copy_screenshots", "Auto Copy Screenshots",
-                "Copies every screenshot to the clipboard right away.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.autoCopyScreenshots,
-                v -> { AlpakaConfig.instance.autoCopyScreenshots = v; AlpakaConfig.save(); },
-                "screenshot auto copy clipboard automatic f2 paste"));
 
         OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
                 "Adds All, Party, Guild, Co-op, PMs and NPCs tabs above the chat input.",
@@ -1232,7 +1195,7 @@ public class AlpakaConfigRegistry {
                 "dungeon map hud editor move position size scale"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_boss_mode", "In Boss Room",
-                "Arena Map draws the loaded terrain around you, on your level. Saved Map keeps the clear map. Both shows them side by side.", ConfigCategory.DUNGEON,
+                "Arena Map draws the boss room around you from above, in the blocks' own colors. Saved Map keeps the clear map. Both shows them side by side.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapShowBoss ? (float) AlpakaConfig.instance.dungeonMapBossMode : 3.0f,
                 v -> {
                     int mode = Math.round(v);
@@ -1313,7 +1276,7 @@ public class AlpakaConfigRegistry {
                 "dungeon map marker icon head arrow scale size"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_colors", "Map Colors",
-                "Alpaka redraws rooms, doors and the arena in its own colors, made to read well on any background. Hypixel keeps the map's and the blocks' own colors.", ConfigCategory.DUNGEON,
+                "Alpaka redraws rooms and doors in its own colors, made to read well on any background. Hypixel keeps the map's own colors.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapCustomColors ? 0.0f : 1.0f,
                 v -> { AlpakaConfig.instance.dungeonMapCustomColors = Math.round(v) == 0; AlpakaConfig.save(); },
                 0.0f, 1.0f, val -> MAP_COLORS[Math.round(val)],
@@ -1363,7 +1326,7 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Door Highlight", ConfigCategory.DUNGEON));
         OPTIONS.add(new ConfigOption("dungeon_door_highlight", "Door Highlight",
-                "Marks wither and blood doors during the clear: red while nobody has the key, green once your team has one. Only where you can see the door.", ConfigCategory.DUNGEON,
+                "Marks wither and blood doors during the clear: red while nobody has the key, green once your team has one. Shown through walls.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonDoorHighlight,
                 v -> { AlpakaConfig.instance.dungeonDoorHighlight = v; AlpakaConfig.save(); },
                 "dungeon door highlight wither blood key door esp"));
@@ -1791,11 +1754,12 @@ public class AlpakaConfigRegistry {
                 "outline thickness line width border size frame"));
 
         OPTIONS.add(ConfigOption.color("block_outline_color", "Outline Color",
-                "The outline color.",
+                "The outline color. Switch on Chroma in the picker to cycle it through the rainbow.",
                 ConfigCategory.BLOCK_OVERLAY,
                 c -> c.blockOutlineColor,
                 v -> { AlpakaConfig.instance.blockOutlineColor = v; AlpakaConfig.save(); },
-                "block outline color picker rgb alpha cyan red blue"));
+                "block outline color picker rgb alpha cyan red blue chroma rainbow cycle")
+                .withChroma(c -> c.blockOutlineChroma, false));
 
         OPTIONS.add(new ConfigOption("Fill", ConfigCategory.BLOCK_OVERLAY));
 
@@ -1807,11 +1771,12 @@ public class AlpakaConfigRegistry {
                 "block fill solid transparent face shading color block fill"));
 
         OPTIONS.add(ConfigOption.color("block_fill_color", "Fill Color",
-                "The fill color, transparency included.",
+                "The fill color, transparency included. Switch on Chroma in the picker to cycle it through the rainbow.",
                 ConfigCategory.BLOCK_OVERLAY,
                 c -> c.blockFillColor,
                 v -> { AlpakaConfig.instance.blockFillColor = v; AlpakaConfig.save(); },
-                "block fill color picker rgb alpha transparency tint"));
+                "block fill color picker rgb alpha transparency tint chroma rainbow cycle")
+                .withChroma(c -> c.blockFillChroma, false));
 
         OPTIONS.add(new ConfigOption("Animation", ConfigCategory.BLOCK_OVERLAY));
 
@@ -1829,21 +1794,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.blockFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
                 50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "block fade in duration speed time ms transition overlay fade in duration"));
-
-        OPTIONS.add(new ConfigOption("block_chroma_enabled", "Chroma Colors",
-                "Cycles the overlay through the colors of the rainbow.",
-                ConfigCategory.BLOCK_OVERLAY,
-                () -> AlpakaConfig.instance.blockChromaEnabled,
-                v -> { AlpakaConfig.instance.blockChromaEnabled = v; AlpakaConfig.save(); },
-                "chroma rgb rainbow color cycle gradient block chroma rgb effect"));
-
-        OPTIONS.add(new ConfigOption("block_chroma_speed", "Chroma Speed",
-                "How fast the rainbow cycles.",
-                ConfigCategory.BLOCK_OVERLAY,
-                () -> AlpakaConfig.instance.blockChromaSpeed,
-                v -> { AlpakaConfig.instance.blockChromaSpeed = v; AlpakaConfig.save(); },
-                0.1f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
-                "chroma speed rainbow velocity rgb cycle"));
 
         OPTIONS.add(new ConfigOption("Filters", ConfigCategory.BLOCK_OVERLAY));
 
@@ -1975,25 +1925,27 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Farming HUD", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("farming_hud_enabled", "Farming HUD",
-                "Shows your farming stats on the Garden: XP per hour, crop milestone, pest cooldown, repellent and the next Jacob's Contest.",
+                "Shows your farming stats on the Garden: crop milestone, pest cooldown, repellent, blocks per second, XP per hour, visitors and the next Jacob's Contest.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.farmingHudEnabled,
                 v -> { AlpakaConfig.instance.farmingHudEnabled = v; AlpakaConfig.save(); },
-                "farming hud garden xp per hour crop milestone tier eta pest cooldown repellent jacob contest crops"));
+                "farming hud garden bps blocks per second xp per hour crop milestone tier eta pest cooldown repellent visitors visitor timer queue jacob contest crops"));
 
         OPTIONS.add(new ConfigOption("farming_hud_lines", "Shown Lines",
-                "Pick which lines the HUD shows. Milestone and pest cooldown need the Crop Milestones and Pests tab widgets; open /cropmilestones once to see the milestone in crops.",
+                "Pick which lines the HUD shows. Milestone, pest cooldown and visitors need the Crop Milestones, Pests and Visitors tab widgets; open /cropmilestones once to see the milestone in crops.",
                 ConfigCategory.SKYBLOCK,
                 java.util.List.of(
                         toggle("Title", c -> c.farmingHudShowTitle, (c, v) -> c.farmingHudShowTitle = v),
-                        toggle("Farming XP per Hour", c -> c.farmingHudShowXpPerHour, (c, v) -> c.farmingHudShowXpPerHour = v),
                         toggle("Crop Milestone", c -> c.farmingHudShowMilestone, (c, v) -> c.farmingHudShowMilestone = v),
                         toggle("Time to Next Milestone", c -> c.farmingHudShowMilestoneEta, (c, v) -> c.farmingHudShowMilestoneEta = v),
                         toggle("Pest Cooldown", c -> c.farmingHudShowPestCooldown, (c, v) -> c.farmingHudShowPestCooldown = v),
                         toggle("Pest Repellent", c -> c.farmingHudShowRepellent, (c, v) -> c.farmingHudShowRepellent = v),
+                        toggle("Blocks per Second", c -> c.farmingHudShowBps, (c, v) -> c.farmingHudShowBps = v),
+                        toggle("Farming XP per Hour", c -> c.farmingHudShowXpPerHour, (c, v) -> c.farmingHudShowXpPerHour = v),
+                        toggle("Visitors", c -> c.farmingHudShowVisitors, (c, v) -> c.farmingHudShowVisitors = v),
                         toggle("Next Jacob's Contest", c -> c.farmingHudShowContest, (c, v) -> c.farmingHudShowContest = v)
                 ),
-                "farming hud lines toggle show hide title xp per hour crop milestone eta next tier pest cooldown repellent jacob contest crops"));
+                "farming hud lines toggle show hide title bps blocks per second xp per hour crop milestone eta next tier pest cooldown repellent visitors visitor timer jacob contest crops"));
 
         OPTIONS.add(new ConfigOption("Pest Finder", ConfigCategory.SKYBLOCK));
 
@@ -2148,35 +2100,6 @@ public class AlpakaConfigRegistry {
                 "share message hypixel tracker line drop text guild party post").choices(net.alpaka.addons.features.slayer.SlayerDropTracker.SHARE_MESSAGE_NAMES));
 
 
-
-        OPTIONS.add(new ConfigOption("hide_slayer_chat", "Hide Slayer Chat Spam",
-                "Hides Hypixel's slayer quest, level-up and radio messages.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.hideSlayerChatMessages,
-                v -> { AlpakaConfig.instance.hideSlayerChatMessages = v; AlpakaConfig.save(); },
-                "hide slayer chat spam quest complete started radio level up messages"));
-
-        OPTIONS.add(new ConfigOption("hide_slayer_chat_parts", "Hide Slayer Chat Parts",
-                "Pick what Hide Slayer Chat Spam hides.",
-                ConfigCategory.SKYBLOCK,
-                java.util.List.of(
-                        new ConfigOption.ToggleEntry("Quest & Boss Slain",
-                                () -> AlpakaConfig.instance.hideSlayerChatQuest,
-                                v -> { AlpakaConfig.instance.hideSlayerChatQuest = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Radio Signal",
-                                () -> AlpakaConfig.instance.hideSlayerChatRadio,
-                                v -> { AlpakaConfig.instance.hideSlayerChatRadio = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Level-Ups",
-                                () -> AlpakaConfig.instance.hideSlayerChatLevelUp,
-                                v -> { AlpakaConfig.instance.hideSlayerChatLevelUp = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Kill Healing",
-                                () -> AlpakaConfig.instance.hideSlayerChatHealing,
-                                v -> { AlpakaConfig.instance.hideSlayerChatHealing = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Sunshade Drop",
-                                () -> AlpakaConfig.instance.hideSlayerChatSunshade,
-                                v -> { AlpakaConfig.instance.hideSlayerChatSunshade = v; AlpakaConfig.save(); })
-                ),
-                "slayer chat spam quest started complete boss slain slay combat xp radio signal enjoyer level up lvl healing heal hp sunshade netherrack rare drop hide"));
 
         OPTIONS.add(new ConfigOption("Slayer Boss Timer", ConfigCategory.SKYBLOCK));
 
@@ -2419,6 +2342,111 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.ignoreFillerPanesEnabled = v; AlpakaConfig.save(); },
                 "ignore filler glass pane black empty menu click misclick pick up gui inventory skyblock"));
 
+        OPTIONS.add(new ConfigOption("slot_highlight", "Slot Highlight",
+                "Marks slots in SkyBlock menus the way Item Search marks what it found: what is ready to collect or switched on in one color, what is missing or unfinished in another.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightEnabled,
+                v -> { AlpakaConfig.instance.slotHighlightEnabled = v; AlpakaConfig.save(); },
+                "slot highlight highlight mark slot outline pets skyblock level leveling tasks auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter bestiary heart of the mountain forest perks"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_active_pet", "Active Pet",
+                "Your summoned pet in the Pets menu.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightActivePet,
+                v -> { AlpakaConfig.instance.slotHighlightActivePet = v; AlpakaConfig.save(); },
+                "slot highlight pets pet summoned active current despawn"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_unfinished_tasks", "Unfinished Level Tasks",
+                "Tasks and categories you haven't finished in the SkyBlock Leveling guide (/sblevels).",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightUnfinishedTasks,
+                v -> { AlpakaConfig.instance.slotHighlightUnfinishedTasks = v; AlpakaConfig.save(); },
+                "slot highlight skyblock level leveling guide sblevels tasks unfinished incomplete missing xp"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_auctions", "Sold and Expired Auctions",
+                "In Manage Auctions: sold auctions as ready, expired ones as missing.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightAuctions,
+                v -> { AlpakaConfig.instance.slotHighlightAuctions = v; AlpakaConfig.save(); },
+                "slot highlight auction house ah manage auctions sold expired claim"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_bazaar_orders", "Filled Bazaar Orders",
+                "Buy orders and sell offers that are completely filled.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightBazaarOrders,
+                v -> { AlpakaConfig.instance.slotHighlightBazaarOrders = v; AlpakaConfig.save(); },
+                "slot highlight bazaar bz orders offers filled claim"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_croesus", "Unopened Croesus Chests",
+                "Dungeon and Kuudra runs at Croesus and Vesuvius whose chests you haven't opened.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightCroesus,
+                v -> { AlpakaConfig.instance.slotHighlightCroesus = v; AlpakaConfig.save(); },
+                "slot highlight croesus vesuvius dungeon kuudra chests unopened loot rewards"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_jacob_contests", "Unclaimed Jacob's Contests",
+                "Farming contests whose rewards you haven't claimed.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightJacobContests,
+                v -> { AlpakaConfig.instance.slotHighlightJacobContests = v; AlpakaConfig.save(); },
+                "slot highlight jacob farming contest contests claim rewards medals garden"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_slayer_rewards", "Slayer Level Rewards",
+                "Slayer level rewards you can claim.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightSlayerRewards,
+                v -> { AlpakaConfig.instance.slotHighlightSlayerRewards = v; AlpakaConfig.save(); },
+                "slot highlight slayer lvl level rewards claim maddox"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_rng_meter", "RNG Meter",
+                "The drop each RNG Meter is filling up for as ready, Catacombs floors with no drop picked as missing.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightRngMeter,
+                v -> { AlpakaConfig.instance.slotHighlightRngMeter = v; AlpakaConfig.save(); },
+                "slot highlight rng meter selected drop catacombs dungeon floor slayer nucleus experimentation"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_commissions", "Completed Commissions",
+                "Commissions you have finished and can turn in.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightCommissions,
+                v -> { AlpakaConfig.instance.slotHighlightCommissions = v; AlpakaConfig.save(); },
+                "slot highlight commissions completed mining dwarven mines forge claim"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_chocolate_factory", "Chocolate Factory Rewards",
+                "Chocolate Factory milestones with rewards to claim.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightChocolateFactory,
+                v -> { AlpakaConfig.instance.slotHighlightChocolateFactory = v; AlpakaConfig.save(); },
+                "slot highlight chocolate factory hoppity milestones unclaimed rewards"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_composter_upgrades", "Composter Upgrades",
+                "Composter upgrades you can buy now.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightComposterUpgrades,
+                v -> { AlpakaConfig.instance.slotHighlightComposterUpgrades = v; AlpakaConfig.save(); },
+                "slot highlight composter upgrades garden upgrade"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_bestiary", "Unfinished Bestiary",
+                "Bestiary islands and mob families you haven't completed yet.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightBestiary,
+                v -> { AlpakaConfig.instance.slotHighlightBestiary = v; AlpakaConfig.save(); },
+                "slot highlight bestiary be families family mobs islands unfinished incomplete maxed tier kills"));
+
+        OPTIONS.add(ConfigOption.color("slot_highlight_ready_color", "Ready Color",
+                "Things to collect, finished, or switched on.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.slotHighlightReadyColor,
+                v -> { AlpakaConfig.instance.slotHighlightReadyColor = v; AlpakaConfig.save(); },
+                "slot highlight ready claim done active color colour picker green"));
+
+        OPTIONS.add(ConfigOption.color("slot_highlight_missing_color", "Missing Color",
+                "Things missing, unfinished, expired or switched off.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.slotHighlightMissingColor,
+                v -> { AlpakaConfig.instance.slotHighlightMissingColor = v; AlpakaConfig.save(); },
+                "slot highlight missing unfinished expired disabled color colour picker red"));
+
         OPTIONS.add(new ConfigOption("Resource Pack", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("cache_resource_pack", "Cache Resource Pack",
@@ -2440,26 +2468,26 @@ public class AlpakaConfigRegistry {
                     "auction house ah auctions browser bin bid custom menu gui redesign cards market"));
 
             OPTIONS.add(new ConfigOption("auction_house_hotkeys", "Enable Hotkeys",
-                    "Number keys open the first nine auctions or press the numbered buttons, Shift and a number picks a category, the arrow keys turn the page, / or Ctrl+F searches and Backspace goes back; the keys can be changed below. One click per key press.",
+                    "Number keys open the first nine auctions or press the numbered buttons, Shift and a number picks a category, / or Ctrl+F searches, and the keys below turn the page and go back once you bind them. One click per key press.",
                     ConfigCategory.SKYBLOCK,
                     () -> AlpakaConfig.instance.auctionHouseHotkeysEnabled,
                     v -> { AlpakaConfig.instance.auctionHouseHotkeysEnabled = v; AlpakaConfig.save(); },
                     "auction house ah hotkeys keys keyboard shortcuts number keys quick buy category page search"));
 
             OPTIONS.add(ConfigOption.keybind("auction_house_previous_page_key", "Previous Page Key",
-                    "Turns to the previous page. Left Arrow by default.",
+                    "Turns to the previous page. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.previousPage(),
                     "auction house ah hotkeys previous page left arrow"));
 
             OPTIONS.add(ConfigOption.keybind("auction_house_next_page_key", "Next Page Key",
-                    "Turns to the next page. Right Arrow by default.",
+                    "Turns to the next page. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.nextPage(),
                     "auction house ah hotkeys next page right arrow"));
 
             OPTIONS.add(ConfigOption.keybind("auction_house_back_key", "Back Key",
-                    "Goes back to the menu before. Backspace by default.",
+                    "Goes back to the menu before. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.back(),
                     "auction house ah hotkeys back go back return backspace"));
@@ -2471,13 +2499,13 @@ public class AlpakaConfigRegistry {
                     "auction house ah hotkeys search find query slash"));
 
             OPTIONS.add(ConfigOption.keybind("auction_house_create_auction_key", "Create Auction Key",
-                    "Presses Create Auction in Manage Auctions. C by default.",
+                    "Presses Create Auction in Manage Auctions. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.createAuction(),
                     "auction house ah hotkeys create auction sell manage"));
 
             OPTIONS.add(ConfigOption.keybind("auction_house_reset_settings_key", "Reset Settings Key",
-                    "Presses Reset Settings, which clears the sort and filters. R by default.",
+                    "Presses Reset Settings, which clears the sort and filters. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.resetSettings(),
                     "auction house ah hotkeys reset settings sort filters clear"));
@@ -2490,26 +2518,26 @@ public class AlpakaConfigRegistry {
                     "bazaar bz buy sell order offer instant custom menu gui redesign prices market"));
 
             OPTIONS.add(new ConfigOption("bazaar_hotkeys", "Enable Hotkeys",
-                    "Number keys open the first nine products or press the numbered buttons, Shift and a number picks a category, the arrow keys turn the page, / or Ctrl+F searches and Backspace goes back; the keys can be changed below. One click per key press.",
+                    "Number keys open the first nine products or press the numbered buttons, Shift and a number picks a category, / or Ctrl+F searches, and the keys below turn the page and go back once you bind them. One click per key press.",
                     ConfigCategory.SKYBLOCK,
                     () -> AlpakaConfig.instance.bazaarHotkeysEnabled,
                     v -> { AlpakaConfig.instance.bazaarHotkeysEnabled = v; AlpakaConfig.save(); },
                     "bazaar bz hotkeys keys keyboard shortcuts number keys instant buy sell category page search"));
 
             OPTIONS.add(ConfigOption.keybind("bazaar_previous_page_key", "Previous Page Key",
-                    "Turns to the previous page. Left Arrow by default.",
+                    "Turns to the previous page. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.BAZAAR.previousPage(),
                     "bazaar bz hotkeys previous page left arrow"));
 
             OPTIONS.add(ConfigOption.keybind("bazaar_next_page_key", "Next Page Key",
-                    "Turns to the next page. Right Arrow by default.",
+                    "Turns to the next page. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.BAZAAR.nextPage(),
                     "bazaar bz hotkeys next page right arrow"));
 
             OPTIONS.add(ConfigOption.keybind("bazaar_back_key", "Back Key",
-                    "Goes back to the menu before. Backspace by default.",
+                    "Goes back to the menu before. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.BAZAAR.back(),
                     "bazaar bz hotkeys back go back return backspace"));
@@ -2621,14 +2649,64 @@ public class AlpakaConfigRegistry {
                 val -> CHEST_VALUE_SIDES[Math.round(val)],
                 "chest value side left right position place").choices(CHEST_VALUE_SIDES));
 
+        OPTIONS.add(new ConfigOption("price_tooltip", "Price Tooltip",
+                "Writes what a SkyBlock item costs under its tooltip: its lowest BIN and average price on the Auction House, its Bazaar buy and sell price, and its Item Value. Prices from Hypixel and SkyCofl; needs Network Features.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.priceTooltipEnabled,
+                v -> { AlpakaConfig.instance.priceTooltipEnabled = v; AlpakaConfig.save(); },
+                "price tooltip lore lowest bin lbin average avg median bazaar buy sell instant item value worth coins auction hotkey hold shift"));
+
+        OPTIONS.add(ConfigOption.keybind("price_tooltip_key", "Key",
+                "The key that shows the prices while held, or switches them on and off, as Show says. Unbound by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.itemvalue.PriceTooltipFeature.KEY,
+                "price tooltip key hold toggle"));
+
+        OPTIONS.add(new ConfigOption("price_tooltip_mode", "Show",
+                "Whether the prices are always in the tooltip, only while the key is held, or switched on and off with the key.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.priceTooltipMode,
+                v -> { AlpakaConfig.instance.priceTooltipMode = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.itemvalue.PriceTooltipFeature.MODES.length - 1),
+                val -> net.alpaka.addons.features.itemvalue.PriceTooltipFeature.MODES[Math.round(val)],
+                "price tooltip show always hold held toggle key mode").choices(net.alpaka.addons.features.itemvalue.PriceTooltipFeature.MODES));
+
+        OPTIONS.add(new ConfigOption("price_tooltip_lowest_bin", "Lowest BIN",
+                "The cheapest Buy It Now of the item on the Auction House right now.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.priceTooltipLowestBin,
+                v -> { AlpakaConfig.instance.priceTooltipLowestBin = v; AlpakaConfig.save(); },
+                "price tooltip lowest bin lbin cheapest auction"));
+
+        OPTIONS.add(new ConfigOption("price_tooltip_average", "Average Price",
+                "What the item sold for on the Auction House over the last day, on average.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.priceTooltipAverage,
+                v -> { AlpakaConfig.instance.priceTooltipAverage = v; AlpakaConfig.save(); },
+                "price tooltip average avg mean sold auction day"));
+
+        OPTIONS.add(new ConfigOption("price_tooltip_bazaar", "Bazaar Prices",
+                "The instant buy and instant sell price of a Bazaar product.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.priceTooltipBazaar,
+                v -> { AlpakaConfig.instance.priceTooltipBazaar = v; AlpakaConfig.save(); },
+                "price tooltip bazaar buy sell instant"));
+
+        OPTIONS.add(new ConfigOption("price_tooltip_item_value", "Item Value",
+                "What the item is worth with its enchantments, stars, gemstones and upgrades, where they add to it.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.priceTooltipItemValue,
+                v -> { AlpakaConfig.instance.priceTooltipItemValue = v; AlpakaConfig.save(); },
+                "price tooltip item value worth networth enchantments stars gemstones upgrades"));
+
         OPTIONS.add(new ConfigOption("Profile", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("profile_dashboard", "Profile Dashboard",
-                "/alpakaprofile opens a dashboard of your SkyBlock profile: networth, skills, dungeons, slayers, pets and collections, with graphs of your progress. /alpakaprofile <name> shows another player. Data from Elite; needs Network Features.",
+                "/alpakaprofile opens a dashboard of your SkyBlock profile: networth, skills, dungeons, slayers, pets and collections, with graphs of your progress. /alpakaprofile <name> shows another player. Data from Hypixel's API; needs Network Features.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.profileDashboardEnabled,
                 v -> { AlpakaConfig.instance.profileDashboardEnabled = v; AlpakaConfig.save(); },
-                "profile dashboard stats statistics networth skills dungeons catacombs slayer pets collections graph progress history viewer pv elite command"));
+                "profile dashboard stats statistics networth skills dungeons catacombs slayer pets collections graph progress history viewer pv command"));
 
         OPTIONS.add(new ConfigOption("profile_dashboard_open", "Open Dashboard",
                 "Opens the dashboard on your own profile, as /alpakaprofile does.",
@@ -2688,18 +2766,25 @@ public class AlpakaConfigRegistry {
                 "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
         OPTIONS.add(new ConfigOption("exact_skill_xp", "Exact Skill XP",
-                "Shows skill gains in the action bar as XP, like 1,948,760/4,300,000, instead of a percentage. Needs the skill in the tab list's Skills widget.",
+                "Shows skill gains in the action bar as XP, like 1,948,760/4,300,000, instead of a percentage. Below the cap it needs the skill in the tab list's Skills widget; a maxed skill counts on in overflow levels, like Combat 63 (2,150,000/8,800,000), without it.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.exactSkillXpEnabled,
                 v -> { AlpakaConfig.instance.exactSkillXpEnabled = v; AlpakaConfig.save(); },
-                "exact skill xp experience action bar percent percentage progress level farming mining combat foraging fishing enchanting alchemy taming carpentry runecrafting social number"));
+                "exact skill xp experience action bar percent percentage progress level max maxed overflow cap farming mining combat foraging fishing enchanting alchemy taming carpentry hunting runecrafting social number"));
 
         OPTIONS.add(new ConfigOption("exact_skill_xp_rounded", "Rounded",
-                "Shortens the XP to 1.95M/4.3M. Hypixel only sends the percentage, so the last digits are an estimate.",
+                "Shortens the XP to 1.95M/4.3M. Below the cap Hypixel only sends the percentage, so the last digits are an estimate.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.exactSkillXpRounded,
                 v -> { AlpakaConfig.instance.exactSkillXpRounded = v; AlpakaConfig.save(); },
                 "exact skill xp rounded round short shorten compact abbreviate million k m"));
+
+        OPTIONS.add(new ConfigOption("exact_skill_xp_level_up_message", "Overflow Level Up Message",
+                "Shows Hypixel's SKILL LEVEL UP message with its sound when a maxed skill reaches its next overflow level, like Combat 102➜103.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.exactSkillXpLevelUpMessage,
+                v -> { AlpakaConfig.instance.exactSkillXpLevelUpMessage = v; AlpakaConfig.save(); },
+                "exact skill xp overflow level up message chat announce notification sound max maxed"));
 
         OPTIONS.add(new ConfigOption("deployable_timer", "Deployable Timer",
                 "Shows the deployables in range with the time they have left: power orbs and flares, mining lanterns, the Umberella, your Totem of Corruption and your Black Hole. Move it in the HUD editor.",
@@ -2718,11 +2803,12 @@ public class AlpakaConfigRegistry {
                 "enchantments enchants max maxed level highest color colour tooltip lore sharpness perfect"));
 
         OPTIONS.add(ConfigOption.color("max_enchant_color_value", "Max Level Color",
-                "Color of maxed enchantments.",
+                "Color of maxed enchantments. Switch on Chroma in the picker for a moving rainbow instead.",
                 ConfigCategory.SKYBLOCK,
                 c -> c.maxEnchantColor,
                 v -> { AlpakaConfig.instance.maxEnchantColor = v; AlpakaConfig.save(); },
-                "enchantments enchants max maxed level color colour picker tooltip"));
+                "enchantments enchants max maxed level color colour picker tooltip chroma rainbow rgb")
+                .withChroma(c -> c.maxEnchantChroma, true));
 
         OPTIONS.add(new ConfigOption("max_enchant_color_ultimate", "Include Ultimate Enchants",
                 "Maxed ultimate enchantments get the color too instead of their pink.",
@@ -2766,6 +2852,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.experimentSolverLaterColor = v; AlpakaConfig.save(); },
                 "experiment solver after following second highlight color colour picker"));
 
+        OPTIONS.add(new ConfigOption("experiment_solver_prevent_misclicks", "Prevent Misclicks",
+                "Ignores clicks on a wrong block in Chronomatron and Ultrasequencer, so a misclick doesn't end the game.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.experimentSolverPreventMisclicks,
+                v -> { AlpakaConfig.instance.experimentSolverPreventMisclicks = v; AlpakaConfig.save(); },
+                "experiment solver prevent misclicks missclick wrong click block ignore chronomatron ultrasequencer"));
+
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",
@@ -2795,13 +2888,13 @@ public class AlpakaConfigRegistry {
                 "name tag nametag own player third person f5 cosmetic animation norisk"));
 
         OPTIONS.add(new ConfigOption("name_tag_color_mode", "Color Effect",
-                "Vanilla keeps Hypixel's colors. Rainbow, Gradient and Pulse recolor the letters.",
+                "Vanilla keeps Hypixel's colors. Custom uses Name Tag Color, one color, a gradient or a rainbow as set in its picker. Pulse makes the letters throb.",
                 ConfigCategory.COSMETICS,
-                () -> (float) AlpakaConfig.instance.nameTagColorMode,
-                v -> { AlpakaConfig.instance.nameTagColorMode = Math.round(v); AlpakaConfig.save(); },
+                () -> (float) AlpakaConfig.instance.nameTagColorEffect,
+                v -> { AlpakaConfig.instance.nameTagColorEffect = Math.round(v); AlpakaConfig.save(); },
                 0.0f, (float) (CustomNameTagFeature.COLOR_MODE_NAMES.length - 1),
                 val -> CustomNameTagFeature.COLOR_MODE_NAMES[Math.round(val)],
-                "name tag color rainbow chroma gradient pulse effect mode").choices(CustomNameTagFeature.COLOR_MODE_NAMES));
+                "name tag color rainbow chroma gradient custom solid pulse effect mode").choices(CustomNameTagFeature.COLOR_MODE_NAMES));
 
         OPTIONS.add(new ConfigOption("name_tag_motion_mode", "Letter Motion",
                 "Wave makes the letters bob one after another, Bounce hops the whole tag, Shake jitters.",
@@ -2879,19 +2972,15 @@ public class AlpakaConfigRegistry {
                 0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "name tag background backdrop opacity dark box darkening letters"));
 
-        OPTIONS.add(ConfigOption.color("name_tag_gradient_start_color", "Gradient Start Color",
-                "The gradient's start color.",
+        OPTIONS.add(ConfigOption.color("name_tag_color", "Name Tag Color",
+                "The color Custom draws the tag in. Its picker makes it one color, a gradient or a moving rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.nameTagGradientStart,
                 v -> { AlpakaConfig.instance.nameTagGradientStart = v; AlpakaConfig.save(); },
-                "name tag gradient color start first picker"));
-
-        OPTIONS.add(ConfigOption.color("name_tag_gradient_end_color", "Gradient End Color",
-                "The gradient's end color.",
-                ConfigCategory.COSMETICS,
-                c -> c.nameTagGradientEnd,
-                v -> { AlpakaConfig.instance.nameTagGradientEnd = v; AlpakaConfig.save(); },
-                "name tag gradient color end second picker"));
+                "name tag color gradient start end solid picker chroma rainbow")
+                .withGradient(c -> c.nameTagGradientEnd, v -> AlpakaConfig.instance.nameTagGradientEnd = v,
+                        c -> c.nameTagGradient, v -> AlpakaConfig.instance.nameTagGradient = v)
+                .withChroma(c -> c.nameTagChroma, true));
 
         OPTIONS.add(new ConfigOption("Sensei Hat", ConfigCategory.COSMETICS));
 
@@ -2902,19 +2991,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chromaHatEnabled = v; AlpakaConfig.save(); },
                 "chroma hat sensei samurai kasa jingasa cosmetic head straw"));
 
-        OPTIONS.add(new ConfigOption("chroma_hat_rainbow", "Chroma Colors",
-                "Sweeps rainbow colors around the hat, glowing in the dark. When off, the hat keeps its plain color.",
-                ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.chromaHatRainbow,
-                v -> { AlpakaConfig.instance.chromaHatRainbow = v; AlpakaConfig.save(); },
-                "chroma hat rainbow colors glow emissive"));
-
         OPTIONS.add(ConfigOption.color("chroma_hat_color", "Hat Color",
-                "The plain hat's color, used while Chroma Colors is off.",
+                "The hat's color. Switch on Chroma in the picker for rainbow colors sweeping around it, glowing in the dark.",
                 ConfigCategory.COSMETICS,
                 c -> c.chromaHatColor,
                 v -> { AlpakaConfig.instance.chromaHatColor = v; AlpakaConfig.save(); },
-                "chroma hat color straw plain picker"));
+                "chroma hat color straw plain picker rainbow glow emissive speed")
+                .withChroma(c -> c.chromaHatChroma, false));
 
         OPTIONS.add(new ConfigOption("chroma_hat_opacity", "Hat Opacity",
                 "How solid the hat looks.",
@@ -2940,14 +3023,6 @@ public class AlpakaConfigRegistry {
                 -0.3f, 0.3f, val -> String.format(Locale.ROOT, "%+.2f blocks", val),
                 "chroma hat height offset raise lower float sit position"));
 
-        OPTIONS.add(new ConfigOption("chroma_hat_speed", "Chroma Speed",
-                "How fast the rainbow spins around the hat. Chroma Colors only.",
-                ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.chromaHatSpeed,
-                v -> { AlpakaConfig.instance.chromaHatSpeed = v; AlpakaConfig.save(); },
-                0.2f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
-                "chroma hat color speed rainbow spin fast slow hat color speed"));
-
         OPTIONS.add(new ConfigOption("Aura", ConfigCategory.COSMETICS));
 
         OPTIONS.add(new ConfigOption("aura", "Aura",
@@ -2955,16 +3030,16 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.auraEnabled,
                 v -> { AlpakaConfig.instance.auraEnabled = v; AlpakaConfig.save(); },
-                "aura effect glow particles orbs helix sigil magic circle fire flames galaxy stars fireflies storm lightning cosmetic third person f5"));
+                "aura effect glow particles orbs matrix digital rain code sigil magic circle fire flames galaxy stars fireflies storm lightning cosmetic third person f5"));
 
         OPTIONS.add(new ConfigOption("aura_effect", "Effect",
-                "Which aura you wear: orbiting spirits, a helix, a magic circle, flames, a galaxy, fireflies or lightning.",
+                "Which aura you wear: orbiting spirits, digital rain, a magic circle, flames, a galaxy, fireflies or lightning.",
                 ConfigCategory.COSMETICS,
                 () -> (float) AlpakaConfig.instance.auraEffect,
                 v -> { AlpakaConfig.instance.auraEffect = Math.round(v); AlpakaConfig.save(); },
                 0.0f, (float) (AuraFeature.EFFECT_NAMES.length - 1),
                 val -> AuraFeature.EFFECT_NAMES[Math.round(val)],
-                "aura effect type style spirit orbs twin helix arcane sigil inferno galaxy fireflies storm").choices(AuraFeature.EFFECT_NAMES));
+                "aura effect type style spirit orbs matrix digital rain code arcane sigil inferno galaxy fireflies storm").choices(AuraFeature.EFFECT_NAMES));
 
         OPTIONS.add(new ConfigOption("aura_color_mode", "Colors",
                 "Effect Colors keeps each effect's own colors. Custom blends between the two colors below.",
@@ -3068,6 +3143,52 @@ public class AlpakaConfigRegistry {
                         "Puts all three axes of your player scale back to 1.00x. This cannot be undone.",
                         "Reset", true));
 
+        OPTIONS.add(new ConfigOption("Rare Drop Animation", ConfigCategory.COSMETICS));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation", "Rare Drop Animation",
+                "A slayer's rarest drop pops up big and spinning in a golden glow where the boss died. Only you can see it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationEnabled,
+                v -> { AlpakaConfig.instance.rareDropAnimationEnabled = v; AlpakaConfig.save(); },
+                "rare drop animation rng slayer archfiend dice warden heart judgement core overflux primordial eye gold glow spin pop cosmetic"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_test", "Test Animation",
+                "Closes the menu and plays the animation in front of you, with each slayer's drop in turn. Nothing is sent to the server.",
+                ConfigCategory.COSMETICS,
+                "Test Animation",
+                parent -> net.alpaka.addons.features.cosmetics.RareDropAnimation.test(),
+                "rare drop animation test preview try play"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_size", "Size",
+                "How big the item and its glow are.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationSize,
+                v -> { AlpakaConfig.instance.rareDropAnimationSize = v; AlpakaConfig.save(); },
+                0.5f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "rare drop animation size scale big small"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_duration", "Duration",
+                "How long the item stays before it fades away.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationDuration,
+                v -> { AlpakaConfig.instance.rareDropAnimationDuration = v; AlpakaConfig.save(); },
+                3.0f, 12.0f, val -> String.format(Locale.ROOT, "%.1f s", val),
+                "rare drop animation duration time long short seconds"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_sound", "Sound",
+                "Plays a rising chime as the item pops up. Only you hear it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationSound,
+                v -> { AlpakaConfig.instance.rareDropAnimationSound = v; AlpakaConfig.save(); },
+                "rare drop animation sound chime bell ding audio"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_slayer_colors", "Slayer Colors",
+                "Mixes each slayer's own color into the gold, like purple for Enderman and green for Zombie.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationSlayerColors,
+                v -> { AlpakaConfig.instance.rareDropAnimationSlayerColors = v; AlpakaConfig.save(); },
+                "rare drop animation slayer colors colour accent tint purple green red orange"));
+
         OPTIONS.add(new ConfigOption("Damage Tags", ConfigCategory.COSMETICS));
 
         OPTIONS.add(new ConfigOption("custom_damage_tags", "Custom Damage Tags",
@@ -3150,33 +3271,25 @@ public class AlpakaConfigRegistry {
                 val -> CustomDamageTagFeature.DUNGEON_MODE_NAMES[Math.round(val)],
                 "damage tag dungeon catacombs boss room floor hide master mode damage tags in dungeons show never whole run").choices(CustomDamageTagFeature.DUNGEON_MODE_NAMES));
 
-        OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_start", "Normal Hit Start Color",
-                "The start color of a normal hit's gradient.",
+        OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_color", "Normal Hit Color",
+                "The color of a normal hit. Its picker makes it one color, a gradient or a moving rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.customDamageTagNormalStart,
                 v -> { AlpakaConfig.instance.customDamageTagNormalStart = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker normal start first"));
+                "damage tag color gradient picker normal start end solid chroma rainbow")
+                .withGradient(c -> c.customDamageTagNormalEnd, v -> AlpakaConfig.instance.customDamageTagNormalEnd = v,
+                        c -> c.customDamageTagNormalGradient, v -> AlpakaConfig.instance.customDamageTagNormalGradient = v)
+                .withChroma(c -> c.customDamageTagNormalChroma, true));
 
-        OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_end", "Normal Hit End Color",
-                "The end color of a normal hit's gradient.",
-                ConfigCategory.COSMETICS,
-                c -> c.customDamageTagNormalEnd,
-                v -> { AlpakaConfig.instance.customDamageTagNormalEnd = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker normal end last"));
-
-        OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_start", "Crit Start Color",
-                "The start color of a crit's gradient.",
+        OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_color", "Crit Color",
+                "The color of a crit. Its picker makes it one color, a gradient or a moving rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.customDamageTagCritStart,
                 v -> { AlpakaConfig.instance.customDamageTagCritStart = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker crit start first"));
-
-        OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_end", "Crit End Color",
-                "The end color of a crit's gradient.",
-                ConfigCategory.COSMETICS,
-                c -> c.customDamageTagCritEnd,
-                v -> { AlpakaConfig.instance.customDamageTagCritEnd = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker crit end last"));
+                "damage tag color gradient picker crit start end solid chroma rainbow")
+                .withGradient(c -> c.customDamageTagCritEnd, v -> AlpakaConfig.instance.customDamageTagCritEnd = v,
+                        c -> c.customDamageTagCritGradient, v -> AlpakaConfig.instance.customDamageTagCritGradient = v)
+                .withChroma(c -> c.customDamageTagCritChroma, true));
 
         // --- 7. SOUND & UTILITY ---
 
@@ -3247,17 +3360,17 @@ public class AlpakaConfigRegistry {
                 "inventory buttons skyblock only hypixel"));
 
         OPTIONS.add(new ConfigOption("inventory_buttons_style", "Button Style",
-                "How the buttons look: the Alpaka menu's dark tiles, vanilla's gray slots, or the icon alone.",
+                "How the buttons look: the Alpaka menu's dark tiles, vanilla's buttons in gray or dark, or the icon alone.",
                 ConfigCategory.SOUND_MISC,
-                () -> (float) AlpakaConfig.instance.inventoryButtonsStyle,
-                v -> { AlpakaConfig.instance.inventoryButtonsStyle = Math.round(v); AlpakaConfig.save(); },
+                () -> (float) net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.styleIndex(AlpakaConfig.instance.inventoryButtonsStyle),
+                v -> { AlpakaConfig.instance.inventoryButtonsStyle = net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_ORDER[Math.round(v)]; AlpakaConfig.save(); },
                 0.0f, (float) (net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES.length - 1),
                 val -> net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES[Math.round(val)],
-                "inventory buttons style look design alpaka vanilla icon only appearance theme")
+                "inventory buttons style look design alpaka vanilla dark icon only appearance theme")
                 .choices(net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES));
 
         OPTIONS.add(ConfigOption.color("inventory_buttons_color", "Button Color",
-                "The tile behind each icon in the Alpaka style, and behind a hovered icon in Icon Only.",
+                "The tile behind each icon in the Alpaka style.",
                 ConfigCategory.SOUND_MISC,
                 c -> c.inventoryButtonsColor,
                 v -> { AlpakaConfig.instance.inventoryButtonsColor = v; AlpakaConfig.save(); },
@@ -3701,11 +3814,12 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("terminal_custom_gui", "Custom Terminal GUI",
                 "Shows terminals in a larger, cleaner window with the solution drawn in. Needs Terminal Solvers on, "
                         + "and opens only for the terminals ticked under Terminals. Only the clicks you make are sent, "
-                        + "unchanged; a click the Terminal Solvers guards ignore is not sent at all.",
+                        + "unchanged; a click the Terminal Solvers guards ignore is not sent at all. "
+                        + "Practice anywhere with /alpakaterminal [terminal] [ping]; nothing is sent while you practice.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.terminalCustomGui,
                 v -> { AlpakaConfig.instance.terminalCustomGui = v; AlpakaConfig.save(); },
-                "dungeon f7 m7 terminal custom gui window screen bigger larger clean odin grid"));
+                "dungeon f7 m7 terminal custom gui window screen bigger larger clean odin grid practice simulator termsim"));
 
         OPTIONS.add(new ConfigOption("terminal_gui_scale", "GUI Size",
                 "How large the cells of the custom window are. It shrinks to fit the screen.",

@@ -35,6 +35,8 @@ public final class ItemValue {
         ENCHANTMENTS("Enchantments"),
         GEMSTONES("Gemstones"),
         UPGRADES("Upgrades"),
+        DRILL_PARTS("Drill Parts"),
+        ROD_PARTS("Rod Parts"),
         REFORGE("Reforge"),
         COSMETICS("Cosmetics");
 
@@ -234,13 +236,31 @@ public final class ItemValue {
             {"bookworm_books", "BOOKWORM_BOOK"},
             {"jalapeno_count", "JALAPENO_BOOK"},
             {"ethermerge", "ETHERWARP_CONDUIT"},
+            {"ethermerge", "ETHERWARP_MERGER"},
+            {"wet_book_count", "WET_BOOK"},
+            {"levelable_overclocks", "OVERCLOCKER_3000"},
+            {"mithril_infusion", "MITHRIL_INFUSION"},
+            {"free_will", "FREE_WILL"},
             {"divan_powder_coating", "DIVAN_POWDER_COATING"},
             {"sack_pss", "POCKET_SACK_IN_A_SACK"},
     };
 
-    /** Upgrades named by an id on the item. Drill parts write theirs in lower case. */
-    private static final String[] NAMED = {"power_ability_scroll", "drill_part_engine", "drill_part_fuel_tank",
-            "drill_part_upgrade_module"};
+    /** Upgrades named by an id on the item. */
+    private static final String[] NAMED = {"power_ability_scroll"};
+
+    /**
+     * Where a drill keeps its engine, fuel tank and upgrade module: as {"id": ...} under the first
+     * name, and on drills from before that as the id in lower case under the second. Most drills
+     * carry both, some only one of them.
+     */
+    private static final String[][] DRILL_PART_SLOTS = {
+            {"engine", "drill_part_engine"},
+            {"fuel_tank", "drill_part_fuel_tank"},
+            {"upgrade_module", "drill_part_upgrade_module"},
+    };
+
+    /** Where a fishing rod keeps its hook, line and sinker. */
+    private static final String[] ROD_PART_SLOTS = {"hook", "line", "sinker"};
 
     // ---- The breakdown --------------------------------------------------------------------------
 
@@ -259,6 +279,8 @@ public final class ItemValue {
         enchantments(b, data, id, upgrades);
         gemstones(b, data, upgrades);
         upgrades(b, data);
+        drillParts(b, data);
+        rodParts(b, data);
         reforge(b, data);
         cosmetics(b, data, id);
         return new Breakdown(List.copyOf(b.parts));
@@ -475,6 +497,14 @@ public final class ItemValue {
                 if (scroll.isJsonPrimitive()) b.item(Group.UPGRADES, scroll.getAsString(), 1, null, null);
             }
         }
+        // Foraging boosters, written as "sweep" for the item SWEEP_BOOSTER.
+        if (data.has("boosters") && data.get("boosters").isJsonArray()) {
+            for (JsonElement booster : data.getAsJsonArray("boosters")) {
+                if (booster.isJsonPrimitive() && !booster.getAsString().isBlank()) {
+                    b.item(Group.UPGRADES, booster.getAsString().toUpperCase(Locale.ROOT) + "_BOOSTER", 1, null, null);
+                }
+            }
+        }
         for (String key : NAMED) {
             String id = string(data, key);
             if (!id.isEmpty()) b.item(Group.UPGRADES, id.toUpperCase(Locale.ROOT), 1, null, null);
@@ -482,6 +512,30 @@ public final class ItemValue {
         String enrichment = string(data, "talisman_enrichment");
         if (!enrichment.isEmpty()) {
             b.item(Group.UPGRADES, "TALISMAN_ENRICHMENT_" + enrichment.toUpperCase(Locale.ROOT), 1, null, null);
+        }
+    }
+
+    /** The engine, fuel tank and upgrade module in a drill; they come out again, so they keep their price. */
+    private static void drillParts(Builder b, JsonObject data) {
+        for (String[] slot : DRILL_PART_SLOTS) {
+            JsonElement value = data.get(slot[0]);
+            String part = value != null && value.isJsonObject() ? string(value.getAsJsonObject(), "id") : "";
+            if (part.isEmpty()) part = string(data, slot[1]);
+            if (!part.isEmpty()) b.item(Group.DRILL_PARTS, part.toUpperCase(Locale.ROOT), 1, null, null);
+        }
+    }
+
+    /**
+     * The hook, line and sinker on a fishing rod. Each is kept as an object whose "part" is the
+     * part's id in lower case, "titan_line"; they come off the rod again, so they keep their price.
+     */
+    private static void rodParts(Builder b, JsonObject data) {
+        for (String slot : ROD_PART_SLOTS) {
+            JsonElement value = data.get(slot);
+            String part = value == null ? ""
+                    : value.isJsonObject() ? string(value.getAsJsonObject(), "part")
+                    : value.isJsonPrimitive() ? value.getAsString() : "";
+            if (!part.isEmpty()) b.item(Group.ROD_PARTS, part.toUpperCase(Locale.ROOT), 1, null, null);
         }
     }
 

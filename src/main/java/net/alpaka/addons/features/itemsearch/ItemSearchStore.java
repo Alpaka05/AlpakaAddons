@@ -119,6 +119,15 @@ public final class ItemSearchStore {
         return containers.values();
     }
 
+    /**
+     * Everything remembered for the profile in play, or null while its file is still being read: for
+     * callers on every frame, which would rather wait a moment than hold the game up.
+     */
+    public static Collection<Container> allIfLoaded() {
+        if (preview) return containers.values();
+        return ensureLoaded(false) ? containers.values() : null;
+    }
+
     /** For the screenshot tour: shows these containers, in memory only, until the game restarts. */
     public static void devPreview(Collection<Container> list) {
         preview = true;
@@ -165,7 +174,7 @@ public final class ItemSearchStore {
         // Starts reading the profile's file as soon as the profile is known, and takes it in once
         // read, so the first look at the items rarely has to wait for the disk. Only while the
         // feature is on, so a player who doesn't use it never has the file read.
-        if (ItemSearchTracker.active()) ensureLoaded(false);
+        if (ItemSearchTracker.tracksSacks()) ensureLoaded(false);
     }
 
     /** Writes what changed now, as when leaving the server. */
@@ -177,6 +186,19 @@ public final class ItemSearchStore {
         JsonObject root = encode(loadedRegistries);
         File file = fileFor(loadedFor);
         FILES.execute(() -> write(file, GSON.toJson(root)));
+    }
+
+    /** On quitting: writes what changed and waits a moment for the file thread, a daemon the exit would cut off. */
+    public static void onStopping() {
+        flush();
+        // The file thread runs one job at a time, so an empty job after the write finishes after it.
+        try {
+            FILES.submit(() -> { }).get(3_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
+            // Not done in time; nothing more to do on the way out.
+        }
     }
 
     /** "account/profile" for the player in play, or null when the profile is not known yet. */

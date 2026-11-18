@@ -8,7 +8,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * What the aura effects draw with: soft glowing sprites, ribbons and flat rings, all made of quads
+ * What the aura effects draw with: soft glowing sprites, glyphs, ribbons and flat rings, all made of quads
  * whose light is shaped by the aura shader (see `aura.fsh`).
  *
  * Effects work in the player's own frame - x and z across the ground, y up, the feet at the origin -
@@ -88,14 +88,51 @@ internal class AuraCanvas(
         vertex(px - ax + bx, py - ay + by, pz - az + bz, u0, 1f, high)
     }
 
+    /**
+     * A glowing glyph at (x, y, z), [width] by [height] blocks, like a character of digital rain.
+     * Unlike the sprites it does not turn to the camera: it stands upright, its width along the
+     * ground direction ([dirX], [dirZ], of length 1), so glyphs placed around a circle with the
+     * circle's tangent as direction form a real cylinder, seen edge-on at its sides and from behind
+     * through the back. The shader draws its strokes; [glyph] (0..255) picks which ones, so the same
+     * number always gives the same character.
+     */
+    fun glyph(x: Float, y: Float, z: Float, width: Float, height: Float, dirX: Float, dirZ: Float,
+              rgb: Int, alpha: Float, glyph: Int) {
+        val a = alphaByte(alpha)
+        if (a == 0 || width <= 0f || height <= 0f) return
+        val ax = dirX * width * 0.5f
+        val az = dirZ * width * 0.5f
+        val hh = height * 0.5f
+        val px = ox + x
+        val py = oy + y
+        val pz = oz + z
+        val color = ARGB.color(a, rgb)
+        val u0 = -2f - 2f * (glyph and 255)
+        vertex(px - ax, py - hh, pz - az, u0, 0f, color)
+        vertex(px + ax, py - hh, pz + az, u0 + 1f, 0f, color)
+        vertex(px + ax, py + hh, pz + az, u0 + 1f, 1f, color)
+        vertex(px - ax, py + hh, pz - az, u0, 1f, color)
+    }
+
     // A ribbon's points, collected between beginRibbon and endRibbon. Kept and regrown rather than
-    // allocated per ribbon: an effect draws dozens of them every frame.
+    // allocated per ribbon: an effect draws dozens of them every frame. The arrays live in the
+    // companion, as a canvas is made per player per frame and only one ribbon is ever being built.
     private var count = 0
-    private var xs = FloatArray(64)
-    private var ys = FloatArray(64)
-    private var zs = FloatArray(64)
-    private var widths = FloatArray(64)
-    private var colors = IntArray(64)
+    private var xs: FloatArray
+        get() = scratchXs
+        set(v) { scratchXs = v }
+    private var ys: FloatArray
+        get() = scratchYs
+        set(v) { scratchYs = v }
+    private var zs: FloatArray
+        get() = scratchZs
+        set(v) { scratchZs = v }
+    private var widths: FloatArray
+        get() = scratchWidths
+        set(v) { scratchWidths = v }
+    private var colors: IntArray
+        get() = scratchColors
+        set(v) { scratchColors = v }
 
     fun beginRibbon() {
         count = 0
@@ -239,5 +276,12 @@ internal class AuraCanvas(
 
     companion object {
         const val TAU = (Math.PI * 2).toFloat()
+
+        // Render thread only; see the ribbon accessors above.
+        private var scratchXs = FloatArray(64)
+        private var scratchYs = FloatArray(64)
+        private var scratchZs = FloatArray(64)
+        private var scratchWidths = FloatArray(64)
+        private var scratchColors = IntArray(64)
     }
 }

@@ -14,8 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * With Network Features off, the dashboard must not go online at all: the README promises that no
- * request is made. Every request of the dashboard goes through ProfileApi, so each kind of request
- * there has to fail at once, before anything is sent or cached.
+ * request is made. Every request of the dashboard goes through ProfileApi or AlpakaApi, so each
+ * kind of request there has to fail at once, before anything is sent or cached, and before the
+ * game is asked to log in anywhere.
  */
 class ProfileApiNetworkOffTest {
     private AlpakaConfig saved;
@@ -42,13 +43,10 @@ class ProfileApiNetworkOffTest {
     @Test
     void noRequestGoesOut() {
         String uuid = "8f16f5a695d3468392aed51c1a5bb037";
-        failsAtOnce(ProfileApi.account("Alpakaa"));
-        failsAtOnce(ProfileApi.member(uuid, "p1", false));
-        failsAtOnce(ProfileApi.networth(uuid, "p1"));
-        failsAtOnce(ProfileApi.skillGraph(uuid, "p1", 30));
+        failsAtOnce(AlpakaApi.dashboard("Alpakaa", null, null, false));
+        failsAtOnce(AlpakaApi.dashboard(uuid, "p1", null, true));
         failsAtOnce(ProfileApi.soopyHistory(uuid, "p1", 0));
         failsAtOnce(ProfileApi.skykingsUser(uuid, "<token>"));
-        failsAtOnce(ProfileApi.inventory(uuid, "p1", "inventory"));
         failsAtOnce(ProfileApi.bingo());
         failsAtOnce(ProfileApi.collections());
         failsAtOnce(ProfileApi.neuItem("https://raw.githubusercontent.com/NotEnoughUpdates/NotEnoughUpdates-REPO/master/items/X.json"));

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Items from a player's inventories, as Elite hands them out - SkyBlock id, name, lore, count,
+ * Items from a player's inventories, as {@link HypixelItems} reads them - SkyBlock id, name, lore, count,
  * enchantments and attributes - turned into what the dashboard draws: the item as the game shows
  * it, and its tooltip as Hypixel wrote it.
  *
@@ -30,6 +30,12 @@ final class InventoryItems {
     /** By the item's JSON, which stays the same object for as long as its inventory is shown. */
     private static final Map<JsonElement, Built> STACKS = new IdentityHashMap<>();
 
+    /** Drops the built items and looks, once the dashboard is closed. Render thread only. */
+    static void forget() {
+        STACKS.clear();
+        LOOKS.clear();
+    }
+
     /** The item to draw, or empty while its look is still on its way. Render thread only. */
     static ItemStack stack(JsonElement item) {
         ItemStack base = base(item);
@@ -44,26 +50,48 @@ final class InventoryItems {
         return stack;
     }
 
-    private static ItemStack base(JsonElement item) {
+    /** What an item's look is found by: its head texture, or else its id and plain name. */
+    private record Look(String texture, String id, String name) {}
+
+    /**
+     * Looks by the item's JSON, like {@link #STACKS}: read once rather than every frame, where the
+     * name's color codes were stripped again for every slot shown.
+     */
+    private static final Map<JsonElement, Look> LOOKS = new IdentityHashMap<>();
+
+    private static Look look(JsonElement item) {
+        Look look = LOOKS.get(item);
+        if (look != null) return look;
         String texture = Json.str(item, "attributes.skin_texture");
-        if (texture != null && !texture.isBlank()) {
+        look = texture != null && !texture.isBlank()
+                ? new Look(texture, null, null)
+                : new Look(null, Json.str(item, "skyblockId"), SkyblockUtils.cleanColor(Json.str(item, "name")));
+        if (LOOKS.size() > 4000) LOOKS.clear();
+        LOOKS.put(item, look);
+        return look;
+    }
+
+    private static ItemStack base(JsonElement item) {
+        Look look = look(item);
+        if (look.texture() != null) {
             Built built = STACKS.get(item);
             if (built != null) return built.base();
             try {
-                return ItemIcons.head(texture);
+                return ItemIcons.head(look.texture());
             } catch (RuntimeException notBoundYet) {
                 // Items only get their components once a world is joined.
                 return ItemStack.EMPTY;
             }
         }
-        String id = Json.str(item, "skyblockId");
-        return ItemIcons.forItem(id, SkyblockUtils.cleanColor(Json.str(item, "name")));
+        return ItemIcons.forItem(look.id(), look.name());
     }
 
     /** The tooltip: the name and the lore, in Hypixel's own colors. */
     static List<Component> tooltip(JsonElement item) {
         List<Component> lines = new ArrayList<>();
         String name = Json.str(item, "name");
+        // A tool kit's tools come without a name; Hypixel's item list has it.
+        if (name == null && Json.str(item, "skyblockId") != null) name = ItemIcons.name(Json.str(item, "skyblockId"));
         lines.add(Component.literal(name == null ? "" : name));
         for (JsonElement line : Json.arr(item, "lore")) {
             if (line.isJsonPrimitive()) lines.add(Component.literal(line.getAsString()));
@@ -71,7 +99,7 @@ final class InventoryItems {
         return lines;
     }
 
-    /** Whether a slot holds an item at all; Elite lists empty slots as null. */
+    /** Whether a slot holds an item at all; empty slots are listed as null. */
     static boolean present(JsonElement item) {
         return item != null && item.isJsonObject();
     }

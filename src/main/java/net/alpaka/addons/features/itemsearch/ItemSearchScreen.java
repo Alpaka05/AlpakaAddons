@@ -654,7 +654,7 @@ public class ItemSearchScreen extends Screen {
             default -> {
             }
         }
-        if (input.keyPressed(key, event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+        if (input.keyPressed(event)) {
             caretFrom = System.currentTimeMillis();
             return true;
         }

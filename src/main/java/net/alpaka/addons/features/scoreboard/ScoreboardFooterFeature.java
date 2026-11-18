@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.scoreboard;
 
+import java.util.Optional;
+import net.minecraft.network.chat.FormattedText;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.AlpakaGradient;
 import net.minecraft.network.chat.Component;
@@ -13,15 +15,22 @@ import net.minecraft.network.chat.Component;
 public final class ScoreboardFooterFeature {
 
     /** Built once; the line is drawn every frame and never changes. */
-    private static final Component FOOTER = AlpakaGradient.of("AlpakaAddons");
+    public static final Component FOOTER = AlpakaGradient.of("AlpakaAddons");
 
     private ScoreboardFooterFeature() {}
 
     /** The line to show in place of {@code line}: the gradient footer if it is Hypixel's address. */
     public static Component replace(Component line) {
         if (!AlpakaConfig.instance.scoreboardAlpakaFooter) return line;
+        // The line is a new component every frame, so nothing can be kept; a line with no dot in
+        // it is not the address, and finding that out needs no string built.
+        if (line.visit(HAS_DOT).isEmpty()) return line;
         return isHypixelFooter(line.getString()) ? FOOTER : line;
     }
+
+    private static final Optional<Boolean> FOUND = Optional.of(Boolean.TRUE);
+    private static final FormattedText.ContentConsumer<Boolean> HAS_DOT =
+            part -> part.indexOf('.') >= 0 ? FOUND : Optional.empty();
 
     /**
      * Whether vanilla is about to draw the footer, as {@link #replace} handed it back or wrapped in

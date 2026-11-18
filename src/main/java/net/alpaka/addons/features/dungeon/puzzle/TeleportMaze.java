@@ -164,7 +164,7 @@ public final class TeleportMaze extends PuzzleSolver {
         AABB room = frame.bounds();
         for (int cx = ((int) room.minX) >> 4; cx <= ((int) room.maxX - 1) >> 4; cx++) {
             for (int cz = ((int) room.minZ) >> 4; cz <= ((int) room.maxZ - 1) >> 4; cz++) {
-                if (!level.hasChunk(cx, cz)) return false;
+                if (!level.getChunkSource().hasChunk(cx, cz)) return false;
             }
         }
         return true;

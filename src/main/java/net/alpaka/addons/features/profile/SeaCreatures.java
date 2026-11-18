@@ -29,7 +29,8 @@ final class SeaCreatures {
         for (var e : kills.entrySet()) {
             String key = e.getKey();
             boolean match = key.equals(id) || (key.startsWith(id + "_") && key.substring(id.length() + 1).chars().allMatch(Character::isDigit));
-            if (match && e.getValue().isJsonPrimitive()) best = Math.max(best, e.getValue().getAsDouble());
+            double n = Json.num(e.getValue());
+            if (match && !Double.isNaN(n)) best = Math.max(best, n);
         }
         return best;
     }

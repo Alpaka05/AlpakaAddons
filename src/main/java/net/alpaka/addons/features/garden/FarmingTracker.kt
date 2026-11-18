@@ -12,6 +12,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
+import net.minecraft.world.item.ItemStack
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -19,7 +20,7 @@ import kotlin.math.roundToLong
  * The live figures behind the Farming HUD.
  *
  * Everything is read from what Hypixel already shows: the Farming XP in the action bar, the Crop
- * Milestones, Pests and Jacob's Contest widgets in the tab list, the Crop Milestones menu, and the
+ * Milestones, Pests, Visitors and Jacob's Contest widgets in the tab list, the Crop Milestones menu, and the
  * chat messages for spawned pests and a used Pest Repellent. Nothing is sent to the server.
  */
 object FarmingTracker {
@@ -48,12 +49,25 @@ object FarmingTracker {
      * following every read made the countdown jump back and forth.
      */
     private const val RESYNC_MS = 2_000L
+    /** The tab shows whole seconds, so a time less than this ahead of the countdown is rounding. */
+    private const val VISITOR_AHEAD_MS = 1_000L
     /** A cooldown read this soon after pests spawned is the full cooldown, give or take the delay. */
     private const val LEARN_WINDOW_MS = 20_000L
     /** The tab can still say "None" for a moment after the repellent was used. */
     private const val REPELLENT_GRACE_MS = 10_000L
 
+    /**
+     * A pause longer than this between two broken crops is a break (turning at a lane's end counts
+     * as farming, walking to a pest does not), and is left out of the blocks per second.
+     */
+    private const val BPS_IDLE_MS = 2_000L
+
     private var ticks = 0
+
+    // Blocks per second.
+    private var lastBreakMs = 0L
+    private var breaksCounted = 0
+    private var breakActiveMs = 0L
 
     // Farming XP per hour.
     private var lastXpProgress: String? = null
@@ -103,6 +117,28 @@ object FarmingTracker {
         private set
 
     private var repellentChatAtMs = 0L
+
+    // Visitors. Hypixel's tab list says how many are waiting and when the next one comes, or that
+    // the queue is full; nothing here assumes a queue size or an interval, since the Max Occupancy
+    // and Better Advertising upgrades change both.
+    /** Whether the tab list shows the "Next Visitor:" line at all. */
+    var hasVisitorTimer = false
+        private set
+    /** Waiting visitors from the Visitors widget; null when that widget is switched off. */
+    var visitorCount: Int? = null
+        private set
+    var visitorQueueFull = false
+        private set
+    /** "Not Unlocked!": the Garden has no visitors yet. */
+    var visitorsLocked = false
+        private set
+    /**
+     * The tab's own text when it gives no seconds ("11m"). Breaking crops and killing pests bring
+     * the next visitor closer, so a whole-minute figure cannot be counted down locally.
+     */
+    var visitorTimeText: String? = null
+        private set
+    private var visitorEndMs = 0L
 
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
@@ -235,6 +271,42 @@ object FarmingTracker {
         return xpGained / xpActiveMs * 3_600_000.0
     }
 
+    /**
+     * The client broke a block. Only crops broken with a farming tool on the Garden count; each one
+     * after the first of a stretch adds the time since the one before.
+     */
+    @JvmStatic
+    fun onBlockBroken(stack: ItemStack) {
+        if (!AlpakaConfig.instance.farmingHudEnabled || !SkyblockUtils.isOnGarden()) return
+        if (!AlignmentHelper.isFarmingTool(stack)) return
+        onCropBroken(System.currentTimeMillis())
+    }
+
+    internal fun onCropBroken(now: Long) {
+        val gap = now - lastBreakMs
+        if (lastBreakMs == 0L || gap > RESET_AFTER_MS) {
+            breaksCounted = 0
+            breakActiveMs = 0L
+        } else if (gap <= BPS_IDLE_MS) {
+            breaksCounted++
+            breakActiveMs += gap
+        }
+        lastBreakMs = now
+    }
+
+    /** Starts the blocks per second over. */
+    internal fun resetBps() {
+        lastBreakMs = 0L
+        breaksCounted = 0
+        breakActiveMs = 0L
+    }
+
+    /** Crops broken per second of farming; null until there has been enough of it. */
+    fun blocksPerSecond(now: Long = System.currentTimeMillis()): Double? {
+        if (breakActiveMs < MIN_ACTIVE_MS || now - lastBreakMs > RESET_AFTER_MS) return null
+        return breaksCounted * 1000.0 / breakActiveMs
+    }
+
     /** Milliseconds of farming until the next crop milestone tier, at the rate so far. */
     fun milestoneEtaMs(): Long? {
         val shown = milestone ?: return null
@@ -270,6 +342,15 @@ object FarmingTracker {
     fun repellentLeftMs(now: Long = System.currentTimeMillis()): Long? {
         val left = AlpakaConfig.instance.farmingRepellentUntilMs - now
         return if (left > 0) left else null
+    }
+
+    /**
+     * Time until the next visitor in milliseconds when the tab gave it in seconds; null otherwise
+     * (then [visitorTimeText] has what the tab said).
+     */
+    fun nextVisitorLeftMs(now: Long = System.currentTimeMillis()): Long? {
+        if (visitorEndMs <= 0L) return null
+        return maxOf(0L, visitorEndMs - now)
     }
 
     private fun tick(mc: Minecraft) {
@@ -338,6 +419,11 @@ object FarmingTracker {
         hasMilestoneWidget = milestones != null
         milestones?.let { FarmingParse.milestone(it) }?.let { onMilestone(it, now) }
 
+        visitorCount = FarmingParse.visitorCount(lines)
+        val nextVisitor = FarmingParse.nextVisitor(lines)
+        hasVisitorTimer = nextVisitor != null
+        onNextVisitor(nextVisitor, now)
+
         val contest = FarmingParse.widget(lines, "Jacob's Contest:")
         tabContestTime = contest?.let {
             FarmingParse.field(it, "Starts In") ?: FarmingParse.widgetTitleValue(lines, "Jacob's Contest:")
@@ -390,6 +476,24 @@ object FarmingTracker {
             cfg.farmingRepellentMax = text.contains("MAX")
             AlpakaConfig.save()
         }
+    }
+
+    /** The tab's "Next Visitor:" value, or null when the line is missing. */
+    internal fun onNextVisitor(text: String?, now: Long) {
+        visitorQueueFull = text != null && text.startsWith("Queue Full")
+        visitorsLocked = text != null && text.startsWith("Not Unlocked")
+        val left = if (text == null || visitorQueueFull || visitorsLocked) null else FarmingParse.durationMs(text)
+        if (left == null || !text!!.contains('s')) {
+            visitorEndMs = 0L
+            visitorTimeText = if (left != null) text else null
+            return
+        }
+        visitorTimeText = null
+        // Breaking crops takes time off the wait, so while farming the tab runs ahead of the clock:
+        // follow it as soon as it is a whole second ahead, and when it is behind by more than the
+        // slack its rounding and refresh need.
+        val end = now + left
+        if (visitorEndMs <= now || end < visitorEndMs - VISITOR_AHEAD_MS || end > visitorEndMs + RESYNC_MS) visitorEndMs = end
     }
 
     internal fun onMilestone(read: FarmingParse.Milestone, now: Long) {

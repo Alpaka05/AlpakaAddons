@@ -5,7 +5,10 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.chunk.status.ChunkStatus
+import net.minecraft.world.level.block.Block
 import java.io.InputStreamReader
+import java.util.IdentityHashMap
 
 /** A room as the table knows it: its name, Odin's room type, its secrets, and how many cells it spans. */
 data class RoomInfo(val name: String, val type: String, val secrets: Int, val cells: Int = 1) {
@@ -36,6 +39,11 @@ object DungeonRooms {
     private var current: RoomInfo? = null
     private var skipNext = false
     private var lastTotal = -1
+    /**
+     * Block ids as strings. Cells without a room (the corners of a small floor) are scanned again
+     * every second all run, 129 blocks each; a block's id never changes, so it is spelled out once.
+     */
+    private val blockIds = IdentityHashMap<Block, String>()
 
     /** The recognized room the player is standing in or over, for the map's header. */
     var here: RoomInfo? = null
@@ -75,9 +83,12 @@ object DungeonRooms {
             val x = cellCenter(cell % 6)
             val z = cellCenter(cell / 6)
             // The client level claims to have every chunk; its chunk cache knows which arrived.
-            if (!level.chunkSource.hasChunk(x shr 4, z shr 4)) continue
+            // Looked up once for the column rather than once per block of it; inside the build height
+            // the chunk answers exactly what the level would.
+            val chunk = level.chunkSource.getChunk(x shr 4, z shr 4, ChunkStatus.FULL, false) ?: continue
             val (core, roof) = core { y ->
-                BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos.set(x, y, z)).block).toString()
+                val block = chunk.getBlockState(pos.set(x, y, z)).block
+                blockIds.getOrPut(block) { BuiltInRegistries.BLOCK.getKey(block).toString() }
             }
             recognize(cell, table[core] ?: continue, roof)
         }

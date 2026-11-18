@@ -327,7 +327,10 @@ public final class ItemIcons {
                             return;
                         }
                         boolean gzip = response.headers().firstValue("Content-Encoding").map(e -> e.contains("gzip")).orElse(false);
-                        try (InputStream raw = response.body();
+                        InputStream stream = response.body();
+                        // The request timeout ends with the headers; a body that stalls is closed under the reader.
+                        net.alpaka.addons.features.itemvalue.ItemPrices.closeLater(stream);
+                        try (InputStream raw = stream;
                              InputStream body = gzip ? new GZIPInputStream(raw) : raw;
                              InputStreamReader reader = new InputStreamReader(body, StandardCharsets.UTF_8)) {
                             catalog = index(JsonParser.parseReader(reader));

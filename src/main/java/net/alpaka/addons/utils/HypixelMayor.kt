@@ -109,7 +109,7 @@ object HypixelMayor {
             .GET()
             .build()
 
-        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
             .whenComplete { response, error ->
                 try {
                     if (error != null || response == null || response.statusCode() != 200) {

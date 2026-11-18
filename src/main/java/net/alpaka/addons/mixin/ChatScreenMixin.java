@@ -5,7 +5,6 @@ import net.alpaka.addons.features.chat.ChatCopyFeature;
 import net.alpaka.addons.features.chat.ChatOpenAnimation;
 import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
-import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
 import net.alpaka.addons.features.slayer.SlayerHudElement;
 import net.alpaka.addons.utils.UpdateInstaller;
 import net.minecraft.client.Minecraft;
@@ -198,9 +197,10 @@ public class ChatScreenMixin {
     @Inject(method = "handleComponentClicked", at = @At("HEAD"), cancellable = true)
     private void alpaka$handleModClickEvents(Style clicked, boolean allowInsertions, CallbackInfoReturnable<Boolean> cir) {
         if (allowInsertions) return;
-        // The update button first: the screenshot handler claims every event in the mod's namespace.
+        // Every event in the mod's namespace stays on the client, handled or not: a server can put
+        // one into chat, and vanilla would send it back to the server on a click.
         if (clicked.getClickEvent() instanceof ClickEvent.Custom custom
-                && (UpdateInstaller.handleClick(custom) || ScreenshotMessageFeature.handleClick(custom))) {
+                && (UpdateInstaller.handleClick(custom) || "alpaka".equals(custom.id().getNamespace()))) {
             cir.setReturnValue(true);
         }
     }

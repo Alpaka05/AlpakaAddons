@@ -88,13 +88,31 @@ public final class VisitorBazaarFeature {
     }
 
     private static List<Required> offer(ItemStack stack) {
-        if (stack.isEmpty() || !ACCEPT_OFFER.equals(strip(stack.getHoverName().getString()))) return null;
+        if (stack.isEmpty()) return null;
+        Component name = stack.getHoverName();
         ItemLore lore = stack.get(DataComponents.LORE);
-        if (lore == null) return null;
-        List<String> lines = new ArrayList<>(lore.lines().size());
-        for (Component line : lore.lines()) lines.add(line.getString());
-        return offer(stack.getHoverName().getString(), lines);
+        // The hovered offer is asked for every tooltip frame; its name and lore objects only change
+        // when the server sends the item again, and the answer depends on them alone.
+        LastOffer last = lastOffer;
+        if (last != null && name == last.name() && lore == last.lore()) return last.result();
+        List<Required> result = null;
+        if (ACCEPT_OFFER.equals(strip(name.getString())) && lore != null) {
+            List<String> lines = new ArrayList<>(lore.lines().size());
+            for (Component line : lore.lines()) lines.add(line.getString());
+            result = offer(name.getString(), lines);
+        }
+        lastOffer = new LastOffer(name, lore, result);
+        return result;
     }
+
+    /**
+     * offer(ItemStack)'s last answer and what it was read from, as one object in one volatile field:
+     * vanilla also builds tooltips on background threads (search trees), so the three parts must
+     * never be seen half replaced.
+     */
+    private record LastOffer(Component name, ItemLore lore, List<Required> result) {}
+
+    private static volatile LastOffer lastOffer;
 
     private static boolean onIronman() {
         LocalPlayer player = Minecraft.getInstance().player;
@@ -130,10 +148,28 @@ public final class VisitorBazaarFeature {
         int count = 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
-            if (!stack.isEmpty() && item.equals(strip(stack.getHoverName().getString()))) count += stack.getCount();
+            if (!stack.isEmpty() && item.equals(plainName(stack.getHoverName()))) count += stack.getCount();
         }
         return count;
     }
+
+    /**
+     * An item name without its codes, kept per name object on the client thread: the hovered offer
+     * counts the whole inventory every tooltip frame, and a name only changes as a new object.
+     * Tooltips built on background threads work it out directly.
+     */
+    private static String plainName(Component name) {
+        if (!Minecraft.getInstance().isSameThread()) return strip(name.getString());
+        String plain = PLAIN_NAMES.get(name);
+        if (plain == null) {
+            plain = strip(name.getString());
+            if (PLAIN_NAMES.size() >= 256) PLAIN_NAMES.clear();
+            PLAIN_NAMES.put(name, plain);
+        }
+        return plain;
+    }
+
+    private static final java.util.Map<Component, String> PLAIN_NAMES = new java.util.IdentityHashMap<>();
 
     /** The required items of an Accept Offer that lacks items, or null for any other item. */
     static List<Required> offer(String name, List<String> lore) {
@@ -182,6 +218,8 @@ public final class VisitorBazaarFeature {
     }
 
     private static String strip(String text) {
+        // Asked for every tooltip frame and every inventory slot; most names carry no codes.
+        if (text.indexOf('§') < 0) return text.trim();
         return FORMATTING.matcher(text).replaceAll("").trim();
     }
 }

@@ -58,12 +58,16 @@ final class RollingValue {
      * rounding each piece would push everything after it to the right.
      */
     float draw(GuiGraphicsExtractor graphics, Font font, Style style, float x, long now, boolean shadow) {
-        float width = width(font, value, style);
+        currentLayout = layout(currentLayout, font, value, style);
+        Layout cur = currentLayout;
+        float width = cur.prefix[value.length()];
         if (!animating(now)) {
             previous = null;
-            text(graphics, font, value, style, color, 1.0f, x, 0.0f, shadow);
+            text(graphics, font, cur.whole, color, 1.0f, x, 0.0f, shadow);
             return width;
         }
+        previousLayout = layout(previousLayout, font, previous, style);
+        Layout old = previousLayout;
 
         float t = (now - changedAt) / (float) DURATION_MS;
         float eased = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
@@ -73,24 +77,76 @@ final class RollingValue {
         // Characters only roll one by one when both numbers have the same length; otherwise the
         // digits don't line up and the whole number rolls.
         boolean perChar = previous.length() == value.length();
-        float oldWidth = width(font, previous, style);
+        float oldWidth = old.prefix[previous.length()];
         graphics.enableScissor((int) Math.floor(x), 0, (int) Math.ceil(x + Math.max(width, oldWidth)) + 1, LINE_HEIGHT);
         for (int i = 0; i < value.length(); i++) {
-            float cx = x + width(font, value.substring(0, i), style);
-            String c = value.substring(i, i + 1);
+            float cx = x + cur.prefix[i];
             if (perChar && previous.charAt(i) == value.charAt(i)) {
-                text(graphics, font, c, style, color, 1.0f, cx, 0.0f, shadow);
+                text(graphics, font, cur.chars[i], color, 1.0f, cx, 0.0f, shadow);
             } else {
-                text(graphics, font, c, style, color, eased, cx, inOffset, shadow);
+                text(graphics, font, cur.chars[i], color, eased, cx, inOffset, shadow);
             }
         }
         for (int i = 0; i < previous.length(); i++) {
             if (perChar && previous.charAt(i) == value.charAt(i)) continue;
-            float cx = x + width(font, previous.substring(0, i), style);
-            text(graphics, font, previous.substring(i, i + 1), style, previousColor, 1.0f - eased, cx, outOffset, shadow);
+            float cx = x + old.prefix[i];
+            text(graphics, font, old.chars[i], previousColor, 1.0f - eased, cx, outOffset, shadow);
         }
         graphics.disableScissor();
         return width;
+    }
+
+    /**
+     * A value's pieces as drawn: the width of each prefix (measured exactly as before, prefix by
+     * prefix), each character and the whole text as components. The HUD draws the same value every
+     * frame and rolls it for 400 ms, so they are worked out once per value, style and font
+     * generation instead of every frame.
+     */
+    private static final class Layout {
+        final String text;
+        final Style style;
+        final Font font;
+        final int generation;
+        final float[] prefix;
+        final Component[] chars;
+        final Component whole;
+
+        Layout(String text, Style style, Font font, int generation) {
+            this.text = text;
+            this.style = style;
+            this.font = font;
+            this.generation = generation;
+            int n = text.length();
+            prefix = new float[n + 1];
+            chars = new Component[n];
+            for (int i = 0; i <= n; i++) prefix[i] = width(font, text.substring(0, i), style);
+            for (int i = 0; i < n; i++) chars[i] = Component.literal(text.substring(i, i + 1)).withStyle(style);
+            whole = Component.literal(text).withStyle(style);
+        }
+    }
+
+    /** The labels' layouts ("FPS ", "  Ping "...): drawn every frame of a roll, the same few texts. */
+    private static final java.util.Map<String, Layout> LABELS = new java.util.HashMap<>();
+
+    /** Draws a fixed label at {@code x} and returns its width, as {@link #text} plus {@link #width} did. */
+    static float label(GuiGraphicsExtractor graphics, Font font, String text, Style style, int color, float x, boolean shadow) {
+        Layout kept = LABELS.get(text);
+        Layout layout = layout(kept, font, text, style);
+        if (layout != kept) LABELS.put(text, layout);
+        text(graphics, font, layout.whole, color, 1.0f, x, 0.0f, shadow);
+        return layout.prefix[text.length()];
+    }
+
+    private Layout currentLayout;
+    private Layout previousLayout;
+
+    private static Layout layout(Layout kept, Font font, String text, Style style) {
+        int generation = net.alpaka.addons.client.gui.AlpakaStyle.fontGeneration;
+        if (kept != null && kept.text.equals(text) && kept.style.equals(style) && kept.font == font
+                && kept.generation == generation) {
+            return kept;
+        }
+        return new Layout(text, style, font, generation);
     }
 
     static float width(Font font, String text, Style style) {
@@ -104,9 +160,16 @@ final class RollingValue {
     static void text(GuiGraphicsExtractor graphics, Font font, String text, Style style, int color, float alpha,
                      float x, float y, boolean shadow) {
         if (alpha <= 0.0f) return;
+        text(graphics, font, Component.literal(text).withStyle(style), color, alpha, x, y, shadow);
+    }
+
+    /** {@link #text} with the component already built. */
+    static void text(GuiGraphicsExtractor graphics, Font font, Component text, int color, float alpha,
+                     float x, float y, boolean shadow) {
+        if (alpha <= 0.0f) return;
         graphics.pose().pushMatrix();
         graphics.pose().translate(x, y);
-        graphics.text(font, Component.literal(text).withStyle(style), 0, 0, ARGB.multiplyAlpha(color, alpha), shadow);
+        graphics.text(font, text, 0, 0, ARGB.multiplyAlpha(color, alpha), shadow);
         graphics.pose().popMatrix();
     }
 }

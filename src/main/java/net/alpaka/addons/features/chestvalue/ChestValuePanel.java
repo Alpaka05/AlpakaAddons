@@ -1,7 +1,9 @@
 package net.alpaka.addons.features.chestvalue;
 
+import net.alpaka.addons.utils.ItemData;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import com.mojang.serialization.JsonOps;
 import net.alpaka.addons.client.gui.AlpakaStyle;
@@ -16,6 +18,9 @@ import net.alpaka.addons.features.chestvalue.ChestValue.Summary;
 import net.alpaka.addons.features.itemvalue.ItemPrices;
 import net.alpaka.addons.features.itemvalue.ItemValue;
 import net.alpaka.addons.features.itemvalue.ItemValuePopup;
+import net.alpaka.addons.features.itemsearch.ItemSearchMenus;
+import net.alpaka.addons.features.itemsearch.ItemSearchSource;
+import net.alpaka.addons.features.itemsearch.ItemSearchStore;
 import net.alpaka.addons.features.market.Coins;
 import net.alpaka.addons.features.market.ItemIcons;
 import net.alpaka.addons.features.market.MarketIcons;
@@ -47,12 +52,15 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.ItemLore;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * The Chest Value panel: a column beside the open menu - a chest on the island, a backpack, an
@@ -70,6 +78,10 @@ import java.util.Set;
  * Pointing at a line lights up the slots that item is in; pointing at a slot lights up its line.
  * Clicking a line opens the Item Value breakdown of that item. It only reads the menu's slots and
  * the price lists Item Value already keeps; nothing is sent to the server.
+ *
+ * In the Sack of Sacks it adds up what the sacks hold rather than what the sacks themselves are worth
+ * (a switch in its toolbar goes back): each sack as Item Search last saw it opened, kept up to date by
+ * Hypixel's "[Sacks]" messages. Sacks never opened are named, so the player knows which to open once.
  */
 public final class ChestValuePanel {
     private ChestValuePanel() {}
@@ -120,6 +132,17 @@ public final class ChestValuePanel {
     /** What the menu held when its prices first came in, valued again at today's prices; null before. */
     private static List<Held> baseline = null;
     private static boolean unpricedOpen = false;
+    /** In a menu of sacks, valuing what they hold: the sacks never seen opened, by the name they show. */
+    private static boolean contents = false;
+    private static List<String> unseenSacks = List.of();
+    /** The menu slots of those sacks, marked in the menu so it is plain which to open. */
+    private static List<Integer> unseenSlots = List.of();
+    /** Whether the notice is pointed at, which marks those slots more strongly. */
+    private static boolean noticeHovered = false;
+    /** How many sacks were counted from what was seen in them. */
+    private static int sacksCounted = 0;
+    /** Whether the remembered sacks are still being read from disk. */
+    private static boolean sacksLoading = false;
 
     private static long shownAt = 0L;
     private static long lastFrameMs = 0L;
@@ -172,6 +195,11 @@ public final class ChestValuePanel {
     private static final Valuation NONE = new Valuation(null, Double.NaN, false, null);
     /** Valuations by the item's data, worked out once per price list: a chest is mostly the same items. */
     private static final Map<CustomData, Valuation> VALUES = new HashMap<>();
+    /**
+     * The same, by the data object itself, in front of {@link #VALUES}: a hit there still hashes the
+     * item's whole tag, and the same stacks are valued again every quarter second. Cleared with it.
+     */
+    private static final Map<CustomData, Valuation> VALUES_BY_OBJECT = new java.util.IdentityHashMap<>();
     private static long valuesKey = Long.MIN_VALUE;
 
     private static final ItemValue.Prices PRICES = ItemPrices::quote;
@@ -188,24 +216,70 @@ public final class ChestValuePanel {
     };
 
     private static Valuation value(CustomData custom) {
+        Valuation same = VALUES_BY_OBJECT.get(custom);
+        if (same != null) return same;
+        // Only the open menu's stacks need to be in here; refreshed menus bring new objects each time.
+        if (VALUES_BY_OBJECT.size() > 4096) VALUES_BY_OBJECT.clear();
         Valuation cached = VALUES.get(custom);
-        if (cached != null) return cached;
+        if (cached != null) {
+            VALUES_BY_OBJECT.put(custom, cached);
+            return cached;
+        }
         Valuation v = NONE;
-        JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, custom.copyTag());
-        if (json.isJsonObject() && json.getAsJsonObject().has("id")) {
-            JsonObject data = json.getAsJsonObject();
-            String id = data.get("id").getAsString();
-            if (!IGNORED.contains(id)) {
-                ItemValue.Breakdown b = ItemValue.of(data, PRICES, CATALOG);
-                double each = b.total();
-                // An item priced as a whole says which market; one added up from its parts does not.
-                MarketKind market = b.parts().size() == 1 ? b.parts().get(0).market() : null;
-                v = new Valuation(id, each > 0 ? each : Double.NaN, b.incomplete(), market);
-            }
+        JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, ItemData.view(custom));
+        // Other servers can store anything under "id"; only a SkyBlock id (a plain string) is priced.
+        if (json.isJsonObject() && json.getAsJsonObject().get("id") instanceof JsonPrimitive idValue && idValue.isString()) {
+            String id = idValue.getAsString();
+            if (!IGNORED.contains(id)) v = valuation(id, json.getAsJsonObject());
         }
         // A menu full of changing buttons must not grow this without end.
-        if (VALUES.size() > 4096) VALUES.clear();
+        if (VALUES.size() > 4096) {
+            VALUES.clear();
+            VALUES_BY_OBJECT.clear();
+        }
         VALUES.put(custom, v);
+        VALUES_BY_OBJECT.put(custom, v);
+        return v;
+    }
+
+    private static Valuation valuation(String id, JsonObject data) {
+        ItemValue.Breakdown b = ItemValue.of(data, PRICES, CATALOG);
+        double each = b.total();
+        // An item priced as a whole says which market; one added up from its parts does not.
+        MarketKind market = b.parts().size() == 1 ? b.parts().get(0).market() : null;
+        return new Valuation(id, each > 0 ? each : Double.NaN, b.incomplete(), market);
+    }
+
+    /** Sack lines whose name says more than their data, by that name; cleared with {@link #VALUES}. */
+    private static final Map<String, Valuation> VARIANTS = new HashMap<>();
+
+    /**
+     * What one line of a sack is worth. Its data, except where only the name it is remembered under
+     * tells the line apart: a gemstone sack shows each gemstone once with every quality in its lore,
+     * and a rune sack each rune with every level.
+     */
+    private static Valuation valueStored(CustomData custom, String name) {
+        String gem = ChestValue.gemId(name);
+        int level = gem == null ? ChestValue.runeLevel(name) : 0;
+        if (gem == null && level == 0) return value(custom);
+        Valuation known = VARIANTS.get(name);
+        if (known != null) return known;
+        Valuation v;
+        if (gem != null) {
+            JsonObject data = new JsonObject();
+            data.addProperty("id", gem);
+            v = valuation(gem, data);
+        } else {
+            JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, ItemData.view(custom));
+            if (!(json instanceof JsonObject data) || !(data.get("id") instanceof JsonPrimitive id) || !id.isString()
+                    || !(data.get("runes") instanceof JsonObject runes) || runes.size() != 1) {
+                return value(custom);
+            }
+            runes.addProperty(runes.keySet().iterator().next(), level);
+            v = valuation(id.getAsString(), data);
+        }
+        if (VARIANTS.size() > 1024) VARIANTS.clear();
+        VARIANTS.put(name, v);
         return v;
     }
 
@@ -215,6 +289,8 @@ public final class ChestValuePanel {
         if (key == valuesKey) return;
         valuesKey = key;
         VALUES.clear();
+        VALUES_BY_OBJECT.clear();
+        VARIANTS.clear();
         dirty = true;
     }
 
@@ -230,13 +306,36 @@ public final class ChestValuePanel {
     private static boolean applies(Screen s) {
         if (!(s instanceof AbstractContainerScreen<?>) || s instanceof MarketScreen || s instanceof CreativeModeInventoryScreen) return false;
         if (s instanceof InventoryScreen) return true;
-        String title = SkyblockUtils.cleanColor(s.getTitle().getString()).trim();
+        String title = plainTitle(s.getTitle());
         if ("Storage".equals(title)) return false;
         return !SkyblockUtils.isOnSkyblock() || ChestValue.holdsOwnItems(title);
     }
 
+    /** The last title read and its plain text: asked every frame, and a menu's title stays the same object. */
+    private static Component plainTitleOf = null;
+    private static String plainTitle = "";
+
+    private static String plainTitle(Component title) {
+        if (title != plainTitleOf) {
+            plainTitle = SkyblockUtils.cleanColor(title.getString()).trim();
+            plainTitleOf = title;
+        }
+        return plainTitle;
+    }
+
+    /** A menu of sacks, where the panel can add up what they hold: the Sack of Sacks, the Sacks menu. */
+    private static boolean listsSacks(Screen s) {
+        return !(s instanceof InventoryScreen) && ChestValue.listsSacks(plainTitle(s.getTitle()));
+    }
+
+    /** Whether the panel values what this menu's sacks hold rather than the sacks. */
+    private static boolean countsContents(Screen s) {
+        return AlpakaConfig.instance.chestValueSackContents && listsSacks(s);
+    }
+
+    /** A menu of sacks never counts the inventory: its switch has made room for the contents switch. */
     private static boolean includesInventory(AbstractContainerScreen<?> c) {
-        return c instanceof InventoryScreen || AlpakaConfig.instance.chestValueIncludeInventory;
+        return c instanceof InventoryScreen || (AlpakaConfig.instance.chestValueIncludeInventory && !listsSacks(c));
     }
 
     /**
@@ -248,6 +347,13 @@ public final class ChestValuePanel {
         if (!dirty && now - builtAt < REBUILD_MS) return;
         builtAt = now;
         dirty = false;
+        contents = countsContents(c);
+        if (contents) {
+            rebuildContents(c);
+            return;
+        }
+        unseenSacks = List.of();
+        unseenSlots = List.of();
         boolean inventoryScreen = c instanceof InventoryScreen;
         boolean withInventory = includesInventory(c);
         List<Stack> stacks = new ArrayList<>();
@@ -277,6 +383,114 @@ public final class ChestValuePanel {
     }
 
     /**
+     * Reads a menu of sacks for what they hold: each sack slot is looked up in what Item Search saw
+     * in that sack, under the name its menu has ("Large Gemstone Sack" is the "Gemstones Sack").
+     * Small and large sacks of one kind share their contents, so each kind counts once. The items'
+     * slot is their sack's, so pointing at a line lights up the sacks it is in.
+     */
+    private static void rebuildContents(AbstractContainerScreen<?> c) {
+        Collection<ItemSearchStore.Container> known = ItemSearchStore.allIfLoaded();
+        sacksLoading = known == null;
+        Map<String, List<ItemSearchStore.Container>> seen = new HashMap<>();
+        if (known != null) {
+            for (ItemSearchStore.Container container : known) {
+                if (container.source != ItemSearchSource.SACKS || container.label == null) continue;
+                seen.computeIfAbsent(ChestValue.sackKey(container.label), k -> new ArrayList<>()).add(container);
+            }
+        }
+        List<Stack> stacks = new ArrayList<>();
+        List<String> unseen = new ArrayList<>();
+        List<Integer> unseenAt = new ArrayList<>();
+        Set<String> unseenKeys = new HashSet<>();
+        Set<String> counted = new HashSet<>();
+        boolean any = false;
+        List<Slot> slots = c.getMenu().slots;
+        for (int i = 0; i < slots.size(); i++) {
+            Slot slot = slots.get(i);
+            if (slot.container instanceof Inventory) continue;
+            ItemStack item = slot.getItem();
+            if (item.isEmpty()) continue;
+            any = true;
+            String sack = SkyblockUtils.cleanColor(item.getHoverName().getString()).trim();
+            if (!ChestValue.isSack(sack)) continue;
+            Map<String, String> learned = AlpakaConfig.instance.chestValueSackMenus;
+            String key = ChestValue.menuKey(sack, learned == null ? Map.of() : learned);
+            // A second sack of a kind already counted shares its contents; one of a kind not seen is marked too.
+            if (!counted.add(key)) {
+                if (unseenKeys.contains(key)) unseenAt.add(i);
+                continue;
+            }
+            List<ItemSearchStore.Container> in = seen.get(key);
+            if (in == null) {
+                if (!sacksLoading) {
+                    unseen.add(SACK_SIZE.matcher(sack).replaceFirst(""));
+                    unseenKeys.add(key);
+                    unseenAt.add(i);
+                }
+                continue;
+            }
+            for (ItemSearchStore.Container container : in) {
+                for (ItemSearchStore.Item stored : container.items) {
+                    ItemStack stack = stored.stack();
+                    CustomData custom = stack.get(DataComponents.CUSTOM_DATA);
+                    if (custom == null || stored.count() <= 0) continue;
+                    String name = SkyblockUtils.cleanColor(stack.getHoverName().getString());
+                    Valuation v = valueStored(custom, name);
+                    if (v.id() == null) continue;
+                    int count = (int) Math.min(stored.count(), Integer.MAX_VALUE);
+                    stacks.add(new Stack(i, v.id(), name, count, v.each(), v.estimated(), v.market(), stack));
+                }
+            }
+        }
+        anyItems = any;
+        unseenSacks = List.copyOf(unseen);
+        unseenSlots = List.copyOf(unseenAt);
+        sacksCounted = counted.size() - unseen.size();
+        summary = ChestValue.of(stacks, Sort.of(AlpakaConfig.instance.chestValueSort));
+        // What moves in and out of the sacks is not seen here, so there is no change since opening.
+        baseline = null;
+    }
+
+    private static final Pattern SACK_SIZE = Pattern.compile("^(?:Small|Medium|Large|Jumbo) ");
+
+    /** The sack last clicked in a menu of sacks, and when: the menu opened next is that sack's. */
+    private static String clickedSack = null;
+    private static long clickedAt = 0L;
+    private static final long SACK_OPEN_MS = 5_000L;
+
+    /** A click in a menu of sacks: remembers the sack under the mouse, to learn which menu it opens. */
+    static void noteClick(Screen s) {
+        if (!AlpakaConfig.instance.chestValueEnabled || !(s instanceof AbstractContainerScreen<?> c) || !listsSacks(s)) return;
+        Slot slot = ((AbstractContainerScreenAccessor) c).alpaka$hoveredSlot();
+        if (slot == null || slot.container instanceof Inventory || !slot.hasItem()) return;
+        String name = SkyblockUtils.cleanColor(slot.getItem().getHoverName().getString()).trim();
+        if (!ChestValue.isSack(name)) return;
+        clickedSack = name;
+        clickedAt = System.currentTimeMillis();
+    }
+
+    /**
+     * A menu opened: right after a sack was clicked, it is that sack's own menu, whose name can differ
+     * from the sack's ("Dwarven Sack" opens the "Dwarven Mines Sack"). Kept, so the sack is found by it.
+     */
+    static void menuOpened(Screen s) {
+        if (clickedSack == null) return;
+        String sack = clickedSack;
+        if (System.currentTimeMillis() - clickedAt > SACK_OPEN_MS) {
+            clickedSack = null;
+            return;
+        }
+        ItemSearchMenus.Menu menu = ItemSearchMenus.parseTitle(SkyblockUtils.cleanColor(s.getTitle().getString()).trim());
+        if (menu == null || menu.source() != ItemSearchSource.SACKS) return;
+        clickedSack = null;
+        String key = ChestValue.sackKey(sack);
+        String opens = ChestValue.sackKey(menu.label());
+        if (AlpakaConfig.instance.chestValueSackMenus == null) AlpakaConfig.instance.chestValueSackMenus = new HashMap<>();
+        if (opens.equals(AlpakaConfig.instance.chestValueSackMenus.put(key, opens))) return;
+        AlpakaConfig.save();
+    }
+
+    /**
      * How many of the item a slot stands for: the stack's own count, or in a sack what its lore says
      * is stored there. An empty sack line counts nothing.
      */
@@ -284,22 +498,50 @@ public final class ChestValuePanel {
         if (!player) {
             ItemLore lore = item.get(DataComponents.LORE);
             if (lore != null) {
-                List<String> lines = new ArrayList<>(lore.lines().size());
-                for (Component line : lore.lines()) lines.add(SkyblockUtils.cleanColor(line.getString()));
-                long stored = ChestValue.sackCount(lines);
+                long stored = sackCount(lore);
                 if (stored >= 0) return (int) Math.min(stored, Integer.MAX_VALUE);
             }
         }
         return item.getCount();
     }
 
+    /**
+     * {@link ChestValue#sackCount} of a lore, kept by the lore object: the menu is read four times a
+     * second and its items' lore rarely changes, while reading it means flattening every line.
+     * Lore components are immutable. Client thread only.
+     */
+    private static long sackCount(ItemLore lore) {
+        Long known = SACK_COUNTS.get(lore);
+        if (known != null) return known;
+        List<String> lines = new ArrayList<>(lore.lines().size());
+        for (Component line : lore.lines()) lines.add(SkyblockUtils.cleanColor(line.getString()));
+        long stored = ChestValue.sackCount(lines);
+        if (SACK_COUNTS.size() >= 512) SACK_COUNTS.clear();
+        SACK_COUNTS.put(lore, stored);
+        return stored;
+    }
+
+    private static final Map<ItemLore, Long> SACK_COUNTS = new java.util.IdentityHashMap<>();
+
+    /**
+     * The last baseline sum and what it was worked out from. It only changes with the baseline or
+     * the valuations, and each lookup hashes the item's whole data, so it is not redone every frame.
+     */
+    private static List<Held> baselineSumOf = null;
+    private static long baselineSumKey = Long.MIN_VALUE;
+    private static double baselineSum = 0;
+
     /** What the menu held when it opened, at today's prices. */
     private static double baselineTotal() {
+        if (baseline == baselineSumOf && valuesKey == baselineSumKey) return baselineSum;
         double sum = 0;
         for (Held h : baseline) {
             Valuation v = value(h.data());
             if (!Double.isNaN(v.each())) sum += v.each() * h.count();
         }
+        baselineSumOf = baseline;
+        baselineSumKey = valuesKey;
+        baselineSum = sum;
         return sum;
     }
 
@@ -315,6 +557,11 @@ public final class ChestValuePanel {
         builtAt = 0L;
         dirty = true;
         baseline = null;
+        contents = false;
+        unseenSacks = List.of();
+        unseenSlots = List.of();
+        sacksCounted = 0;
+        sacksLoading = false;
         scroll = scrollTarget = 0;
         maxScroll = 0;
         pointed = null;
@@ -366,7 +613,7 @@ public final class ChestValuePanel {
 
         // A menu of buttons, with no SkyBlock item in it, is no chest: the panel stays away. An empty
         // chest or inventory still shows it, so it does not seem to have gone.
-        if (summary.isEmpty() && anyItems && !(in instanceof InventoryScreen)) {
+        if (summary.isEmpty() && anyItems && !(in instanceof InventoryScreen) && !contents) {
             panelW = 0;
             return;
         }
@@ -374,9 +621,8 @@ public final class ChestValuePanel {
         Font font = mc.font;
         int screenW = graphics.guiWidth();
         int screenH = graphics.guiHeight();
-        double[] cursor = cursor();
-        int mx = (int) Math.floor(cursor[0]);
-        int my = (int) Math.floor(cursor[1]);
+        int mx = (int) Math.floor(cursorX());
+        int my = (int) Math.floor(cursorY());
         boolean beside = place(container, screenW);
         boolean moved = moved();
         if (!beside && !moved) {
@@ -389,6 +635,7 @@ public final class ChestValuePanel {
         int w = panelW;
         hits.clear();
         pointed = null;
+        noticeHovered = false;
         String tip = null;
 
         scroll += (scrollTarget - scroll) * Math.min(1.0, deltaSec * 16.0);
@@ -401,7 +648,9 @@ public final class ChestValuePanel {
         int headerH = narrow ? NARROW_HEADER_H : HEADER_H;
         int toolbarH = narrow ? 0 : TOOLBAR_H;
         int barArea = showBar ? BAR_H + 10 : 2;
-        int fixed = headerH + toolbarH + barArea + FOOTER_H;
+        List<FormattedText> notice = waiting ? List.of() : notice(font, w, narrow);
+        int noticeH = notice.isEmpty() ? 0 : notice.size() * 10 + 8;
+        int fixed = headerH + toolbarH + barArea + noticeH + FOOTER_H;
         List<Row> rows = hasList ? rows() : List.of();
         int content = hasList ? contentHeight(rows) : MESSAGE_H;
         int maxH = screenH - 2 * EDGE;
@@ -454,6 +703,11 @@ public final class ChestValuePanel {
             if (t != null) tip = t;
         }
         cy += barArea;
+        if (noticeH > 0) {
+            t = drawNotice(graphics, font, notice, x, cy, w, noticeH, mx, my);
+            if (t != null) tip = t;
+            cy += noticeH;
+        }
 
         listY = cy;
         if (hasList) {
@@ -496,24 +750,48 @@ public final class ChestValuePanel {
         return true;
     }
 
+    /** The priced lines by value and their colors: sorted once per summary, not every frame. */
+    private static Summary byValueOf = null;
+    private static List<Entry> byValue = List.of();
+    private static Map<Entry, Integer> colorsByValue = Map.of();
+
+    private static List<Entry> byValue() {
+        if (byValueOf != summary) {
+            List<Entry> sorted = new ArrayList<>(summary.priced());
+            sorted.sort(ChestValue.comparator(Sort.VALUE));
+            Map<Entry, Integer> out = new IdentityHashMap<>();
+            for (int i = 0; i < sorted.size(); i++) out.put(sorted.get(i), i < PALETTE.length ? PALETTE[i] : OTHER);
+            byValue = sorted;
+            colorsByValue = out;
+            byValueOf = summary;
+        }
+        return byValue;
+    }
+
     /** The colors of the most valuable items, by value whatever the list's order. */
     private static Map<Entry, Integer> colors() {
-        Map<Entry, Integer> out = new IdentityHashMap<>();
-        List<Entry> byValue = new ArrayList<>(summary.priced());
-        byValue.sort(ChestValue.comparator(Sort.VALUE));
-        for (int i = 0; i < byValue.size(); i++) out.put(byValue.get(i), i < PALETTE.length ? PALETTE[i] : OTHER);
-        return out;
+        byValue();
+        return colorsByValue;
     }
 
     private static List<Row> rows() {
+        // The same rows every frame until the summary is rebuilt or the unpriced group is folded.
+        if (summary == rowsOf && unpricedOpen == rowsOpen && rowsCache != null) return rowsCache;
         List<Row> out = new ArrayList<>();
         for (Entry e : summary.priced()) out.add(new Row(e, false));
         if (!summary.unpriced().isEmpty()) {
             out.add(new Row(null, true));
             if (unpricedOpen) for (Entry e : summary.unpriced()) out.add(new Row(e, false));
         }
-        return out;
+        rowsOf = summary;
+        rowsOpen = unpricedOpen;
+        rowsCache = java.util.Collections.unmodifiableList(out);
+        return rowsCache;
     }
+
+    private static ChestValue.Summary rowsOf;
+    private static boolean rowsOpen;
+    private static List<Row> rowsCache;
 
     private static int contentHeight(List<Row> rows) {
         int height = 4;
@@ -529,7 +807,7 @@ public final class ChestValuePanel {
         int tx = x + PAD + 2;
         int room = closeX - 4 - tx;
         Component title = title(c);
-        String extra = !(c instanceof InventoryScreen) && AlpakaConfig.instance.chestValueIncludeInventory ? " + Inventory" : "";
+        String extra = !(c instanceof InventoryScreen) && includesInventory(c) ? " + Inventory" : "";
         int extraW = extra.isEmpty() ? 0 : GuiFont.width(font, extra);
         int titleW = styled(graphics, font, title, tx, y + 7, room - Math.min(extraW, room / 2));
         if (!extra.isEmpty()) {
@@ -560,14 +838,16 @@ public final class ChestValuePanel {
             return null;
         }
         double total = summary.total();
-        String compact = (summary.incomplete() ? "≥ " : "") + Coins.compact(total);
+        boolean partial = summary.incomplete() || !unseenSacks.isEmpty();
+        String compact = (partial ? "≥ " : "") + Coins.compact(total);
         graphics.text(font, GuiFont.text(compact), tx, ly, COIN, false);
         int after = tx + GuiFont.width(font, compact) + 5;
         String tip = null;
         if (AlpakaStyle.inside(mx, my, tx - 2, ly - 2, after - tx, 12)) {
-            tip = whole(total) + " coins over " + summary.items() + (summary.items() == 1 ? " item" : " items") + " in "
-                    + summary.stacks() + (summary.stacks() == 1 ? " slot" : " slots") + "."
+            tip = whole(total) + " coins over " + Coins.full(summary.items()) + (summary.items() == 1 ? " item" : " items") + " in "
+                    + (contents ? sacksCounted + (sacksCounted == 1 ? " sack" : " sacks") : summary.stacks() + (summary.stacks() == 1 ? " slot" : " slots")) + "."
                     + (summary.incomplete() ? " Some have no price right now, so it is worth at least this." : "")
+                    + (!unseenSacks.isEmpty() ? " Sacks not opened yet count nothing." : "")
                     + " Bazaar items count at their " + (AlpakaConfig.instance.itemValueBazaarPrice == 1 ? "instant sell" : "instant buy")
                     + " price, as Item Value's Bazaar Prices setting says.";
             hoverTip("total");
@@ -635,7 +915,7 @@ public final class ChestValuePanel {
         if (canCopy) {
             hits.add(new Hit(copyX, cy, copyW, CHIP_H, () -> {
                 AlpakaStyle.click();
-                String plainTitle = SkyblockUtils.cleanColor(title(c).getString());
+                String plainTitle = SkyblockUtils.cleanColor(title(c).getString()) + (contents ? " (contents)" : "");
                 Minecraft.getInstance().keyboardHandler.setClipboard(ChestValue.text(plainTitle, summary));
                 copiedAt = System.currentTimeMillis();
             }));
@@ -646,7 +926,29 @@ public final class ChestValuePanel {
         }
         int room = copyX - 4;
 
-        if (!(c instanceof InventoryScreen)) {
+        if (listsSacks(c)) {
+            boolean on = AlpakaConfig.instance.chestValueSackContents;
+            String label = (on ? "✔ " : "+ ") + "Contents";
+            int cw = GuiFont.width(font, label) + 10;
+            if (cx + cw <= room) {
+                boolean hover = AlpakaStyle.inside(mx, my, cx, cy, cw, CHIP_H);
+                chip(graphics, font, cx, cy, cw, label, hover, on, true);
+                hits.add(new Hit(cx, cy, cw, CHIP_H, () -> {
+                    AlpakaStyle.click();
+                    AlpakaConfig.instance.chestValueSackContents = !AlpakaConfig.instance.chestValueSackContents;
+                    AlpakaConfig.save();
+                    dirty = true;
+                    baseline = null;
+                    scrollTarget = 0;
+                }));
+                if (hover) {
+                    tip = on ? "Counting what your sacks hold. Click to count the sacks themselves."
+                            : "Counting the sacks themselves. Click to count what they hold.";
+                    hoverTip("contents");
+                }
+                cx += cw + 4;
+            }
+        } else if (!(c instanceof InventoryScreen)) {
             boolean on = AlpakaConfig.instance.chestValueIncludeInventory;
             String label = (on ? "✔ " : "+ ") + "Inventory";
             int cw = GuiFont.width(font, label) + 10;
@@ -705,35 +1007,52 @@ public final class ChestValuePanel {
         ModernGuiUtils.centeredText(graphics, font, GuiFont.text(label), x + w / 2, y + 3, color);
     }
 
+    /** One part of the bar: an item (null for everything else together), its value and its color. */
+    private record Part(Entry entry, double amount, int color) {}
+
+    /**
+     * The bar's parts: the top items each get a part, the rest one gray part together. Worked out
+     * again only when the order by value or the colors change, not every frame.
+     */
+    private static List<Part> parts(List<Entry> byValue, Map<Entry, Integer> colors) {
+        if (byValue == partsByValue && colors == partsColors && partsCache != null) return partsCache;
+        List<Part> parts = new ArrayList<>();
+        double rest = 0;
+        for (int i = 0; i < byValue.size(); i++) {
+            Entry e = byValue.get(i);
+            if (i < PALETTE.length) parts.add(new Part(e, e.total(), colors.get(e)));
+            else rest += e.total();
+        }
+        if (rest > 0) parts.add(new Part(null, rest, OTHER));
+        partsByValue = byValue;
+        partsColors = colors;
+        partsCache = parts;
+        return parts;
+    }
+
+    private static List<Entry> partsByValue;
+    private static Map<Entry, Integer> partsColors;
+    private static List<Part> partsCache;
+
     /** The bar split by the most valuable items' shares; the rest together in gray. Returns a tooltip for the part under the mouse. */
     private static String drawBar(GuiGraphicsExtractor graphics, int x, int y, int w, Map<Entry, Integer> colors, int mx, int my) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, BAR_H, BAR_H / 2, AlpakaStyle.LINE);
         double total = summary.total();
-        List<Entry> byValue = new ArrayList<>(summary.priced());
-        byValue.sort(ChestValue.comparator(Sort.VALUE));
-        // The top items each get a part, the rest one gray part together.
-        List<Object[]> parts = new ArrayList<>();
-        double rest = 0;
-        for (int i = 0; i < byValue.size(); i++) {
-            Entry e = byValue.get(i);
-            if (i < PALETTE.length) parts.add(new Object[] {e, e.total(), colors.get(e)});
-            else rest += e.total();
-        }
-        if (rest > 0) parts.add(new Object[] {null, rest, OTHER});
+        List<Part> parts = parts(byValue(), colors);
 
         String tip = null;
         boolean overBar = AlpakaStyle.inside(mx, my, x, y - 3, w, BAR_H + 6);
         int at = x;
         double sum = 0;
         for (int i = 0; i < parts.size(); i++) {
-            Object[] p = parts.get(i);
-            sum += (double) p[1];
+            Part p = parts.get(i);
+            sum += p.amount();
             int end = x + (int) Math.round(w * Math.min(1.0, sum / total));
             int sx = at + (i > 0 ? 1 : 0);
             int sw = end - sx;
             at = end;
             if (sw <= 0) continue;
-            int color = (int) p[2];
+            int color = p.color();
             boolean first = i == 0;
             boolean last = i == parts.size() - 1;
             if ((first || last) && sw >= BAR_H) {
@@ -745,8 +1064,8 @@ public final class ChestValuePanel {
                 ModernGuiUtils.drawRect(graphics, sx, y, sw, BAR_H, color);
             }
             if (overBar && mx >= sx - 1 && mx < sx + sw) {
-                Entry e = (Entry) p[0];
-                double amount = (double) p[1];
+                Entry e = p.entry();
+                double amount = p.amount();
                 String name = e == null ? "Everything else" : (e.count > 1 ? e.count + "× " : "") + e.name;
                 tip = name + ": " + Coins.compact(amount) + ", " + percent(amount / total) + " of the total.";
                 if (e != null) pointed = e;
@@ -762,7 +1081,7 @@ public final class ChestValuePanel {
         int offset = (int) Math.round(scroll);
         boolean overList = AlpakaStyle.inside(mx, my, x, y, w, h);
         Slot slotUnderMouse = ((AbstractContainerScreenAccessor) c).alpaka$hoveredSlot();
-        Entry linked = slotUnderMouse == null ? null : summary.entryOf(c.getMenu().slots.indexOf(slotUnderMouse));
+        int linkedSlot = slotUnderMouse == null ? -1 : c.getMenu().slots.indexOf(slotUnderMouse);
         String tip = null;
         graphics.enableScissor(x, y, x + w, y + h);
         int ry = y + 2 - offset;
@@ -786,7 +1105,7 @@ public final class ChestValuePanel {
                 } else {
                     Entry e = row.entry();
                     if (hover) pointed = e;
-                    drawEntry(graphics, font, e, colors.get(e), x, ry, w, rh, hover, e == linked, narrow);
+                    drawEntry(graphics, font, e, colors.get(e), x, ry, w, rh, hover, linkedSlot >= 0 && e.slots.contains(linkedSlot), narrow);
                     if (hover) {
                         tip = tip(e);
                         hoverTip(e);
@@ -885,8 +1204,21 @@ public final class ChestValuePanel {
             String listed = ItemIcons.name(e.id);
             if (listed != null) return listed;
         }
-        return e.name.replaceAll("^\\[Lvl \\d+\\]\\s*", "").replaceAll("[✪➊➋➌➍➎]", "").trim();
+        String bare = BARE_NAMES.get(e.name);
+        if (bare == null) {
+            bare = STAR_MARKS.matcher(PET_LEVEL.matcher(e.name).replaceAll("")).replaceAll("").trim();
+            if (BARE_NAMES.size() >= 512) BARE_NAMES.clear();
+            BARE_NAMES.put(e.name, bare);
+        }
+        return bare;
     }
+
+    /** Names without pet level and stars, by the name: the same rows are labelled every frame. Render thread only. */
+    private static final java.util.Map<String, String> BARE_NAMES = new java.util.HashMap<>();
+
+    /** Compiled once: {@code String.replaceAll} compiles its pattern on every call, and this runs per row per frame. */
+    private static final Pattern PET_LEVEL = Pattern.compile("^\\[Lvl \\d+\\]\\s*");
+    private static final Pattern STAR_MARKS = Pattern.compile("[✪➊➋➌➍➎]");
 
     private static void drawUnpricedHeading(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                             boolean hover, boolean narrow) {
@@ -916,7 +1248,9 @@ public final class ChestValuePanel {
             tip.append(' ').append(percent(summary.share(e))).append(" of the total.");
             if (e.estimated) tip.append(" Some parts have no price, so it is worth at least this.");
         }
-        tip.append(e.slots.size() == 1 ? " In 1 slot." : " In " + e.slots.size() + " slots.");
+        String where = contents ? " sack" : " slot";
+        int places = contents ? (int) e.slots.stream().distinct().count() : e.slots.size();
+        tip.append(" In ").append(places).append(where).append(places == 1 ? "." : "s.");
         if (AlpakaConfig.instance.itemValueEnabled) tip.append(" Click for its Item Value breakdown.");
         return tip.toString();
     }
@@ -941,6 +1275,10 @@ public final class ChestValuePanel {
             }));
         } else if (waiting()) {
             text = "Loading prices…";
+        } else if (contents && sacksLoading) {
+            text = "Reading your sacks…";
+        } else if (contents) {
+            text = unseenSacks.isEmpty() ? "Your sacks are empty." : "Nothing counted yet.";
         } else {
             text = "Nothing here to value.";
         }
@@ -951,6 +1289,49 @@ public final class ChestValuePanel {
             graphics.text(font, Language.getInstance().getVisualOrder(line), x + (w - lw) / 2, ly, AlpakaStyle.TEXT_MUTED, false);
             ly += 10;
         }
+    }
+
+    private static List<String> noticeOf = null;
+    private static int noticeW = -1;
+    private static boolean noticeNarrow;
+    private static List<FormattedText> noticeCache = List.of();
+
+    /**
+     * The notice that some sacks were never opened: only how many, as the sacks themselves are
+     * marked in the menu, which says where they are faster than a list of names could.
+     */
+    private static List<FormattedText> notice(Font font, int w, boolean narrow) {
+        if (!contents || unseenSacks.isEmpty()) return List.of();
+        if (unseenSacks == noticeOf && w == noticeW && narrow == noticeNarrow) return noticeCache;
+        int n = unseenSacks.size();
+        String text = narrow ? "Open " + n + " marked"
+                : n == 1 ? "Open the marked sack once to count it." : "Open the " + n + " marked sacks once to count them.";
+        noticeOf = unseenSacks;
+        noticeW = w;
+        noticeNarrow = narrow;
+        noticeCache = GuiFont.splitLines(font, text, w - 2 * PAD - 6);
+        return noticeCache;
+    }
+
+    /** The notice of sacks never opened, above the list. Returns a tooltip when pointed at. */
+    private static String drawNotice(GuiGraphicsExtractor graphics, Font font, List<FormattedText> lines,
+                                     int x, int y, int w, int h, int mx, int my) {
+        int bx = x + 4;
+        int bw = w - 8;
+        int by = y + 1;
+        int bh = h - 4;
+        boolean hover = AlpakaStyle.inside(mx, my, bx, by, bw, bh);
+        noticeHovered = hover;
+        ModernGuiUtils.drawRoundedRect(graphics, bx, by, bw, bh, AlpakaStyle.ROW_RADIUS, MarketIcons.fade(COIN, hover ? 0.16f : 0.10f));
+        int ly = by + 4;
+        for (FormattedText line : lines) {
+            graphics.text(font, Language.getInstance().getVisualOrder(line), x + PAD + 3, ly, AlpakaStyle.TEXT_SOFT, false);
+            ly += 10;
+        }
+        if (!hover) return null;
+        hoverTip("unseen");
+        return "Not opened yet: " + String.join(", ", unseenSacks) + ". What a sack holds is learned when you open it once; "
+                + "Hypixel's [Sacks] messages keep it up to date after that.";
     }
 
     /** The bottom line: how many slots are counted, and where the prices come from, as SkyCofl asks. */
@@ -964,7 +1345,8 @@ public final class ChestValuePanel {
         int sx = x + w - PAD - sw;
         graphics.text(font, GuiFont.text(shown), sx, ty, AlpakaStyle.DIVIDER, false);
         if (!narrow && !waiting()) {
-            String slots = summary.stacks() == 1 ? "1 slot" : summary.stacks() + " slots";
+            String slots = contents ? sacksCounted + (sacksCounted == 1 ? " sack" : " sacks")
+                    : summary.stacks() == 1 ? "1 slot" : summary.stacks() + " slots";
             if (GuiFont.width(font, slots) + 8 < sx - (x + PAD)) {
                 graphics.text(font, GuiFont.text(slots), x + PAD, ty, AlpakaStyle.DIVIDER, false);
             }
@@ -986,10 +1368,22 @@ public final class ChestValuePanel {
 
     /** The slots of the line under the mouse, lit in its color, so it is clear where that item lies. */
     private static void drawSlotHighlights(GuiGraphicsExtractor graphics, AbstractContainerScreen<?> c, Map<Entry, Integer> colors) {
-        if (pointed == null) return;
         AbstractContainerScreenAccessor a = (AbstractContainerScreenAccessor) c;
         int left = a.alpaka$leftPos();
         int top = a.alpaka$topPos();
+        // The sacks never opened, marked in the menu itself, more strongly while the notice is pointed at.
+        if (contents && !unseenSlots.isEmpty()) {
+            List<Slot> all = c.getMenu().slots;
+            for (int index : unseenSlots) {
+                if (index < 0 || index >= all.size()) continue;
+                Slot slot = all.get(index);
+                int sx = left + slot.x;
+                int sy = top + slot.y;
+                graphics.fill(sx, sy, sx + 16, sy + 16, MarketIcons.fade(COIN, noticeHovered ? 0.45f : 0.22f));
+                graphics.outline(sx - 1, sy - 1, 18, 18, COIN);
+            }
+        }
+        if (pointed == null) return;
         Integer own = colors.get(pointed);
         int color = own == null || own == OTHER ? AlpakaStyle.accent() : own;
         List<Slot> slots = c.getMenu().slots;
@@ -1027,8 +1421,7 @@ public final class ChestValuePanel {
     /** Whether the mouse is over the panel in this menu, which then hides what is under it. */
     public static boolean coversMouse(Screen in) {
         if (screen == null || in != screen || panelW <= 0) return false;
-        double[] cursor = cursor();
-        return AlpakaStyle.inside(cursor[0], cursor[1], panelX, panelY, panelW, panelH);
+        return AlpakaStyle.inside(cursorX(), cursorY(), panelX, panelY, panelW, panelH);
     }
 
     /**
@@ -1117,9 +1510,15 @@ public final class ChestValuePanel {
         return count < 1000 ? Integer.toString(count) : Coins.compact(count);
     }
 
-    private static double[] cursor() {
+    // The cursor in GUI coordinates, one axis at a time: asked several times every frame, so no array.
+    private static double cursorX() {
         Minecraft mc = Minecraft.getInstance();
-        return new double[] {mc.mouseHandler.getScaledXPos(mc.getWindow()), mc.mouseHandler.getScaledYPos(mc.getWindow())};
+        return mc.mouseHandler.getScaledXPos(mc.getWindow());
+    }
+
+    private static double cursorY() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.mouseHandler.getScaledYPos(mc.getWindow());
     }
 
     /** Text in its own colors and the menu font, cut with an ellipsis to fit. Returns the width drawn. */

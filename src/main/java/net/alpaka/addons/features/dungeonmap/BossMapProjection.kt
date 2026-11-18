@@ -13,9 +13,10 @@ data class BossMapProjection(val centerX: Double, val centerZ: Double, val span:
     fun worldZ(row: Int): Int = kotlin.math.floor(centerZ + ((row + 0.5) / STEPS - 0.5) * span).toInt()
 
     companion object {
-        const val STEPS = 64
-        const val MARGIN = 16
-        /** Side of the sampled terrain in texture pixels, two per sample. */
-        const val TEXTURE = (STEPS + 2 * MARGIN) * 2
+        /** One sample per view pixel, so the arena is drawn as finely as the 128 px view can show it. */
+        const val STEPS = 128
+        const val MARGIN = 32
+        /** Side of the sampled terrain in texture pixels, one per sample. */
+        const val TEXTURE = STEPS + 2 * MARGIN
     }
 }

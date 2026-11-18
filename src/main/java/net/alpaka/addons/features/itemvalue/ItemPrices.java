@@ -26,6 +26,9 @@ import java.util.zip.GZIPInputStream;
  * What items cost right now, for the Item Value breakdown: the Bazaar's instant buy and sell price of
  * every product, from Hypixel, and the lowest BIN of everything on the Auction House, from SkyCofl.
  *
+ * The Bazaar comes through the AlpakaAddons API (api.alpaka.yt), which cuts Hypixel's public list
+ * of 3.5 MB down to the prices, a few dozen KB; when that can't be reached, from Hypixel itself.
+ *
  * Each is one request for the whole list, kept for a few minutes and only asked for again while a
  * breakdown is on screen, so looking at item after item costs nothing more. Only fetched while
  * Network Features is on; a request names nothing about the player.
@@ -33,7 +36,8 @@ import java.util.zip.GZIPInputStream;
 public final class ItemPrices {
     private ItemPrices() {}
 
-    private static final String BAZAAR_URL = "https://api.hypixel.net/v2/skyblock/bazaar";
+    private static final String BAZAAR_URL = "https://api.alpaka.yt/v1/bazaar";
+    private static final String BAZAAR_FALLBACK_URL = "https://api.hypixel.net/v2/skyblock/bazaar";
     private static final String LOWEST_BIN_URL = "https://sky.coflnet.com/api/prices/neu";
 
     /** How long a list is used before it is asked for again: the Bazaar moves by the minute. */
@@ -47,11 +51,13 @@ public final class ItemPrices {
     public record Quote(double price, MarketKind market) {}
 
     /** A Bazaar product's prices, NaN where nobody is selling or buying. */
-    record Product(double buy, double sell) {}
+    public record Product(double buy, double sell) {}
 
     /** One of the two lists: its contents once loaded, and when to ask again. */
     private static final class Source<T> {
         final String url;
+        /** Where else the list is, should {@link #url} fail; null for nowhere. */
+        final String fallbackUrl;
         final String what;
         volatile T data = null;
         volatile long fetchedAt = 0L;
@@ -59,14 +65,15 @@ public final class ItemPrices {
         volatile boolean fetching = false;
         volatile boolean failed = false;
 
-        Source(String url, String what) {
+        Source(String url, String fallbackUrl, String what) {
             this.url = url;
+            this.fallbackUrl = fallbackUrl;
             this.what = what;
         }
     }
 
-    private static final Source<Map<String, Product>> BAZAAR = new Source<>(BAZAAR_URL, "the Bazaar's prices");
-    private static final Source<Map<String, Double>> LOWEST_BINS = new Source<>(LOWEST_BIN_URL, "the lowest BINs");
+    private static final Source<Map<String, Product>> BAZAAR = new Source<>(BAZAAR_URL, BAZAAR_FALLBACK_URL, "the Bazaar's prices");
+    private static final Source<Map<String, Double>> LOWEST_BINS = new Source<>(LOWEST_BIN_URL, null, "the lowest BINs");
 
     /** Counts up whenever a list changes, so a breakdown knows to work itself out again. */
     private static final AtomicInteger VERSION = new AtomicInteger();
@@ -99,6 +106,12 @@ public final class ItemPrices {
      */
     public static Quote quote(String id) {
         return quote(id, BAZAAR.data, LOWEST_BINS.data, AlpakaConfig.instance.itemValueBazaarPrice == 1);
+    }
+
+    /** The Bazaar's instant buy and sell price of a product; null for an item not sold there or while the list loads. */
+    public static Product bazaar(String id) {
+        Map<String, Product> bazaar = BAZAAR.data;
+        return id == null || bazaar == null ? null : bazaar.get(id);
     }
 
     static Quote quote(String id, Map<String, Product> bazaar, Map<String, Double> bins, boolean sellSide) {
@@ -147,7 +160,11 @@ public final class ItemPrices {
             if (!due || source.fetching) return;
             source.fetching = true;
         }
-        HttpRequest request = HttpRequest.newBuilder(URI.create(source.url))
+        fetch(source, source.url, parser);
+    }
+
+    private static <T> void fetch(Source<T> source, String url, Parser<T> parser) {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                 .timeout(Duration.ofSeconds(30))
                 .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
                 // The Bazaar's answer is about 3.5 MB as text, under 0.5 MB packed.
@@ -157,35 +174,63 @@ public final class ItemPrices {
         client().sendAsync(request, HttpResponse.BodyHandlers.ofInputStream()).whenComplete((response, error) -> {
             try {
                 if (error != null || response == null || response.statusCode() != 200) {
-                    fail(source, error != null ? error.toString() : "HTTP " + (response == null ? "?" : response.statusCode()));
+                    String why = error != null ? error.toString() : "HTTP " + (response == null ? "?" : response.statusCode());
                     if (response != null) response.body().close();
+                    failOrFallBack(source, url, parser, why);
                     return;
                 }
                 boolean gzip = response.headers().firstValue("Content-Encoding").map(e -> e.contains("gzip")).orElse(false);
                 T data;
-                try (InputStream raw = response.body();
+                InputStream stream = response.body();
+                // The request timeout ends with the headers; a body that stalls is closed under the reader.
+                closeLater(stream);
+                try (InputStream raw = stream;
                      InputStream body = gzip ? new GZIPInputStream(raw) : raw;
                      Reader reader = new InputStreamReader(body, StandardCharsets.UTF_8)) {
                     data = parser.parse(reader);
                 }
                 if (data == null || (data instanceof Map<?, ?> map && map.isEmpty())) {
-                    fail(source, "an empty answer");
+                    failOrFallBack(source, url, parser, "an empty answer");
                     return;
                 }
                 source.data = data;
                 source.fetchedAt = System.currentTimeMillis();
                 source.failed = false;
                 VERSION.incrementAndGet();
-            } catch (IOException | RuntimeException e) {
-                fail(source, e.toString());
-            } finally {
                 source.fetching = false;
+            } catch (IOException | RuntimeException e) {
+                failOrFallBack(source, url, parser, e.toString());
             }
         });
     }
 
-    private static void fail(Source<?> source, String why) {
-        AlpakaAddons.LOGGER.warn("Could not load {} from {} ({})", source.what, source.url, why);
+    /** Asks the list's other address after its first failed; after that, the list failed. */
+    private static <T> void failOrFallBack(Source<T> source, String url, Parser<T> parser, String why) {
+        if (url.equals(source.url) && source.fallbackUrl != null) {
+            AlpakaAddons.LOGGER.debug("Could not load {} from {} ({}); trying {}", source.what, url, why, source.fallbackUrl);
+            fetch(source, source.fallbackUrl, parser);
+            return;
+        }
+        fail(source, url, why);
+        source.fetching = false;
+    }
+
+    /** Closes a download's body after {@link #BODY_TIMEOUT_MINUTES}; closing a finished one does nothing. */
+    public static void closeLater(InputStream stream) {
+        java.util.concurrent.CompletableFuture.delayedExecutor(BODY_TIMEOUT_MINUTES, java.util.concurrent.TimeUnit.MINUTES)
+                .execute(() -> {
+                    try {
+                        stream.close();
+                    } catch (IOException ignored) {
+                        // Already closed.
+                    }
+                });
+    }
+
+    static final long BODY_TIMEOUT_MINUTES = 2;
+
+    private static void fail(Source<?> source, String url, String why) {
+        AlpakaAddons.LOGGER.warn("Could not load {} from {} ({})", source.what, url, why);
         // An older list stays in use; only without one is there nothing to show.
         if (source.data == null) source.failed = true;
         source.retryAt = System.currentTimeMillis() + RETRY_MS;

@@ -9,7 +9,7 @@ import org.joml.Matrix3x2fc;
 
 /**
  * A texture drawn over a whole rectangle with rounded corners, and a soft drop shadow if asked -
- * the screenshot preview. The vertices are those of {@link BlurRectRenderState}, so the same vertex
+ * the color picker's wheel. The vertices are those of {@link BlurRectRenderState}, so the same vertex
  * shader reads them; the fragment shader samples the texture instead of the blurred frame.
  *
  * @param radiusPx corner radius in screen pixels

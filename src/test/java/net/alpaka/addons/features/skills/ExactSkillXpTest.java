@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ExactSkillXpTest {
@@ -84,5 +86,81 @@ class ExactSkillXpTest {
         assertEquals("1000/1000❤     +12.5 Farming (1.95M/4.3M)     500/500✎ Mana", out.getString());
         assertEquals(3, out.getSiblings().size());
         assertEquals(aqua, out.getSiblings().get(1).getStyle());
+    }
+
+    @Test
+    void readsTheCapOfAMaxedSkill() {
+        List<String> tab = List.of("Skills: Farming 60: MAX", " Fishing 50: MAX", " Mining 14: 22,922/75k");
+        assertEquals(60, ExactSkillXp.capInTab(tab, "Farming"));
+        assertEquals(50, ExactSkillXp.capInTab(tab, "Fishing"));
+        assertNull(ExactSkillXp.capInTab(tab, "Mining"));
+        // Without the tab list each skill has its own cap.
+        assertEquals(60, ExactSkillXp.cap("farming", null));
+        assertEquals(57, ExactSkillXp.cap("foraging", null));
+        assertEquals(50, ExactSkillXp.cap("hunting", null));
+        assertNull(ExactSkillXp.cap("dancing", null));
+        // A lower cap in the tab list (Farming before Anita's perks) is remembered until the world changes.
+        assertEquals(50, ExactSkillXp.cap("farming", 50));
+        assertEquals(50, ExactSkillXp.cap("farming", null));
+        ExactSkillXp.reset();
+        assertEquals(60, ExactSkillXp.cap("farming", null));
+    }
+
+    @Test
+    void xpPastTheCapCountsOnAsOverflowLevels() {
+        // Level 61 takes 7.6M, 62 then 8.2M.
+        Levels.Overflow at60 = ExactSkillXp.overflow("farming", 60, 5_183_244);
+        assertEquals(60, at60.level());
+        assertEquals(5_183_244, at60.xpCurrent(), 1e-6);
+        assertEquals(7_600_000, at60.xpForNext(), 1e-6);
+        Levels.Overflow at62 = ExactSkillXp.overflow("farming", 60, 7_600_000 + 8_200_000 + 1_000);
+        assertEquals(62, at62.level());
+        assertEquals(1_000, at62.xpCurrent(), 1e-6);
+        assertEquals(8_800_000, at62.xpForNext(), 1e-6);
+        // A skill capped at 50 goes on through the table's levels 51 to 60 first: 51 takes 4.3M.
+        Levels.Overflow fishing = ExactSkillXp.overflow("fishing", 50, 5_000_000);
+        assertEquals(51, fishing.level());
+        assertEquals(700_000, fishing.xpCurrent(), 1e-6);
+        assertEquals(4_600_000, fishing.xpForNext(), 1e-6);
+        // Foraging stops at 57 (91,572,425 XP), so 58 takes 6.4M.
+        Levels.Overflow foraging = ExactSkillXp.overflow("foraging", 57, 100_000);
+        assertEquals(57, foraging.level());
+        assertEquals(91_572_425L, Levels.skillXpToReach("foraging", 57));
+        assertEquals(6_400_000, foraging.xpForNext(), 1e-6);
+        assertNull(ExactSkillXp.overflow("runecrafting", 25, 1_000));
+        assertNull(ExactSkillXp.overflow("farming", 60, 1e300));
+    }
+
+    @Test
+    void putsTheOverflowLevelBehindTheSkillName() {
+        Style aqua = Style.EMPTY.withColor(ChatFormatting.DARK_AQUA);
+        String gain = "+1,528.6 Combat (5,183,244/0)";
+        List<ExactSkillXp.Piece> pieces = List.of(new ExactSkillXp.Piece(aqua, gain));
+        int from = gain.indexOf(" (");
+        int to = gain.indexOf("/0") + 2;
+        Component out = ExactSkillXp.replace(pieces, from, to, " 60 (5,183,244/7,600,000");
+        assertEquals("+1,528.6 Combat 60 (5,183,244/7,600,000)", out.getString());
+    }
+
+    @Test
+    void anOverflowLevelUpIsOneLevelOnTheSameCap() {
+        // The first gain after a world change has nothing to compare with.
+        assertFalse(ExactSkillXp.leveledUp("combat", 60, 102));
+        assertFalse(ExactSkillXp.leveledUp("combat", 60, 102));
+        assertTrue(ExactSkillXp.leveledUp("combat", 60, 103));
+        // A jump of more than one level, or a changed cap, is another profile.
+        assertFalse(ExactSkillXp.leveledUp("combat", 60, 110));
+        assertFalse(ExactSkillXp.leveledUp("combat", 50, 111));
+        ExactSkillXp.reset();
+        assertFalse(ExactSkillXp.leveledUp("combat", 60, 112));
+    }
+
+    @Test
+    void theLevelUpMessageIsHypixels() {
+        List<String> lines = ExactSkillXp.levelUpLines("Combat", 102, 103);
+        assertEquals(3, lines.size());
+        assertEquals("§3§l" + "▬".repeat(64), lines.get(0));
+        assertEquals("  §r§b§lSKILL LEVEL UP §3Combat §8102➜§3103", lines.get(1));
+        assertEquals(lines.get(0), lines.get(2));
     }
 }

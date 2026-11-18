@@ -58,7 +58,8 @@ public class SkyblockUtils {
         }
 
         skyblockCheckedAtMs = now;
-        cachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        // A new reference only for a new level, not on every refresh.
+        if (level != cachedLevel) cachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
         cachedOnSkyblock = computeOnSkyblock();
         return cachedOnSkyblock;
     }
@@ -86,7 +87,8 @@ public class SkyblockUtils {
         }
 
         gardenCheckedAtMs = now;
-        gardenCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        // A new reference only for a new level, not on every refresh.
+        if (level != cachedLevel) gardenCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
         cachedOnGarden = computeOnGarden();
         return cachedOnGarden;
     }
@@ -128,7 +130,8 @@ public class SkyblockUtils {
         }
 
         endIslandCheckedAtMs = now;
-        endIslandCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        // A new reference only for a new level, not on every refresh.
+        if (level != cachedLevel) endIslandCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
         cachedOnEndIsland = computeOnEndIsland();
         return cachedOnEndIsland;
     }
@@ -198,7 +201,8 @@ public class SkyblockUtils {
 
     private static long sidebarReadAtMs = 0L;
     private static List<String> cachedSidebarLines = List.of();
-    private static Object cachedSidebarLevel = null;
+    /** Weak for the same reason as {@link #cachedForLevel}: it must not keep a left world alive. */
+    private static java.lang.ref.WeakReference<Object> cachedSidebarLevel = null;
 
     /**
      * The sidebar's lines with color codes stripped, title first, at most one scoreboard walk per
@@ -216,12 +220,16 @@ public class SkyblockUtils {
         Object level = mc.level;
 
         long now = System.currentTimeMillis();
-        if (level == cachedSidebarLevel && now - sidebarReadAtMs < SIDEBAR_CACHE_MS) {
+        Object cachedLevel = cachedSidebarLevel == null ? null : cachedSidebarLevel.get();
+        if (level == cachedLevel && now - sidebarReadAtMs < SIDEBAR_CACHE_MS) {
             return cachedSidebarLines;
         }
 
         sidebarReadAtMs = now;
-        cachedSidebarLevel = level;
+        // The remembered rows belong to the old world's scoreboard.
+        if (level != cachedLevel) SIDEBAR_ROWS.clear();
+        // A new reference only for a new level, not on every refresh.
+        if (level != cachedLevel) cachedSidebarLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
         cachedSidebarLines = readSidebarLines();
         return cachedSidebarLines;
     }
@@ -237,15 +245,48 @@ public class SkyblockUtils {
             if (objective == null) return List.of();
 
             List<String> lines = new ArrayList<>();
-            lines.add(cleanColor(objective.getDisplayName().getString()));
+            Component title = objective.getDisplayName();
+            if (title != sidebarTitle) {
+                sidebarTitle = title;
+                sidebarTitleText = cleanColor(title.getString());
+            }
+            lines.add(sidebarTitleText);
 
             for (PlayerScoreEntry entry : scoreboard.listPlayerScores(objective)) {
-                lines.add(cleanColor(lineText(scoreboard, entry)));
+                lines.add(cleanLine(scoreboard, entry));
             }
+            if (SIDEBAR_ROWS.size() > 256) SIDEBAR_ROWS.clear();
             return lines;
         } catch (Exception e) {
             return List.of();
         }
+    }
+
+    /**
+     * One row's text as it was last read, with the components it was read from. Hypixel sends a new
+     * component whenever it changes a row, so while all of them are the same objects the cleaned
+     * text is too; that saves three flattenings and a strip per row per tick in a slayer fight.
+     */
+    private record SidebarRow(Component prefix, Component display, Component suffix, String text) {}
+
+    private static final java.util.Map<String, SidebarRow> SIDEBAR_ROWS = new java.util.HashMap<>();
+    private static Component sidebarTitle;
+    private static String sidebarTitleText = "";
+
+    /** {@code cleanColor(lineText(...))}, reused while the row's components stay the same. */
+    private static String cleanLine(Scoreboard scoreboard, PlayerScoreEntry entry) {
+        PlayerTeam team = scoreboard.getPlayersTeam(entry.owner());
+        Component prefix = team != null ? team.getPlayerPrefix() : null;
+        Component suffix = team != null ? team.getPlayerSuffix() : null;
+        // The entry's own display; without one the name is the owner string, which is the key.
+        Component display = entry.display();
+        SidebarRow row = SIDEBAR_ROWS.get(entry.owner());
+        if (row != null && row.prefix() == prefix && row.display() == display && row.suffix() == suffix) {
+            return row.text();
+        }
+        String text = cleanColor(lineText(scoreboard, entry));
+        SIDEBAR_ROWS.put(entry.owner(), new SidebarRow(prefix, display, suffix, text));
+        return text;
     }
 
     /**
@@ -274,17 +315,39 @@ public class SkyblockUtils {
      */
     public static String cleanColor(String input) {
         if (input == null) return "";
-        return COLOR_PATTERN.matcher(input).replaceAll("").trim();
+        // Walked by hand rather than with a regex: this is reached per sidebar line, per chat line
+        // and per entity name from render hooks, and most of those strings carry no code at all -
+        // they now come back without a Matcher or a copy being made.
+        int first = input.indexOf('§');
+        if (first < 0) return input.trim();
+
+        int length = input.length();
+        StringBuilder out = new StringBuilder(length);
+        out.append(input, 0, first);
+        int i = first;
+        while (i < length) {
+            char c = input.charAt(i);
+            if (c == '§' && i + 1 < length) {
+                char next = input.charAt(i + 1);
+                // The same as the "§." this replaced: '.' takes any one code point but a line
+                // terminator, so a code character outside the BMP is dropped whole.
+                if (!isLineTerminator(next)) {
+                    boolean pair = Character.isHighSurrogate(next) && i + 2 < length
+                            && Character.isLowSurrogate(input.charAt(i + 2));
+                    i += pair ? 3 : 2;
+                    continue;
+                }
+            }
+            out.append(c);
+            i++;
+        }
+        return out.toString().trim();
     }
 
-    /**
-     * The formatting codes {@link #cleanColor} strips, compiled once.
-     *
-     * {@code String.replaceAll} compiles its pattern on every single call, which is invisible until
-     * the caller sits in a render hook - this one is reached per sidebar line and, through
-     * {@code DamageTagFeature}, per entity per frame.
-     */
-    private static final java.util.regex.Pattern COLOR_PATTERN = java.util.regex.Pattern.compile("§.");
+    /** The characters a regex '.' does not match without DOTALL. */
+    private static boolean isLineTerminator(char c) {
+        return c == '\n' || c == '\r' || c == '\u0085' || c == '\u2028' || c == '\u2029';
+    }
 
     /**
      * Whether {@code needle} appears in {@code text} once formatting codes are ignored, without
@@ -344,18 +407,24 @@ public class SkyblockUtils {
 
         Object connection = mc.player.connection;
         long now = System.currentTimeMillis();
-        if (connection == cachedTabConnection && now - tabReadAtMs < SIDEBAR_CACHE_MS) {
+        Object cachedConnection = cachedTabConnection == null ? null : cachedTabConnection.get();
+        if (connection == cachedConnection && now - tabReadAtMs < SIDEBAR_CACHE_MS) {
             return cachedTabLines;
         }
         tabReadAtMs = now;
-        cachedTabConnection = connection;
+        if (connection != cachedConnection) TAB_CLEAN.clear();
+        if (connection != cachedConnection) cachedTabConnection = new java.lang.ref.WeakReference<>(connection);
         cachedTabLines = readTabListLines(mc);
         return cachedTabLines;
     }
 
     private static long tabReadAtMs = 0L;
     private static List<String> cachedTabLines = List.of();
-    private static Object cachedTabConnection = null;
+    /** Weak: the connection holds the level and every entity in it, long after a disconnect. */
+    private static java.lang.ref.WeakReference<Object> cachedTabConnection = null;
+
+    /** The cleaned text of each tab line component seen lately; client thread only. */
+    private static final java.util.IdentityHashMap<Component, String> TAB_CLEAN = new java.util.IdentityHashMap<>();
 
     /** Builds the snapshot. Callers want {@link #getTabListLines()}, which shares one per tick. */
     private static List<String> readTabListLines(Minecraft mc) {
@@ -364,9 +433,18 @@ public class SkyblockUtils {
             for (var info : mc.player.connection.getListedOnlinePlayers()) {
                 Component name = info.getTabListDisplayName();
                 if (name == null) continue;
-                lines.add(cleanColor(name.getString()));
+                // A changed tab line is a new component, so the cleaned text is kept per object.
+                String text = TAB_CLEAN.get(name);
+                if (text == null) {
+                    text = cleanColor(name.getString());
+                    TAB_CLEAN.put(name, text);
+                }
+                lines.add(text);
             }
-            return List.copyOf(lines);
+            // Lines that changed leave their old component behind; past a bound the map starts over.
+            if (TAB_CLEAN.size() > 4 * lines.size() + 64) TAB_CLEAN.clear();
+            // A read-only view rather than a copy; nothing else holds the list.
+            return java.util.Collections.unmodifiableList(lines);
         } catch (Exception ignored) {
             return List.of();
         }

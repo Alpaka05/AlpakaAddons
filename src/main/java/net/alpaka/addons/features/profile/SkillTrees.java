@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  *
  * The layouts come from the NEU repository ({@code constants/hotmlayout.json} and
  * {@code hotflayout.json}), which every perk's place, name and top level is kept up to date in;
- * their ids are the ones Elite reports the profile's levels under.
+ * their ids are the ones Hypixel keeps the profile's levels under.
  */
 final class SkillTrees {
     private SkillTrees() {}

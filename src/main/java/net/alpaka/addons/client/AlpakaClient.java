@@ -29,6 +29,11 @@ public class AlpakaClient implements ClientModInitializer {
         // see AlpakaConfigRegistry.clampStoredValues for why not here.
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED.register(
                 client -> net.alpaka.addons.client.gui.AlpakaConfigRegistry.clampStoredValues());
+        net.alpaka.addons.features.profile.PlayerNameSuggestions.register();
+        // A player who used the Profile Dashboard before gets its login renewed in the background,
+        // so the first opening doesn't wait for it.
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED.register(
+                client -> net.alpaka.addons.features.profile.ProfileApi.warmUpLogin());
         net.alpaka.addons.config.AlpakaStats.load();
         net.alpaka.addons.AlpakaAddons.LOGGER.info("Alpaka Addons {} loaded", net.alpaka.addons.utils.ModVersion.mod());
         // Has to run here, before the game first scans its resource packs, so the cached server
@@ -144,11 +149,13 @@ public class AlpakaClient implements ClientModInitializer {
                 })
             );
 
-            // The Profile Dashboard: the player's own profile, or another player's by name.
-            for (String alias : new String[]{"alpakaprofile", "aprofile", "ad"}) {
+            // The Profile Dashboard: the player's own profile, or another player's by name, which Tab
+            // completes from the lobby, friends and party as Hypixel's own commands do.
+            for (String alias : new String[]{"alpakaprofile", "alpakadashboard", "aprofile", "ad"}) {
                 dispatcher.register(ClientCommands.literal(alias)
                     .executes(context -> openProfile(null))
                     .then(ClientCommands.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())
+                        .suggests(net.alpaka.addons.features.profile.PlayerNameSuggestions::suggest)
                         .executes(context -> openProfile(
                                 com.mojang.brigadier.arguments.StringArgumentType.getString(context, "player"))))
                 );

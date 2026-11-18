@@ -314,50 +314,6 @@ public final class AlpakaStyle {
         ModernGuiUtils.drawRect(graphics, cx + 1, cy - 1, 1, 4, color);
     }
 
-    /** A globe drawn in pixels, row by row, for {@link #globeButton}. */
-    private static final String[] GLOBE = {
-        "...#####...",
-        "..#..#..#..",
-        ".#..#.#..#.",
-        "#...#.#...#",
-        "#...#.#...#",
-        "###########",
-        "#...#.#...#",
-        "#...#.#...#",
-        ".#..#.#..#.",
-        "..#..#..#..",
-        "...#####...",
-    };
-
-    /**
-     * A web button: a small globe in the same thin lines as {@link #trashButton}, gray until
-     * hovered, then in the accent color on a soft square.
-     */
-    public static void globeButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
-        globeButton(graphics, x, y, size, hover, 1.0f);
-    }
-
-    /** The web button at a share of its opacity, for one that fades in or out. */
-    public static void globeButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover, float alpha) {
-        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, fade(ROW_SELECTED, alpha));
-        int color = fade(hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED, alpha);
-        int ox = x + (size - GLOBE[0].length()) / 2;
-        int oy = y + (size - GLOBE.length) / 2;
-        for (int row = 0; row < GLOBE.length; row++) {
-            String line = GLOBE[row];
-            int col = 0;
-            while (col < line.length()) {
-                if (line.charAt(col) != '#') {
-                    col++;
-                    continue;
-                }
-                int start = col;
-                while (col < line.length() && line.charAt(col) == '#') col++;
-                ModernGuiUtils.drawRect(graphics, ox + start, oy + row, col - start, 1, color);
-            }
-        }
-    }
-
     /** The color at a share of its alpha. */
     public static int fade(int color, float alpha) {
         if (alpha >= 1.0f) return color;

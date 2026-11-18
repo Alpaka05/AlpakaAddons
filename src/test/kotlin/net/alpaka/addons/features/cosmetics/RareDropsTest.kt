@@ -30,6 +30,16 @@ class RareDropsTest {
     }
 
     @Test
+    fun slayerBookWithOddMagicFind() {
+        // As Hypixel sent it in a Blaze fight: no percent sign, and a star the old pattern missed.
+        for (star in listOf("✯", "★", "✫", "")) {
+            val found = parse("CRAZY RARE DROP!  (Smoldering VI) (+109$star Magic Find)")!!
+            assertEquals("Smoldering VI", found.name)
+        }
+        assertEquals("ENCHANTMENT_SMOLDERING_6", RareDrops.bookId("Smoldering VI"))
+    }
+
+    @Test
     fun mobDropWithAmountAndRune() {
         assertEquals("Summoning Eye", parse("RARE DROP! Summoning Eye (+155% ✯ Magic Find)")!!.name)
         assertEquals("Enchanted Diamond", parse("RARE DROP! (2x Enchanted Diamond)")!!.name)
@@ -75,10 +85,13 @@ class RareDropsTest {
 
     @Test
     fun bookAndPetIds() {
-        assertEquals("ENCHANTMENT_ULTIMATE_CHIMERA_1", RareDrops.bookId("Enchanted Book (Chimera I)", ultimate = true))
-        assertEquals("ENCHANTMENT_ENDER_SLAYER_6", RareDrops.bookId("Enchanted Book (Ender Slayer VI)", ultimate = false))
-        assertEquals("ENCHANTMENT_SMITE_4", RareDrops.bookId("Enchanted Book (Smite IV)", ultimate = false))
-        assertNull(RareDrops.bookId("Necron's Handle", ultimate = false))
+        assertEquals("ENCHANTMENT_ULTIMATE_CHIMERA_1", RareDrops.bookId("Enchanted Book (Chimera I)"))
+        assertEquals("ENCHANTMENT_ENDER_SLAYER_6", RareDrops.bookId("Enchanted Book (Ender Slayer VI)"))
+        assertEquals("ENCHANTMENT_SMITE_4", RareDrops.bookId("Smite IV"))
+        assertEquals("ENCHANTMENT_ULTIMATE_JERRY_5", RareDrops.bookId("Ultimate Jerry V"))
+        assertEquals("ENCHANTMENT_ULTIMATE_SOUL_EATER_1", RareDrops.bookId("Soul Eater I"))
+        assertNull(RareDrops.bookId("Bite Rune I"))
+        assertNull(RareDrops.bookId("Necron's Handle"))
         assertEquals("ENDER_DRAGON;4", RareDrops.petId("Ender Dragon", 4))
         assertEquals("DYE_PURE_BLACK", RareDrops.dyeId("Pure Black Dye"))
         assertEquals("DYE_NECRON", RareDrops.dyeId("Necron Dye"))

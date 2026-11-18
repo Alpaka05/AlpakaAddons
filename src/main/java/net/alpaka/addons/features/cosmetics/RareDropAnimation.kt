@@ -231,6 +231,7 @@ object RareDropAnimation {
         Sample(Kind.DYE, "RARE DYE!", "Necron Dye", 0xFFAA00, null),
         Sample(Kind.DUNGEON, "RARE REWARD!", "Necron's Handle", 0xAA00AA, null),
         Sample(Kind.PET, "PET DROP!", "Ender Dragon", 0xFFAA00, null),
+        Sample(Kind.DROP, "CRAZY RARE DROP!", "Smoldering VI", 0x5555FF, null),
         Sample(Kind.DROP, "INSANE DROP!", "High Class Archfiend Dice", 0xFFAA00, SlayerType.BLAZE),
     )
 
@@ -280,10 +281,7 @@ object RareDropAnimation {
             val rarity = RARITY_COLORS.indexOf(color ?: return null)
             return if (rarity < 0) null else RareDrops.petId(name, rarity)
         }
-        RareDrops.bookId(name, ultimate = true)?.let { ultimate ->
-            return if (ItemPrices.bazaar(ultimate) != null) ultimate else RareDrops.bookId(name, ultimate = false)
-        }
-        return idByName(name) ?: RareDrops.dyeId(name)
+        return RareDrops.bookId(name) ?: idByName(name) ?: RareDrops.dyeId(name)
     }
 
     /** Every SkyBlock item's id by its name in lower case, built once Hypixel's item list is in. */
@@ -320,8 +318,11 @@ object RareDropAnimation {
             }
         }
         val done = drop.id != null && !drop.stack.isEmpty && (drop.price != null || !cfg.rareDropAnimationPrice)
+        // A name no list knows will not turn up later: show the stand-in now rather than an empty
+        // middle for the whole wait.
+        val unknown = drop.id == null && drop.stack.isEmpty && ItemIcons.skyblockItems() != null
         // Without Network Features nothing more will come: settle on the first look.
-        if (done || t > RESOLVE_SECONDS || !cfg.allowApiCalls) {
+        if (done || unknown || t > RESOLVE_SECONDS || !cfg.allowApiCalls) {
             if (drop.stack.isEmpty) drop.stack = ItemStack(Items.NETHER_STAR)
             drop.resolved = true
         }

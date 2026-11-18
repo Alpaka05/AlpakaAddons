@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.cosmetics
 
+import net.alpaka.addons.features.enchantments.Enchants
 import java.util.Locale
 
 /**
@@ -7,7 +8,8 @@ import java.util.Locale
  * the color codes already stripped; nothing here touches the game, so it is tested on its own.
  *
  * - A drop from a mob or a slayer boss: "CRAZY RARE DROP! Ender Slayer VI (+120% ✯ Magic Find)",
- *   a slayer's with the item in brackets, "VERY RARE DROP!  (Judgement Core) (+305% ✯ Magic Find)",
+ *   a slayer's with the item in brackets, "VERY RARE DROP!  (Judgement Core) (+305% ✯ Magic Find)"
+ *   or "CRAZY RARE DROP!  (Smoldering VI) (+109✯ Magic Find)" for a book,
  *   and pets: "PET DROP! Ender Dragon (+120% ✯ Magic Find)".
  * - A dye, which Hypixel announces to the whole lobby: "WOW! [MVP+] Name found a Necron Dye #1,234!".
  *   Only the player's own counts.
@@ -25,7 +27,13 @@ object RareDrops {
     data class Found(val kind: Kind, val heading: String, val name: String, val nameStart: Int)
 
     private val DROP = Regex("""^\s*(RARE|VERY RARE|CRAZY RARE|INSANE|PRAY TO RNGESUS|PET) DROP!\s+(.+?)\s*$""")
-    private val MAGIC_FIND = Regex("""\s*\(?\+[\d,.]+%?\s*✯?\s*Magic Find\)?\s*$""")
+    /**
+     * The Magic Find after a drop. Its star is not always the same character, and the percent sign
+     * is sometimes left out ("(+109✯ Magic Find)"), so any one symbol is taken there.
+     */
+    private val MAGIC_FIND = Regex("""\s*\(?\+[\d,.]+%?\s*[^\w\s()]?\s*Magic Find\)?\s*$""")
+    private val WRAPPED_BOOK = Regex("""^Enchanted Book \((.+)\)$""")
+    private val LEVELLED = Regex("""^(.+) ([IVXL]+)$""")
     private val AMOUNT = Regex("""^(?:\d+x\s+)?(?:◆\s*)?(?:\[Lvl \d+]\s+)?""")
     private val DYE = Regex("""^\s*WOW! (?:\[[A-Z+]+] )?([A-Za-z0-9_]+) found (?:a|an) ([A-Za-z' ]+ Dye)(?: #[\d,]+)?!\s*$""")
     private val CHEST = Regex("""^\s{2,}(RARE REWARD!\s+)?([^:]+?)\s*$""")
@@ -75,14 +83,21 @@ object RareDrops {
         found.kind == Kind.PET
 
     /**
-     * The market id of an enchanted book drop, "Enchanted Book (Chimera I)", as the Bazaar lists it:
-     * ENCHANTMENT_CHIMERA_1; [ultimate] for the ENCHANTMENT_ULTIMATE_ form. Null for anything else.
+     * The market id of an enchanted book drop, as the Bazaar lists it: ENCHANTMENT_SMOLDERING_6 for
+     * "Smoldering VI", the way a slayer drop names it, or ENCHANTMENT_ULTIMATE_CHIMERA_1 for
+     * "Enchanted Book (Chimera I)". A bare name counts only when it is a known enchantment, so that
+     * "Bite Rune I" stays a rune. Null for anything else.
      */
-    fun bookId(name: String, ultimate: Boolean): String? {
-        val m = Regex("""^Enchanted Book \((.+) ([IVXL]+)\)$""").matchEntire(name) ?: return null
+    fun bookId(name: String): String? {
+        val wrapped = WRAPPED_BOOK.matchEntire(name)
+        val m = LEVELLED.matchEntire(wrapped?.groupValues?.get(1) ?: name) ?: return null
+        val enchant = m.groupValues[1]
+        if (wrapped == null && !Enchants.isKnown(enchant)) return null
         val level = roman(m.groupValues[2]).takeIf { it > 0 } ?: return null
-        val enchant = m.groupValues[1].uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]+"), "_").trim('_')
-        return "ENCHANTMENT_" + (if (ultimate) "ULTIMATE_" else "") + enchant + "_" + level
+        val ultimate = Enchants.isUltimate(enchant)
+        val key = enchant.removePrefix(if (ultimate) "Ultimate " else "")
+            .uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]+"), "_").trim('_')
+        return "ENCHANTMENT_" + (if (ultimate) "ULTIMATE_" else "") + key + "_" + level
     }
 
     /**

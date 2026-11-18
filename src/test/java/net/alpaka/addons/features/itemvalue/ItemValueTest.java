@@ -305,4 +305,15 @@ class ItemValueTest {
         assertTrue(ItemValue.of(json("{\"id\":\"X\",\"modifier\":\"heroic\"}"), prices, new Listing()).parts().stream()
                 .noneMatch(p -> p.group() == Group.REFORGE));
     }
+
+    @Test
+    void aFishingRodCountsItsHookLineAndSinker() {
+        Table prices = new Table().ah("HOTSPOT_HOOK", 5_000_000).ah("TITAN_LINE", 20_000_000).ah("HOTSPOT_SINKER", 3_000_000);
+        Breakdown b = ItemValue.of(json("{\"id\":\"ROD\",\"hook\":{\"part\":\"hotspot_hook\"},"
+                + "\"line\":{\"part\":\"titan_line\"},\"sinker\":{\"part\":\"hotspot_sinker\"}}"), prices, new Listing());
+        assertEquals(Group.ROD_PARTS, partById(b, "TITAN_LINE").group());
+        assertNotNull(partById(b, "HOTSPOT_HOOK"));
+        assertNotNull(partById(b, "HOTSPOT_SINKER"));
+        assertEquals(28_000_000, b.total(Group.ROD_PARTS));
+    }
 }

@@ -35,6 +35,7 @@ public final class ItemValue {
         ENCHANTMENTS("Enchantments"),
         GEMSTONES("Gemstones"),
         UPGRADES("Upgrades"),
+        ROD_PARTS("Rod Parts"),
         REFORGE("Reforge"),
         COSMETICS("Cosmetics");
 
@@ -242,6 +243,9 @@ public final class ItemValue {
     private static final String[] NAMED = {"power_ability_scroll", "drill_part_engine", "drill_part_fuel_tank",
             "drill_part_upgrade_module"};
 
+    /** Where a fishing rod keeps its hook, line and sinker. */
+    private static final String[] ROD_PART_SLOTS = {"hook", "line", "sinker"};
+
     // ---- The breakdown --------------------------------------------------------------------------
 
     /** The item with this SkyBlock data, part by part. */
@@ -259,6 +263,7 @@ public final class ItemValue {
         enchantments(b, data, id, upgrades);
         gemstones(b, data, upgrades);
         upgrades(b, data);
+        rodParts(b, data);
         reforge(b, data);
         cosmetics(b, data, id);
         return new Breakdown(List.copyOf(b.parts));
@@ -482,6 +487,20 @@ public final class ItemValue {
         String enrichment = string(data, "talisman_enrichment");
         if (!enrichment.isEmpty()) {
             b.item(Group.UPGRADES, "TALISMAN_ENRICHMENT_" + enrichment.toUpperCase(Locale.ROOT), 1, null, null);
+        }
+    }
+
+    /**
+     * The hook, line and sinker on a fishing rod. Each is kept as an object whose "part" is the
+     * part's id in lower case, "titan_line"; they come off the rod again, so they keep their price.
+     */
+    private static void rodParts(Builder b, JsonObject data) {
+        for (String slot : ROD_PART_SLOTS) {
+            JsonElement value = data.get(slot);
+            String part = value == null ? ""
+                    : value.isJsonObject() ? string(value.getAsJsonObject(), "part")
+                    : value.isJsonPrimitive() ? value.getAsString() : "";
+            if (!part.isEmpty()) b.item(Group.ROD_PARTS, part.toUpperCase(Locale.ROOT), 1, null, null);
         }
     }
 

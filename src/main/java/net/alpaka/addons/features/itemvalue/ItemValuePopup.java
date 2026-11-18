@@ -86,6 +86,7 @@ public final class ItemValuePopup {
             case ENCHANTMENTS -> 0xFFC264F2;
             case GEMSTONES -> 0xFF5CE1F0;
             case UPGRADES -> 0xFF5BE38A;
+            case DRILL_PARTS, ROD_PARTS -> 0xFFF2D857;
             case REFORGE -> 0xFF6E8BFF;
             case COSMETICS -> 0xFFFF73E3;
         };

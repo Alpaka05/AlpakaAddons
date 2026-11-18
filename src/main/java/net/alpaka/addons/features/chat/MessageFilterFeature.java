@@ -62,7 +62,12 @@ public final class MessageFilterFeature {
          * "New buff: -20% Pickaxe Ability cooldowns." - only hidden right after a {@link #SKY_MALL}
          * line, since the wording alone is too plain to be sure it is the Sky Mall's.
          */
-        SKY_MALL_BUFF
+        SKY_MALL_BUFF,
+        /**
+         * The lines Hypixel prints while moving the player between servers: "Warping...",
+         * "Warping you to the hub island..." and "Sending to server mini182CP...".
+         */
+        SERVER_TRANSFER
     }
 
     /** The groups of dungeon chatter, as SkyHanni splits them; each has its own switch. */
@@ -139,6 +144,10 @@ public final class MessageFilterFeature {
             "^New day! Your Sky Mall buff changed!$"
                     + "|^You can disable this messaging by toggling Sky Mall in your /hotm!$");
     private static final Pattern SKY_MALL_BUFF = Pattern.compile("^New buff: .+$");
+
+    /** "Warping...", "Warping you to your SkyBlock island...", "Sending to server mini182CP...". */
+    private static final Pattern SERVER_TRANSFER = Pattern.compile(
+            "^Warping\\.\\.\\.$|^Warping you to [^:]+\\.\\.\\.$|^Sending to server [A-Za-z0-9]+\\.\\.\\.$");
 
     /**
      * A player's name, maybe with a rank in front. Free parts at the start of a dungeon pattern are
@@ -321,6 +330,7 @@ public final class MessageFilterFeature {
         if (SKY_MALL.matcher(text).matches()) return Kind.SKY_MALL;
         if (SKY_MALL_BUFF.matcher(text).matches()) return Kind.SKY_MALL_BUFF;
         if (isSkyMallBlock(text)) return Kind.SKY_MALL;
+        if (SERVER_TRANSFER.matcher(text).matches()) return Kind.SERVER_TRANSFER;
         return null;
     }
 
@@ -383,6 +393,7 @@ public final class MessageFilterFeature {
             case EVENT_REWARDS -> config.messageFilterEventRewards;
             case SACKS -> config.messageFilterSacks;
             case SKY_MALL, SKY_MALL_BUFF -> config.messageFilterSkyMall;
+            case SERVER_TRANSFER -> config.messageFilterServerTransfer;
         };
     }
 

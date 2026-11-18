@@ -54,6 +54,11 @@ class MessageFilterFeatureTest {
             "New day! Your Sky Mall buff changed!                                   | SKY_MALL",
             "You can disable this messaging by toggling Sky Mall in your /hotm!     | SKY_MALL",
             "New buff: -20% Pickaxe Ability cooldowns.                              | SKY_MALL_BUFF",
+            "Warping...                                                             | SERVER_TRANSFER",
+            "Warping you to the hub island...                                       | SERVER_TRANSFER",
+            "Warping you to your SkyBlock island...                                 | SERVER_TRANSFER",
+            "Sending to server mini182CP...                                         | SERVER_TRANSFER",
+            "Sending to server mini17BH...                                          | SERVER_TRANSFER",
     })
     void recognizesSpam(String text, Kind kind) {
         assertEquals(kind, MessageFilterFeature.classify(text.strip()));
@@ -72,6 +77,8 @@ class MessageFilterFeatureTest {
             "[MVP+] Someone: [Sacks] +11 items. (Last 7s.)",
             "[MVP+] Someone: New day! Your Sky Mall buff changed!",
             "Party > Someone: New buff: -20% Pickaxe Ability cooldowns.",
+            "[MVP+] Someone: Warping...",
+            "Party > Someone: Sending to server mini182CP...",
     })
     void leavesOtherLinesAlone(String text) {
         assertNull(MessageFilterFeature.classify(text));

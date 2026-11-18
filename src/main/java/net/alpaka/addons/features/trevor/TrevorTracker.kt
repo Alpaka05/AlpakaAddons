@@ -33,33 +33,35 @@ import kotlin.math.sqrt
 /**
  * Trevor Helper: follows Trevor the Trapper's tasks on the Farming Islands.
  *
- * Counts the animals hunted, by kind, the pelts they gave and how long each hunt took, and keeps
- * that across sessions in its own file. Times the wait until Trevor hands out the next task, and
- * marks the hunted animal with a waypoint while the player can see it.
+ * Counts the animals hunted by rarity (Trackable to Elusive, from Trevor's line when the task is
+ * taken), the pelts they gave and how long each hunt took, and keeps that across sessions in its
+ * own file. Times the wait until Trevor hands out the next task, and marks the hunted animal with a
+ * waypoint while the player can see it.
  *
- * Hypixel does not say in chat which kind of animal a task is about. The kind is taken from the
- * animal the helper found: one of the six kinds, with the health Hypixel gives the trapper's
- * animals, in the player's line of sight. Only an animal the player can see is ever looked at or
- * marked, never one behind a wall (the same rule as Starred Mobs Highlight).
+ * The hunted animal is told by its kind (one of the six farm animals) and the health Hypixel gives
+ * the trapper's animals, and only among those in the player's line of sight: one behind a wall is
+ * never looked at or marked (the same rule as Starred Mobs Highlight).
  */
 object TrevorTracker {
 
-    /** The kinds of animal Trevor sends the player after, in the order the HUD lists them. */
-    enum class Animal(val title: String) {
-        COW("Cow"), PIG("Pig"), SHEEP("Sheep"), CHICKEN("Chicken"), RABBIT("Rabbit"), HORSE("Horse"), UNKNOWN("Unknown");
+    /** The rarities Trevor names when he hands out a task, in the order the HUD lists them, in his colors. */
+    enum class Rarity(val title: String, val color: Int) {
+        TRACKABLE("Trackable", 0xFFFFFFFF.toInt()),
+        UNTRACKABLE("Untrackable", 0xFF55FF55.toInt()),
+        UNDETECTED("Undetected", 0xFF5555FF.toInt()),
+        ENDANGERED("Endangered", 0xFFAA00AA.toInt()),
+        ELUSIVE("Elusive", 0xFFFF55FF.toInt()),
+        UNKNOWN("Unknown", 0xFFAAAAAA.toInt());
 
         companion object {
-            fun of(entity: LivingEntity): Animal? = when (entity) {
-                is Cow -> COW
-                is Pig -> PIG
-                is Sheep -> SHEEP
-                is Chicken -> CHICKEN
-                is Rabbit -> RABBIT
-                is Horse -> HORSE
-                else -> null
-            }
+            fun of(name: String?): Rarity =
+                entries.firstOrNull { it != UNKNOWN && it.title.equals(name, ignoreCase = true) } ?: UNKNOWN
         }
     }
+
+    /** Whether an entity is one of the six farm animals Trevor sends the player after. */
+    private fun isTrapperKind(entity: LivingEntity): Boolean =
+        entity is Cow || entity is Pig || entity is Sheep || entity is Chicken || entity is Rabbit || entity is Horse
 
     /** Wait after taking a task before Trevor gives the next one (what SkyHanni uses). */
     const val COOLDOWN_MS = 20_000L
@@ -77,7 +79,8 @@ object TrevorTracker {
 
     /** Saved record. */
     class Stats {
-        var kills: MutableMap<String, Int> = HashMap()
+        /** Animals hunted, by [Rarity] name. */
+        var rarities: MutableMap<String, Int> = HashMap()
         var pelts: Long = 0L
         var huntMsTotal: Long = 0L
         var timedHunts: Int = 0
@@ -99,8 +102,6 @@ object TrevorTracker {
 
     // The animal found for it.
     private var targetId = -1
-    @JvmStatic var targetKind: Animal? = null
-        private set
     /** Whether the target is in sight this tick; only then is its waypoint drawn. */
     private var targetVisible = false
     private var scanIn = 0
@@ -143,8 +144,7 @@ object TrevorTracker {
                 readyAlertDue = false
             }
             is TrevorParse.Killed -> {
-                val kind = targetKind ?: Animal.UNKNOWN
-                stats.kills.merge(kind.name, 1, Int::plus)
+                stats.rarities.merge(Rarity.of(rarity).name, 1, Int::plus)
                 stats.pelts += event.pelts
                 if (huntActive && now - acceptedAtMs in 1..HUNT_MS) {
                     stats.huntMsTotal += now - acceptedAtMs
@@ -167,7 +167,6 @@ object TrevorTracker {
 
     private fun clearTarget() {
         targetId = -1
-        targetKind = null
         targetVisible = false
     }
 
@@ -193,10 +192,10 @@ object TrevorTracker {
     fun averageHuntMs(): Long? = if (stats.timedHunts > 0) stats.huntMsTotal / stats.timedHunts else null
 
     @JvmStatic
-    fun totalKills(): Int = stats.kills.values.sum()
+    fun totalKills(): Int = Rarity.entries.sumOf { kills(it) }
 
     @JvmStatic
-    fun kills(kind: Animal): Int = stats.kills[kind.name] ?: 0
+    fun kills(rarity: Rarity): Int = stats.rarities[rarity.name] ?: 0
 
     private fun tick(mc: Minecraft) {
         val level = mc.level
@@ -239,7 +238,7 @@ object TrevorTracker {
         var best: LivingEntity? = null
         var bestDistance = MAX_DISTANCE * MAX_DISTANCE
         for (entity in level.entitiesForRendering()) {
-            if (entity !is LivingEntity || Animal.of(entity) == null) continue
+            if (entity !is LivingEntity || !isTrapperKind(entity)) continue
             if (!entity.isAlive || entity.isInvisible) continue
             if (!TrevorParse.isAnimalHealth(entity.maxHealth)) continue
             val distance = player.distanceToSqr(entity)
@@ -250,7 +249,6 @@ object TrevorTracker {
         }
         val found = best ?: return
         targetId = found.id
-        targetKind = Animal.of(found)
         targetVisible = true
     }
 
@@ -296,7 +294,7 @@ object TrevorTracker {
     @JvmStatic
     fun hasGizmos(): Boolean = isEnabled() && AlpakaConfig.instance.trevorWaypoint && huntActive && targetVisible
 
-    /** A box around the animal, a beam above it and its kind and distance, while it is in sight. */
+    /** A box around the animal, a beam above it and its rarity and distance, while it is in sight. */
     @JvmStatic
     fun collectGizmos() {
         val mc = Minecraft.getInstance()
@@ -313,7 +311,7 @@ object TrevorTracker {
         Gizmos.line(top, top.add(0.0, BEAM_HEIGHT, 0.0), ARGB.color(0x80, color), 6.0f).setAlwaysOnTop()
 
         val distance = sqrt(camera.position().distanceToSqr(pos))
-        val label = (targetKind?.title ?: "Animal") + String.format(Locale.ROOT, " %.0fm", distance)
+        val label = (rarity ?: "Animal") + String.format(Locale.ROOT, " %.0fm", distance)
         val scale = TextGizmo.Style.DEFAULT_SCALE * (distance / 8.0).coerceIn(1.0, 25.0).toFloat()
         Gizmos.billboardText(label, top.add(0.0, 0.8, 0.0), TextGizmo.Style.forColorAndCentered(color).withScale(scale))
             .setAlwaysOnTop()
@@ -327,7 +325,7 @@ object TrevorTracker {
             if (!f.exists()) return
             val loaded = GSON.fromJson(AtomicJsonFile.read(f), Stats::class.java) ?: return
             @Suppress("SENSELESS_COMPARISON")
-            if (loaded.kills == null) loaded.kills = HashMap()
+            if (loaded.rarities == null) loaded.rarities = HashMap()
             stats = loaded
         } catch (e: Exception) {
             AlpakaAddons.LOGGER.warn("Could not read the Trevor tracker", e)
@@ -359,9 +357,5 @@ object TrevorTracker {
         nextTaskAtMs = 0L
         clearTarget()
         readyAlertDue = false
-    }
-
-    internal fun setTargetForTest(kind: Animal?) {
-        targetKind = kind
     }
 }

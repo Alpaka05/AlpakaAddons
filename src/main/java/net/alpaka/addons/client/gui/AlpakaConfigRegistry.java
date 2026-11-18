@@ -2787,14 +2787,14 @@ public class AlpakaConfigRegistry {
                 "exact skill xp overflow level up message chat announce notification sound max maxed"));
 
         OPTIONS.add(new ConfigOption("trevor_helper", "Trevor Helper",
-                "For Trevor the Trapper's tasks: a HUD with the hunt in progress, the wait for the next task, your pelts, the average time per animal and the animals hunted by kind, and a waypoint on the hunted animal while you can see it. Move the HUD in the HUD editor.",
+                "For Trevor the Trapper's tasks: a HUD with the hunt in progress, the wait for the next task, your pelts, the average time per animal and the animals hunted by rarity (Trackable to Elusive), and a waypoint on the hunted animal while you can see it. Move the HUD in the HUD editor.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.trevorHelperEnabled,
                 v -> { AlpakaConfig.instance.trevorHelperEnabled = v; AlpakaConfig.save(); },
-                "trevor trapper helper pelts animal hunt tracker cow pig sheep chicken rabbit horse mushroom desert farming islands cooldown timer waypoint hud"));
+                "trevor trapper helper pelts animal hunt tracker trackable untrackable undetected endangered elusive rarity mushroom desert farming islands cooldown timer waypoint hud"));
 
         OPTIONS.add(new ConfigOption("trevor_waypoint", "Waypoint",
-                "Marks the hunted animal with a box, a beam and its distance while it is in your line of sight.",
+                "Marks the hunted animal with a box, a beam, its rarity and distance while it is in your line of sight.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.trevorWaypoint,
                 v -> { AlpakaConfig.instance.trevorWaypoint = v; AlpakaConfig.save(); },

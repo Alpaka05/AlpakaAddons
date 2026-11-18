@@ -57,25 +57,27 @@ class TrevorTrackerTest {
     }
 
     @Test
-    fun countsHuntsByKindWithPeltsAndTime() {
+    fun countsHuntsByRarityWithPeltsAndTime() {
         TrevorTracker.onEvent(TrevorParse.Accepted("Trackable", "Oasis"), 1_000L)
         assertTrue(TrevorTracker.huntActive)
         assertEquals(20_000L, TrevorTracker.nextTaskInMs(1_000L))
-        TrevorTracker.setTargetForTest(TrevorTracker.Animal.COW)
         TrevorTracker.onEvent(TrevorParse.Killed(4, false), 61_000L)
 
         assertFalse(TrevorTracker.huntActive)
-        assertEquals(1, TrevorTracker.kills(TrevorTracker.Animal.COW))
+        assertEquals(1, TrevorTracker.kills(TrevorTracker.Rarity.TRACKABLE))
         assertEquals(4L, TrevorTracker.stats.pelts)
         assertEquals(60_000L, TrevorTracker.averageHuntMs())
         assertEquals(0L, TrevorTracker.nextTaskInMs(61_000L))
 
-        // An animal never seen still counts, as Unknown.
         TrevorTracker.onEvent(TrevorParse.Accepted("Elusive", "Desert Mountain"), 100_000L)
         TrevorTracker.onEvent(TrevorParse.Killed(2, true), 220_000L)
-        assertEquals(1, TrevorTracker.kills(TrevorTracker.Animal.UNKNOWN))
+        assertEquals(1, TrevorTracker.kills(TrevorTracker.Rarity.ELUSIVE))
         assertEquals(2, TrevorTracker.totalKills())
         assertEquals(90_000L, TrevorTracker.averageHuntMs())
+
+        // A kill with no task seen (taken before joining) counts as Unknown.
+        TrevorTracker.onEvent(TrevorParse.Killed(1, false), 300_000L)
+        assertEquals(1, TrevorTracker.kills(TrevorTracker.Rarity.UNKNOWN))
     }
 
     @Test

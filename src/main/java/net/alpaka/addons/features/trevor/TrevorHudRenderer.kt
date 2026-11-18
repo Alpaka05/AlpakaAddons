@@ -14,7 +14,7 @@ import kotlin.math.ceil
 
 /**
  * Draws the Trevor Helper HUD on the Farming Islands: the task in progress and the wait for the
- * next one, then the pelts, the average hunt and the animals hunted by kind. Laid out like the
+ * next one, then the pelts, the average hunt and the animals hunted by rarity. Laid out like the
  * Farming HUD, label and value per row, and rebuilt a few times a second rather than every frame.
  */
 object TrevorHudRenderer {
@@ -98,20 +98,16 @@ object TrevorHudRenderer {
 
         // The task.
         if (preview) {
-            rows.add(Line("Hunt", "Cow · Trackable · 34m", COLOR_VALUE))
+            rows.add(Line("Hunt", "Elusive · 34m", TrevorTracker.Rarity.ELUSIVE.color))
             rows.add(Line("Time Left", "8m 12s", COLOR_VALUE))
             rows.add(Line("Next Task", "12s", COLOR_WARN))
         } else {
             if (TrevorTracker.huntActive) {
+                // The area until the animal is in sight, then how far away it is.
                 val distance = TrevorTracker.targetDistance()
-                val kind = TrevorTracker.targetKind
-                val hunt = when {
-                    kind != null && distance != null ->
-                        "${kind.title} · ${TrevorTracker.rarity} · ${String.format(Locale.ROOT, "%.0fm", distance)}"
-                    kind != null -> "${kind.title} · ${TrevorTracker.rarity}"
-                    else -> "${TrevorTracker.rarity} · ${TrevorTracker.location}"
-                }
-                rows.add(Line("Hunt", hunt, COLOR_VALUE))
+                val where = distance?.let { String.format(Locale.ROOT, "%.0fm", it) } ?: TrevorTracker.location
+                val rarity = TrevorTracker.Rarity.of(TrevorTracker.rarity)
+                rows.add(Line("Hunt", "${TrevorTracker.rarity} · $where", rarity.color))
                 rows.add(Line("Time Left", TrevorParse.formatDuration(TrevorTracker.huntLeftMs(now)), COLOR_VALUE))
             }
             val wait = TrevorTracker.nextTaskInMs(now)
@@ -134,27 +130,26 @@ object TrevorHudRenderer {
         val average = if (preview) 83_000L else TrevorTracker.averageHuntMs()
         rows.add(Line("Avg Time", average?.let { TrevorParse.formatDuration(it) } ?: "-", COLOR_VALUE))
 
-        // Animals by kind; only the kinds hunted so far.
+        // Animals by rarity, each in Hypixel's color for it; Unknown only once something counted there.
         var first = true
-        for (kind in TrevorTracker.Animal.entries) {
-            val count = if (preview) previewCount(kind) else TrevorTracker.kills(kind)
-            if (count <= 0) continue
-            rows.add(Line(kind.title, formatNumber(count.toLong()), COLOR_VALUE, gapAbove = first))
+        for (rarity in TrevorTracker.Rarity.entries) {
+            val count = if (preview) previewCount(rarity) else TrevorTracker.kills(rarity)
+            if (rarity == TrevorTracker.Rarity.UNKNOWN && count <= 0) continue
+            rows.add(Line(rarity.title, formatNumber(count.toLong()), rarity.color, gapAbove = first))
             first = false
         }
-        val total = if (preview) TrevorTracker.Animal.entries.sumOf { previewCount(it) } else TrevorTracker.totalKills()
+        val total = if (preview) TrevorTracker.Rarity.entries.sumOf { previewCount(it) } else TrevorTracker.totalKills()
         rows.add(Line("Total", formatNumber(total.toLong()), COLOR_GOOD, gapAbove = first))
         return rows
     }
 
-    private fun previewCount(kind: TrevorTracker.Animal): Int = when (kind) {
-        TrevorTracker.Animal.COW -> 14
-        TrevorTracker.Animal.PIG -> 9
-        TrevorTracker.Animal.SHEEP -> 11
-        TrevorTracker.Animal.CHICKEN -> 6
-        TrevorTracker.Animal.RABBIT -> 8
-        TrevorTracker.Animal.HORSE -> 4
-        TrevorTracker.Animal.UNKNOWN -> 0
+    private fun previewCount(rarity: TrevorTracker.Rarity): Int = when (rarity) {
+        TrevorTracker.Rarity.TRACKABLE -> 21
+        TrevorTracker.Rarity.UNTRACKABLE -> 14
+        TrevorTracker.Rarity.UNDETECTED -> 9
+        TrevorTracker.Rarity.ENDANGERED -> 5
+        TrevorTracker.Rarity.ELUSIVE -> 2
+        TrevorTracker.Rarity.UNKNOWN -> 0
     }
 
     /** Called every frame from the HUD hook. */

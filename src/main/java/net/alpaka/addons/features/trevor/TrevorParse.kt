@@ -12,7 +12,7 @@ import java.util.Locale
  *   when the animal dies,
  * - `You ran out of time and the animal disappeared!` when the ten minutes are over.
  *
- * Hypixel never names the animal in chat, so which kind it was comes from the mob the player saw.
+ * The rarity in the first line is what the tracker counts the hunt under.
  */
 object TrevorParse {
 

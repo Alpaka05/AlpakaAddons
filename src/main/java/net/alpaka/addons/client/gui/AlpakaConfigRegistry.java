@@ -918,7 +918,7 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Sky Mall",
                                 () -> AlpakaConfig.instance.messageFilterSkyMall,
                                 v -> { AlpakaConfig.instance.messageFilterSkyMall = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Warping & Server Switch",
+                        new ConfigOption.ToggleEntry("Server Switch",
                                 () -> AlpakaConfig.instance.messageFilterServerTransfer,
                                 v -> { AlpakaConfig.instance.messageFilterServerTransfer = v; AlpakaConfig.save(); })
                 ),

@@ -73,7 +73,6 @@ public final class SessionLifecycle {
     }
 
     private static void onLevelChange() {
-        net.alpaka.addons.features.trevor.TrevorTracker.reset();
         net.alpaka.addons.features.commands.WarpCooldownQueue.onWorldChange();
         SlayerQuestDetector.INSTANCE.resetForLevelChange();
         FirePitFeature.reset();
@@ -86,6 +85,7 @@ public final class SessionLifecycle {
         net.alpaka.addons.features.ragnarock.RagnarockFeature.reset();
         net.alpaka.addons.features.skills.ExactSkillXp.reset();
         net.alpaka.addons.features.mobdeath.HideMobDeathsFeature.forgetNames();
+        net.alpaka.addons.features.trevor.TrevorTracker.reset();
     }
 
     /** Nothing waiting to be written is lost on exit. */

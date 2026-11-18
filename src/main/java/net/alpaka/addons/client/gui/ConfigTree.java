@@ -97,6 +97,8 @@ public final class ConfigTree {
             "slayer_boss_highlight",
             // Dungeon, kept apart the same way
             "starred_mobs_highlight", "teammate_class_glow",
+            // Farming Islands, kept apart the same way
+            "trevor_helper",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_visual_clutter",
@@ -115,7 +117,7 @@ public final class ConfigTree {
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_join_message_enabled", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue",
-            "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "exact_skill_xp", "deployable_timer", "trevor_helper", "cache_resource_pack",
+            "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "exact_skill_xp", "deployable_timer", "cache_resource_pack",
             "visitor_bazaar", "ignore_filler_panes", "slot_highlight",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value", "price_tooltip",
             "profile_dashboard",

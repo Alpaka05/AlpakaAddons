@@ -123,6 +123,8 @@ public class HudMixin implements ChatOverHud.Late {
         } finally {
             AlpakaPerf.end(AlpakaPerf.Section.HUD_NOTIFICATIONS, t);
         }
+        // Over everything else: a rare drop is the one moment the HUD steps aside for.
+        net.alpaka.addons.features.cosmetics.RareDropAnimation.renderHud(graphicsExtractor);
     }
 
     /**

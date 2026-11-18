@@ -241,6 +241,30 @@ public final class ItemIcons {
         return loaded == null || id == null ? null : loaded.names().get(id);
     }
 
+    /** {@link #idForName}'s lookup, and the list it was built from; only touched on the client thread. */
+    private static Map<String, String> idsByName = null;
+    private static Catalog idsByNameOf = null;
+
+    /**
+     * The id of the item with this name in Hypixel's list, ignoring case, such as NECRON_HANDLE for
+     * "Necron's Handle"; null while the list loads or for a name it does not know. Where several
+     * items share a name, the shortest id wins: the plain item rather than a variant of it.
+     */
+    public static String idForName(String name) {
+        Catalog loaded = catalog();
+        if (loaded == null || name == null) return null;
+        if (idsByNameOf != loaded) {
+            Map<String, String> map = new HashMap<>();
+            for (Map.Entry<String, String> e : loaded.names().entrySet()) {
+                map.merge(e.getValue().toLowerCase(Locale.ROOT), e.getKey(),
+                        (a, b) -> a.length() < b.length() || (a.length() == b.length() && a.compareTo(b) <= 0) ? a : b);
+            }
+            idsByName = map;
+            idsByNameOf = loaded;
+        }
+        return idsByName.get(name.toLowerCase(Locale.ROOT).trim());
+    }
+
     /** Every accessory outside the Rift with its rarity, by id; null while the list loads. */
     public static Map<String, String> accessories() {
         Catalog loaded = catalog();

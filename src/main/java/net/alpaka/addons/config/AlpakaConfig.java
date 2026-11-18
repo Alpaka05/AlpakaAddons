@@ -142,10 +142,25 @@ public class AlpakaConfig {
     /** How strongly the aura glows, in percent. */
     public float auraBrightness = 80.0f;
     /**
-     * A slayer's rarest drop pops up as a big spinning item in a golden glow where the boss died.
-     * Drawn by this client only. Off by default while it is being tried out.
+     * A rare drop pops up on the screen as a big spinning item in a golden glow, with its name and
+     * price. Drawn by this client only. Off by default while it is being tried out.
      */
     public boolean rareDropAnimationEnabled = false;
+    /** Plays for a slayer's rarest drop (Judgement Core, Warden Heart, ...). */
+    public boolean rareDropAnimationSlayer = true;
+    /** Plays for a dye the player finds. */
+    public boolean rareDropAnimationDyes = true;
+    /** Plays for a dungeon chest's rare reward (Necron's Handle, master stars, ...). */
+    public boolean rareDropAnimationDungeon = true;
+    /**
+     * Plays for any other drop that is crazy rare or better, a pet, or worth at least
+     * {@link #rareDropAnimationMinValue}.
+     */
+    public boolean rareDropAnimationValuable = true;
+    /** What another drop has to be worth for the animation, in millions of coins. */
+    public float rareDropAnimationMinValue = 5.0f;
+    /** The item's price under its name. */
+    public boolean rareDropAnimationPrice = true;
     /** How big the item and its glow are, as a factor. */
     public float rareDropAnimationSize = 1.0f;
     /** How long the animation stays, in seconds. */

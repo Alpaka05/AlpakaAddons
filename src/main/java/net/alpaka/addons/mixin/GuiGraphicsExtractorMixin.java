@@ -85,6 +85,11 @@ public abstract class GuiGraphicsExtractorMixin implements AlpakaGuiElementSink 
     }
 
     @Override
+    public void alpaka$submitPicture(PictureInPictureRenderState state) {
+        guiRenderState.addPicturesInPictureState(state);
+    }
+
+    @Override
     public ScreenRectangle alpaka$currentScissor() {
         return alpaka$scissors.peekLast();
     }

@@ -316,4 +316,25 @@ class ItemValueTest {
         assertNotNull(partById(b, "HOTSPOT_SINKER"));
         assertEquals(28_000_000, b.total(Group.ROD_PARTS));
     }
+
+    @Test
+    void aDrillCountsEachPartOnceInEitherFormat() {
+        Table prices = new Table().ah("AMBER_POLISHED_DRILL_ENGINE", 270_000_000).ah("PERFECTLY_CUT_FUEL_TANK", 110_000_000)
+                .ah("GOBLIN_OMELETTE_BLUE_CHEESE", 280_000_000);
+        // Both formats at once, as most drills carry them, and a part only in the new or only in the old one.
+        Breakdown b = ItemValue.of(json("{\"id\":\"DIVAN_DRILL\",\"engine\":{\"id\":\"AMBER_POLISHED_DRILL_ENGINE\"},"
+                + "\"drill_part_engine\":\"amber_polished_drill_engine\",\"fuel_tank\":{\"id\":\"PERFECTLY_CUT_FUEL_TANK\"},"
+                + "\"drill_part_upgrade_module\":\"goblin_omelette_blue_cheese\"}"), prices, new Listing());
+        assertEquals(3, b.parts().stream().filter(p -> p.group() == Group.DRILL_PARTS).count());
+        assertEquals(660_000_000, b.total(Group.DRILL_PARTS));
+    }
+
+    @Test
+    void countsEtherwarpWetBooksOverclockersInfusionsAndBoosters() {
+        Table prices = new Table().ah("ETHERWARP_CONDUIT", 10).ah("ETHERWARP_MERGER", 20).bz("WET_BOOK", 30)
+                .bz("OVERCLOCKER_3000", 40).bz("MITHRIL_INFUSION", 50).bz("FREE_WILL", 60).bz("SWEEP_BOOSTER", 70);
+        Breakdown b = ItemValue.of(json("{\"id\":\"X\",\"ethermerge\":1,\"wet_book_count\":2,\"levelable_overclocks\":3,"
+                + "\"mithril_infusion\":1,\"free_will\":1,\"boosters\":[\"sweep\"]}"), prices, new Listing());
+        assertEquals(10 + 20 + 2 * 30 + 3 * 40 + 50 + 60 + 70, b.total(Group.UPGRADES));
+    }
 }

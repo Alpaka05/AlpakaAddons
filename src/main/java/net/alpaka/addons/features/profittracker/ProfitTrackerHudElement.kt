@@ -77,6 +77,11 @@ object ProfitTrackerHudElement : HudElement {
         return true
     }
 
+    /** The same click over an open inventory or menu, when the tracker shows there. */
+    @JvmStatic
+    fun handleMenuClick(mouseX: Double, mouseY: Double, button: Int): Boolean =
+        AlpakaConfig.instance.profitTrackerOnlyInInventory && handleChatClick(mouseX, mouseY, button)
+
     override fun scaleValue(): Float = AlpakaConfig.instance.profitTrackerScale
 
     override fun scaleLabel(): String = String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.profitTrackerScale)

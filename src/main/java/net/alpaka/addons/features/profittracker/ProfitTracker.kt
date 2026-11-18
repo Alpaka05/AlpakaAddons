@@ -15,6 +15,10 @@ import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
+import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents
+import net.alpaka.addons.utils.TextInputFocus
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -135,6 +139,22 @@ object ProfitTracker {
         ClientReceiveMessageEvents.GAME.register { message, overlay -> if (!overlay) onChat(message) }
         ClientReceiveMessageEvents.GAME_CANCELED.register { message, overlay -> if (!overlay) onChat(message) }
         ClientLifecycleEvents.CLIENT_STOPPING.register { ProfitStore.saveNow(blocking = true) }
+        // In a menu the key and clicks reach the screen, not the tick: needed when the tracker only shows there.
+        ScreenEvents.AFTER_INIT.register { _, screen, _, _ ->
+            if (screen !is AbstractContainerScreen<*>) return@register
+            ScreenKeyboardEvents.allowKeyPress(screen).register { s, event ->
+                val key = TOGGLE_KEY
+                if (key == null || !key.matches(event) || TextInputFocus.isTyping(s) || !AlpakaConfig.instance.profitTrackerEnabled) {
+                    true
+                } else {
+                    toggleHud(Minecraft.getInstance())
+                    false
+                }
+            }
+            ScreenMouseEvents.allowMouseClick(screen).register { _, event ->
+                !ProfitTrackerHudElement.handleMenuClick(event.x(), event.y(), event.button())
+            }
+        }
     }
 
     // ---- Settings and HUD ------------------------------------------------------------------------

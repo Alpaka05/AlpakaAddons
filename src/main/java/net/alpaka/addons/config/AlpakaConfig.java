@@ -469,6 +469,8 @@ public class AlpakaConfig {
     public int profitTrackerPriceSide = 0;
     public boolean profitTrackerPreferNpc = false;
     public int profitTrackerMaxLines = 8;
+    /** Shows the tracker only over an open inventory or menu, not while playing. */
+    public boolean profitTrackerOnlyInInventory = false;
     public boolean profitTrackerBlur = true;
     public boolean profitTrackerSmoothFont = true;
     /**

@@ -11,7 +11,8 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * The Item Value popup over a menu, and the Chest Value panel beside it: drawn after the menu and
+ * The Item Value popup over a menu, and the Chest Value panel beside it (with the Profit Tracker
+ * under both, when it only shows in menus): drawn after the menu and
  * before the tooltips, so they sit over the slots and under the tooltip of a slot beside them. The
  * popup comes last, above the panel it may be opened from. Listed after ScreenMixin, so both also
  * come out above the chat held open there with Chat Peek.
@@ -24,6 +25,7 @@ public abstract class ScreenItemValueMixin {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;extractDeferredElements(IIF)V")
     )
     private void alpaka$itemValueOverMenu(GuiGraphicsExtractor graphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        net.alpaka.addons.features.profittracker.ProfitTrackerHudRenderer.renderOverMenu(graphicsExtractor, (Screen) (Object) this);
         ChestValuePanel.render(graphicsExtractor, (Screen) (Object) this);
         ItemValuePopup.render(graphicsExtractor);
     }

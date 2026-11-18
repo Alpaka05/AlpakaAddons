@@ -7,6 +7,9 @@ import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
+import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen
 import net.minecraft.network.chat.Component
 import kotlin.math.ceil
 
@@ -205,14 +208,30 @@ object ProfitTrackerHudRenderer {
         else String.format(java.util.Locale.ROOT, "%dm %02ds", minutes, seconds)
     }
 
-    /** Called every frame from the HUD hook. */
+    /** Called every frame from the HUD hook; draws nothing when the tracker only shows in menus. */
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
         lastDrawn = null
-        if (!ProfitTracker.isHudVisible()) return
+        if (!ProfitTracker.isHudVisible() || AlpakaConfig.instance.profitTrackerOnlyInInventory) return
         val mc = Minecraft.getInstance()
         if (mc.gui.hud.isHidden() || mc.level == null || mc.player == null) return
         if (mc.gui.screen() != null && mc.gui.screen() !is ChatScreen) return
+        draw(graphics)
+    }
+
+    /**
+     * Over an open inventory or menu, when the tracker only shows there. Drawn after the menu, so
+     * the darkened background doesn't cover it, and before the Chest Value panel and tooltips.
+     */
+    @JvmStatic
+    fun renderOverMenu(graphics: GuiGraphicsExtractor, screen: Screen) {
+        if (screen !is AbstractContainerScreen<*> || screen is CreativeModeInventoryScreen) return
+        if (!ProfitTracker.isHudVisible() || !AlpakaConfig.instance.profitTrackerOnlyInInventory) return
+        draw(graphics)
+    }
+
+    private fun draw(graphics: GuiGraphicsExtractor) {
+        val mc = Minecraft.getInstance()
         val placement = ProfitTrackerHudElement.visiblePlacement(mc.window.guiScaledWidth, mc.window.guiScaledHeight)
         val scale = AlpakaConfig.instance.profitTrackerScale
         if (renderHud(graphics, placement.anchorX, placement.anchorY, scale, preview = false)) {

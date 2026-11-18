@@ -1960,10 +1960,17 @@ public class AlpakaConfigRegistry {
                 "profit tracker money coins per hour loot drops slayer fishing diana mythological pests farming dragon dungeon csv export session"));
 
         OPTIONS.add(ConfigOption.keybind("profit_tracker_key", "Key",
-                "Shows or hides the Profit Tracker. It keeps counting while hidden. Unbound by default.",
+                "Shows or hides the Profit Tracker, also in your inventory or a menu. It keeps counting while hidden. Unbound by default.",
                 ConfigCategory.SKYBLOCK,
                 () -> net.alpaka.addons.features.profittracker.ProfitTracker.TOGGLE_KEY,
                 "profit tracker toggle show hide"));
+
+        OPTIONS.add(new ConfigOption("profit_tracker_only_in_inventory", "Only in Inventory",
+                "Shows the tracker only while your inventory or a menu is open, not while you play. Click an item there to hide it.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.profitTrackerOnlyInInventory,
+                v -> { AlpakaConfig.instance.profitTrackerOnlyInInventory = v; AlpakaConfig.save(); },
+                "profit tracker only inventory menu container open hide outside playing hud"));
 
         OPTIONS.add(new ConfigOption("profit_tracker_scope", "Show",
                 "This session's figures, or everything since you started tracking. Both are always saved.",

@@ -43,6 +43,11 @@ public final class ItemSearchPreview {
 
     /** The window over the made-up containers, with the query typed in when there is one. */
     public static ItemSearchScreen screen(String query) {
+        return screen(query, null);
+    }
+
+    /** The same, opened from the screen given (an inventory, say), which stays drawn behind it. */
+    public static ItemSearchScreen screen(String query, net.minecraft.client.gui.screens.Screen parent) {
         ItemStack diamond = item(Items.DIAMOND, "ENCHANTED_DIAMOND", "§aEnchanted Diamond", "§9§lUNCOMMON");
         ItemStack coal = item(Items.COAL, "ENCHANTED_COAL", "§aEnchanted Coal", "§9§lUNCOMMON");
         ItemStack hype = item(Items.IRON_SWORD, "HYPERION", "§dHeroic Hyperion §6✪✪✪✪✪", "§7Damage: §c+270",
@@ -67,6 +72,6 @@ public final class ItemSearchPreview {
                 container(ItemSearchSource.CHEST, 0, "Chest at 12, 70, -4", new BlockPos(12, 70, -4), of(bone, 2_304), of(sugar, 1_088)),
                 container(ItemSearchSource.WARDROBE, 2, null, null, of(necron, 1)),
                 container(ItemSearchSource.ACCESSORY_BAG, 1, null, null, of(talisman, 1))));
-        return new ItemSearchScreen(query, null);
+        return new ItemSearchScreen(query, parent);
     }
 }

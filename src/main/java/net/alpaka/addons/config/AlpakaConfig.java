@@ -1286,10 +1286,19 @@ public class AlpakaConfig {
         /** Whether the command only runs on a second click right after the first, against a warp by mistake. */
         public boolean doubleClick = false;
         /**
-         * The button size the position was laid out for. Files from before every style had
-         * {@link #SIZE} leave it out and read as 18; InventoryButtonLayout.migrate moves those once.
+         * The button size the position was laid out for: 18 for files from before every style had a
+         * common size (they leave it out), then 22, briefly 26. InventoryButtonLayout.migrate reads
+         * it to move a button from an older {@link #layout}.
          */
         public int grid = 18;
+        /**
+         * The grid the position was laid out on: 0 for files from before the field,
+         * {@link #LAYOUT} for today's. InventoryButtonLayout.migrate moves anything older once.
+         */
+        public int layout = 0;
+
+        /** Today's grid: 22 px buttons, seven evenly spread across the panel, 2 px apart down it. */
+        public static final int LAYOUT = 2;
 
         public InventoryButton() {}
 
@@ -1300,18 +1309,20 @@ public class AlpakaConfig {
             this.x = x;
             this.y = y;
             this.grid = SIZE;
+            this.layout = LAYOUT;
         }
 
         /** A column of common SkyBlock menus down the left of the panel, for a first start. */
         public static java.util.List<InventoryButton> defaults() {
             java.util.List<InventoryButton> list = new java.util.ArrayList<>();
+            // The editor's grid: 4 px beside the panel, 2 px between buttons stacked (InventoryButtonLayout).
             int x = -SIZE - 4;
             int step = SIZE + 2;
-            list.add(new InventoryButton("/storage", "Storage", "minecraft:chest", x, 4));
-            list.add(new InventoryButton("/ec", "Ender Chest", "minecraft:ender_chest", x, 4 + step));
-            list.add(new InventoryButton("/pets", "Pets", "minecraft:bone", x, 4 + 2 * step));
-            list.add(new InventoryButton("/wardrobe", "Wardrobe", "minecraft:leather_chestplate", x, 4 + 3 * step));
-            list.add(new InventoryButton("/sbmenu", "SkyBlock Menu", "minecraft:nether_star", x, 4 + 4 * step));
+            list.add(new InventoryButton("/storage", "Storage", "minecraft:chest", x, 0));
+            list.add(new InventoryButton("/ec", "Ender Chest", "minecraft:ender_chest", x, step));
+            list.add(new InventoryButton("/pets", "Pets", "minecraft:bone", x, 2 * step));
+            list.add(new InventoryButton("/wardrobe", "Wardrobe", "minecraft:leather_chestplate", x, 3 * step));
+            list.add(new InventoryButton("/sbmenu", "SkyBlock Menu", "minecraft:nether_star", x, 4 * step));
             return list;
         }
     }

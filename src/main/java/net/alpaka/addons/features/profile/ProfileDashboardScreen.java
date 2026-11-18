@@ -2773,6 +2773,8 @@ public class ProfileDashboardScreen extends Screen {
             new String[] {"potion_bag", "Potion Bag"}, new String[] {"quiver", "Quiver"}, new String[] {"sacks_bag", "Sack of Sacks"},
             new String[] {"farming_toolkit", "Farming Toolkit"}, new String[] {"hunting_toolkit", "Hunting Toolkit"});
     private static InvTab invTab = InvTab.INVENTORY;
+    /** Which of the Rift's two inventories its page shows: false the inventory, true the Ender Chest. */
+    private static boolean riftEnderChest;
     private static final int SLOT = 18;
     /**
      * How many times its size a slot is drawn: 2 for a single inventory with room to spare, so its
@@ -2850,14 +2852,20 @@ public class ProfileDashboardScreen extends Screen {
                 cx = x;
                 cy += 18;
             }
-            boolean selected = t == invTab;
-            boolean hover = hover(cx, cy, cw, 15);
-            int bg = selected ? MarketIcons.fade(AlpakaStyle.accent(), hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
-            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, 15, 7, bg);
-            text(graphics, t.title, cx + 7, cy + 4, selected ? AlpakaStyle.accent() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
-            hit(cx, cy, cw, 15, () -> invTab = t);
+            chip(graphics, t.title, cx, cy, t == invTab, () -> invTab = t);
             cx += cw + 4;
         }
+    }
+
+    /** One tab of a row of tabs, as a chip; returns its width. */
+    private int chip(GuiGraphicsExtractor graphics, String title, int x, int y, boolean selected, Runnable pick) {
+        int cw = textW(title) + 14;
+        boolean hover = hover(x, y, cw, 15);
+        int bg = selected ? MarketIcons.fade(AlpakaStyle.accent(), hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, cw, 15, 7, bg);
+        text(graphics, title, x + 7, y + 4, selected ? AlpakaStyle.accent() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+        hit(x, y, cw, 15, pick);
+        return cw;
     }
 
     private int invContent(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
@@ -2892,10 +2900,21 @@ public class ProfileDashboardScreen extends Screen {
     /** A card of slots: a title, an optional icon beside it, and the slots of one inventory by key. */
     private record Section(String title, JsonElement icon, String inventory, List<String> keys) {}
 
-    /** Sections side by side as far as they fit, each into the shortest column, as the More page does. */
+    /**
+     * Sections side by side as far as they fit, each into the shortest column, as the More page does.
+     * Too few to fill the width, they sit together in the middle, under the page's other centered
+     * cards, rather than at the left with an empty column beside them.
+     */
     private int flow(GuiGraphicsExtractor graphics, List<Section> sections, int x, int y, int w) {
         int cols = Math.max(1, (w + 8) / (SECTION_W + 8));
-        int gap = cols > 1 ? (w - cols * SECTION_W) / (cols - 1) : 0;
+        int gap;
+        if (sections.size() < cols) {
+            cols = Math.max(1, sections.size());
+            gap = 8;
+            x += (w - cols * SECTION_W - (cols - 1) * gap) / 2;
+        } else {
+            gap = cols > 1 ? (w - cols * SECTION_W) / (cols - 1) : 0;
+        }
         int[] heights = new int[cols];
         for (Section s : sections) {
             int col = 0;
@@ -3513,14 +3532,23 @@ public class ProfileDashboardScreen extends Screen {
         return riftInventories(graphics, x, y, w);
     }
 
-    /** The Rift's inventory and Ender Chest, which come with the profile like every other inventory. */
+    /**
+     * The Rift's inventory and Ender Chest, which come with the profile like every other inventory:
+     * one at a time, on two tabs as the Inventories page has them, each in the middle of the page.
+     */
     private int riftInventories(GuiGraphicsExtractor graphics, int x, int y, int w) {
         String problem = session.riftProblem();
         if (problem != null) return note(graphics, problem, x, y, w);
-        y = playerInventory(graphics, "Rift Inventory", "rift_inventory", "rift_armor", "rift_equipment", false, x, y, w) + 8;
+        int cx = x;
+        cx += chip(graphics, "Inventory", cx, y, !riftEnderChest, () -> riftEnderChest = false) + 4;
+        chip(graphics, "Ender Chest", cx, y, riftEnderChest, () -> riftEnderChest = true);
+        y += 15 + 8;
+        if (!riftEnderChest) {
+            return playerInventory(graphics, "Rift Inventory", "rift_inventory", "rift_armor", "rift_equipment", false, x, y, w);
+        }
         JsonElement chest = session.inventory("rift_ender_chest");
         int slots = chest == null ? 45 : Json.obj(chest, "items").size();
-        return pagedSections(graphics, "rift_ender_chest", "Rift Ender Chest · Page", slots, x, y, w);
+        return pagedSections(graphics, "rift_ender_chest", "Page", slots, x, y, w);
     }
 
     // ---- Rabbits (Chocolate Factory) ------------------------------------------------------------

@@ -582,16 +582,23 @@ public class ProfileDashboardScreen extends Screen {
         int pages = Page.values().length;
 
         // On a small window the footer gives way first, then the rows get slimmer. The label stays:
-        // the item search opens from it.
+        // the item search opens from it. Whether the footer fits doesn't depend on the fold, so the
+        // rows keep their height while the sidebar slides.
         int footerH = 30;
-        boolean footer = open && h >= 12 + pages * 17 + footerH + 12;
+        boolean footer = h >= 12 + pages * 17 + footerH + 12;
         int rowH = Math.max(14, Math.min(SIDE_ROW_H, (h - 10 - 12 - (footer ? footerH : 0)) / pages - 1));
         int rowY = y + 8;
+        // While the sidebar slides, the label and the footer fade out over the first half of the way
+        // and the globe that stands in for the footer fades in over the second, so nothing pops in
+        // or out at either end.
+        float wide = Math.max(0.0f, 1.0f - 2.0f * sideFold);
+        float slim = Math.max(0.0f, 2.0f * sideFold - 1.0f);
+        graphics.enableScissor(x, y, x + sideW, y + h);
 
         // The arrow that folds the sidebar down to its icons and opens it again: at the end of the
-        // label's line, or alone in the middle while folded.
+        // label's line, or alone in the middle while folded, gliding between the two.
         int arrow = 12;
-        int ax = open ? rowX + rowW - arrow : rowX + (rowW - arrow) / 2;
+        int ax = rowX + Math.round((rowW - arrow) * (1.0f - sideFold / 2.0f));
         int ay = rowY - 3;
         boolean hoverArrow = AlpakaStyle.inside(mx, my, ax, ay, arrow, arrow) && !menuOpen;
         AlpakaStyle.chevronButton(graphics, ax, ay, arrow, !folded, hoverArrow, true);
@@ -607,9 +614,9 @@ public class ProfileDashboardScreen extends Screen {
         }));
         if (hoverArrow) tip("sidefold", folded ? "Show the page names." : "Fold the sidebar down to its icons.");
 
-        if (!open) {
-            // No label or search while folded or sliding.
-        } else if (itemSearchOpen || !itemSearch.isEmpty()) {
+        if (wide <= 0.0f) {
+            // No label or search while folded.
+        } else if (open && (itemSearchOpen || !itemSearch.isEmpty())) {
             // The search through every item the profile owns, where the label was.
             int fh = 14;
             int fy = rowY - 3;
@@ -625,13 +632,14 @@ public class ProfileDashboardScreen extends Screen {
                 itemCaretFrom = System.currentTimeMillis();
             }));
         } else {
-            AlpakaStyle.groupLabel(graphics, this.font, "Profile", x + PAD, rowY);
+            text(graphics, "Profile", x + PAD, rowY, AlpakaStyle.fade(AlpakaStyle.TEXT_MUTED, wide));
             // The magnifier just after the label opens the item search in its place.
             int gx = x + PAD + textW("Profile") + 4;
             int gy = rowY - 2;
-            boolean hoverGlass = AlpakaStyle.inside(mx, my, gx - 2, gy - 1, 13, 12) && !menuOpen;
-            MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, gx, gy + 1, 8, hoverGlass ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
-            hits.add(new Hit(gx - 2, gy - 1, 13, 12, () -> {
+            boolean hoverGlass = open && AlpakaStyle.inside(mx, my, gx - 2, gy - 1, 13, 12) && !menuOpen;
+            MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, gx, gy + 1, 8,
+                    AlpakaStyle.fade(hoverGlass ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED, wide));
+            if (open) hits.add(new Hit(gx - 2, gy - 1, 13, 12, () -> {
                 itemSearchOpen = true;
                 itemSearchFocused = true;
                 itemCaretFrom = System.currentTimeMillis();
@@ -678,44 +686,58 @@ public class ProfileDashboardScreen extends Screen {
             }));
             rowY += rowH + 1;
         }
-        if (!footer) {
-            // Without the footer (folded, or a short window), the "open elsewhere" sign at the bottom
-            // opens the same sites. A globe of eleven pixels read as nothing in particular.
-            int size = 16;
-            int gx = rowX + (rowW - size) / 2;
-            int gy = y + h - size - 5;
-            if (session.playerName == null || gy < rowY + 2) return;
-            boolean hoverLink = AlpakaStyle.inside(mx, my, gx, gy, size, size) && !menuOpen;
-            if (hoverLink) ModernGuiUtils.drawRoundedRect(graphics, gx, gy, size, size, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.ROW_SELECTED);
+        // The "open elsewhere" sign opens the same sites as the footer. On a short window it stands in
+        // for the footer for good; otherwise it takes the footer's place as the sidebar folds, in the
+        // folded sidebar's middle, so it doesn't travel with the sliding edge. A globe of eleven
+        // pixels read as nothing in particular.
+        int size = 16;
+        float sign = footer ? slim : 1.0f;
+        int gx = footer ? x + (SIDE_W_COLLAPSED - size) / 2 : rowX + (rowW - size) / 2;
+        int gy = y + h - size - 5;
+        if (sign > 0.0f && session.playerName != null && gy >= rowY + 2) {
+            boolean live = !footer || sideFold >= 0.5f;
+            boolean hoverLink = live && AlpakaStyle.inside(mx, my, gx, gy, size, size) && !menuOpen;
+            if (hoverLink) {
+                ModernGuiUtils.drawRoundedRect(graphics, gx, gy, size, size, AlpakaStyle.FIELD_RADIUS,
+                        AlpakaStyle.fade(AlpakaStyle.ROW_SELECTED, sign));
+            }
             MarketIcons.draw(graphics, MarketIcons.Glyph.LINK, gx + 2.5f, gy + 2.5f, size - 5,
-                    hoverLink ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT_SOFT);
-            hits.add(new Hit(gx, gy, size, size, () -> openSourceMenu(gx, gy)));
-            if (hoverLink) tip("source", sourcesTip());
-            return;
+                    AlpakaStyle.fade(hoverLink ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT_SOFT, sign));
+            if (live) {
+                hits.add(new Hit(gx, gy, size, size, () -> openSourceMenu(gx, gy)));
+                if (hoverLink) tip("source", sourcesTip());
+            }
         }
 
-        // At the bottom: how fresh the numbers are, and where they come from.
-        int fy = y + h - footerH;
-        ProfileData d = session.data;
-        if (d != null && d.lastUpdated > 0) {
-            String updated = "Updated " + Metrics.ago(d.lastUpdated * 1000L);
-            // What is on show stays when asking again failed (or the kept profile, when the new one
-            // didn't come); the reason is a hover away.
-            String failed = session.refreshing ? null : session.error;
-            if (failed != null) updated += " · Couldn't refresh";
-            text(graphics, updated, x + PAD, fy, AlpakaStyle.TEXT_MUTED);
-            if (failed != null && AlpakaStyle.inside(mx, my, x + PAD - 2, fy - 2, textW(updated) + 4, 11)) tip("refresh-failed", failed);
+        if (footer && wide > 0.0f) {
+            // At the bottom: how fresh the numbers are, and where they come from.
+            boolean live = sideFold < 0.5f;
+            int fy = y + h - footerH;
+            ProfileData d = session.data;
+            if (d != null && d.lastUpdated > 0) {
+                String updated = "Updated " + Metrics.ago(d.lastUpdated * 1000L);
+                // What is on show stays when asking again failed (or the kept profile, when the new one
+                // didn't come); the reason is a hover away.
+                String failed = session.refreshing ? null : session.error;
+                if (failed != null) updated += " · Couldn't refresh";
+                text(graphics, updated, x + PAD, fy, AlpakaStyle.fade(AlpakaStyle.TEXT_MUTED, wide));
+                if (live && failed != null && AlpakaStyle.inside(mx, my, x + PAD - 2, fy - 2, textW(updated) + 4, 11)) {
+                    tip("refresh-failed", failed);
+                }
+            }
+            String source = "Data Sources";
+            int sw = textW(source);
+            boolean hoverSource = live && AlpakaStyle.inside(mx, my, x + PAD - 2, fy + 10, sw + 4, 11) && !menuOpen;
+            text(graphics, source, x + PAD, fy + 12,
+                    AlpakaStyle.fade(hoverSource ? AlpakaStyle.accent() : AlpakaStyle.DIVIDER, wide));
+            if (live && session.playerName != null) {
+                int sx = x + PAD - 2;
+                int sy = fy + 10;
+                hits.add(new Hit(sx, sy, sw + 4, 11, () -> openSourceMenu(sx, sy)));
+                if (hoverSource) tip("source", sourcesTip());
+            }
         }
-        String source = "Data Sources";
-        int sw = textW(source);
-        boolean hoverSource = AlpakaStyle.inside(mx, my, x + PAD - 2, fy + 10, sw + 4, 11) && !menuOpen;
-        text(graphics, source, x + PAD, fy + 12, hoverSource ? AlpakaStyle.accent() : AlpakaStyle.DIVIDER);
-        if (session.playerName != null) {
-            int sx = x + PAD - 2;
-            int sy = fy + 10;
-            hits.add(new Hit(sx, sy, sw + 4, 11, () -> openSourceMenu(sx, sy)));
-            if (hoverSource) tip("source", sourcesTip());
-        }
+        graphics.disableScissor();
     }
 
     /** Opens the list of sites above the given point. */

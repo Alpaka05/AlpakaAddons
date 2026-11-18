@@ -314,6 +314,13 @@ public final class AlpakaStyle {
         ModernGuiUtils.drawRect(graphics, cx + 1, cy - 1, 1, 4, color);
     }
 
+    /** The color at a share of its alpha. */
+    public static int fade(int color, float alpha) {
+        if (alpha >= 1.0f) return color;
+        int a = Math.round((color >>> 24) * Math.max(0.0f, alpha));
+        return (a << 24) | (color & 0x00FFFFFF);
+    }
+
     /**
      * A paste button: a small clipboard in the same thin lines as {@link #trashButton}, gray until
      * hovered, then in the accent color on a soft square.

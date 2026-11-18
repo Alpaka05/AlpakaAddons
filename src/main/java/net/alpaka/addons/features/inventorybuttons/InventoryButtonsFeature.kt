@@ -38,6 +38,13 @@ object InventoryButtonsFeature {
     /** The button the last press landed on, so its release is kept from the screen too. */
     private var pressConsumed = false
 
+    /** The double-click button clicked once, waiting for its second click, and when that was. */
+    private var armed: InventoryButton? = null
+    private var armedAt = 0L
+
+    /** How long, in ms, a double-click button waits for its second click. */
+    private const val DOUBLE_CLICK_MS = 500L
+
     @JvmStatic
     fun register() {
         ScreenEvents.AFTER_INIT.register { _, screen, _, _ ->
@@ -49,7 +56,7 @@ object InventoryButtonsFeature {
                 if (event.button() != 0) return@register true
                 val button = buttonAt(s as AbstractContainerScreen<*>, event.x(), event.y()) ?: return@register true
                 pressConsumed = true
-                run(button)
+                click(button)
                 false
             }
             ScreenMouseEvents.allowMouseRelease(screen).register { _, _ ->
@@ -216,6 +223,29 @@ object InventoryButtonsFeature {
         }
     }
 
+    /**
+     * A click on [button]. A double-click button runs only on its second click within
+     * [DOUBLE_CLICK_MS]; the first one just arms it, with a tick, so a stray click can't warp.
+     */
+    private fun click(button: InventoryButton) {
+        if (!button.doubleClick) {
+            armed = null
+            run(button)
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (armed === button && now - armedAt <= DOUBLE_CLICK_MS) {
+            armed = null
+            run(button)
+            return
+        }
+        armed = button
+        armedAt = now
+    }
+
+    private fun armed(button: InventoryButton): Boolean =
+        armed === button && System.currentTimeMillis() - armedAt <= DOUBLE_CLICK_MS
+
     private fun tooltip(button: InventoryButton): List<Component> {
         val command = displayCommand(button.command)
         val lines = ArrayList<Component>()
@@ -224,6 +254,10 @@ object InventoryButtonsFeature {
         } else {
             lines.add(Component.literal(button.label))
             lines.add(Component.literal(command).withStyle(ChatFormatting.GRAY))
+        }
+        if (button.doubleClick) {
+            lines.add(if (armed(button)) Component.literal("Click again to run").withStyle(ChatFormatting.YELLOW)
+            else Component.literal("Double-click to run").withStyle(ChatFormatting.DARK_GRAY))
         }
         return lines
     }

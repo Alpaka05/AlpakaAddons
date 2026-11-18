@@ -966,6 +966,8 @@ public class AlpakaConfig {
     public boolean messageFilterEventRewards = true;
     public boolean messageFilterSacks = true;
     public boolean messageFilterSkyMall = true;
+    /** "Warping..." and "Sending to server ..." while changing servers. */
+    public boolean messageFilterServerTransfer = true;
     /** Dungeon chatter, only hidden inside a Catacombs run; one switch per group. */
     public boolean messageFilterDungeonPrepare = true;
     public boolean messageFilterDungeonStart = true;

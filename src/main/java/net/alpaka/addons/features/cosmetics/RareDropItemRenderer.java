@@ -23,13 +23,16 @@ public final class RareDropItemRenderer extends PictureInPictureRenderer<RareDro
 
     /**
      * The item to draw, turned by {@code spin} around the upright and tipped back by {@code tilt},
-     * both in radians; {@code scale} is how big one block is, in GUI pixels.
+     * both in radians, and moved {@code offsetY} GUI pixels down from the middle of its box;
+     * {@code scale} is how big one block is, in GUI pixels.
      */
-    public record State(ItemStackRenderState item, float spin, float tilt,
+    public record State(ItemStackRenderState item, float spin, float tilt, float offsetY,
                         int x0, int y0, int x1, int y1, float scale,
                         ScreenRectangle scissorArea, ScreenRectangle bounds) implements PictureInPictureRenderState {
-        public State(ItemStackRenderState item, float spin, float tilt, int x0, int y0, int x1, int y1, float scale) {
-            this(item, spin, tilt, x0, y0, x1, y1, scale, null, PictureInPictureRenderState.getBounds(x0, y0, x1, y1, null));
+        public State(ItemStackRenderState item, float spin, float tilt, float offsetY,
+                     int x0, int y0, int x1, int y1, float scale) {
+            this(item, spin, tilt, offsetY, x0, y0, x1, y1, scale, null,
+                    PictureInPictureRenderState.getBounds(x0, y0, x1, y1, null));
         }
     }
 
@@ -40,6 +43,9 @@ public final class RareDropItemRenderer extends PictureInPictureRenderer<RareDro
 
     @Override
     protected void renderToTexture(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+        // Moved inside the picture rather than by moving the picture, whose box can only sit on whole
+        // GUI pixels: the slow bob then glides instead of stepping a pixel at a time.
+        poseStack.translate(0.0f, state.offsetY() / state.scale(), 0.0f);
         // The texture's y runs down, as the screen's does; the item's model has it up.
         poseStack.scale(1.0f, -1.0f, -1.0f);
         poseStack.mulPose(new Quaternionf().rotateX(state.tilt()).rotateY(state.spin()));

@@ -414,7 +414,7 @@ object RareDropAnimation {
         val pop = easeOutBack((t / POP_SECONDS).coerceIn(0f, 1f))
         val fade = smooth(((duration - t) / FADE_SECONDS).coerceIn(0f, 1f))
         val light = (t / 0.25f).coerceIn(0f, 1f) * fade
-        val itemY = cy + 0.05f * r * sin(t * 2.4f)
+        val bob = 0.05f * r * sin(t * 2.4f)
 
         val sink = graphics as AlpakaGuiElementSink
         drawLight(sink, Matrix3x2f(graphics.pose()), cx, cy, r, t, light, drop.accent)
@@ -429,11 +429,11 @@ object RareDropAnimation {
             // made once rather than again every frame of the pop.
             val half = (r * 1.25f).toInt()
             val x = cx.toInt()
-            val y = itemY.toInt()
+            val y = cy.toInt()
             // Spins fast as it appears and settles into a slow turn.
             val spin = 1.3f * t + (5f * PI.toFloat()) * (1f - exp(-t * 1.8f)) / 1.8f
             sink.`alpaka$submitPicture`(RareDropItemRenderer.State(drop.itemState, spin, -0.18f,
-                x - half, y - half, x + half, y + half, itemScale))
+                bob + (cy - y), x - half, y - half, x + half, y + half, itemScale))
         }
 
         // The heading above the item, the name and price under it, once it has popped up.

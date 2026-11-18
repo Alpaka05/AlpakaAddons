@@ -102,6 +102,7 @@ public class HudMixin implements ChatOverHud.Late {
         } finally {
             AlpakaPerf.end(AlpakaPerf.Section.HUD_DEPLOYABLE_TIMER, t);
         }
+        net.alpaka.addons.features.trevor.TrevorHudRenderer.render(graphicsExtractor, deltaTracker);
         RagnarockFeature.render(graphicsExtractor);
         net.alpaka.addons.features.garden.AlignmentHelper.render(graphicsExtractor);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_INVENTORY);

@@ -2786,6 +2786,42 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.exactSkillXpLevelUpMessage = v; AlpakaConfig.save(); },
                 "exact skill xp overflow level up message chat announce notification sound max maxed"));
 
+        OPTIONS.add(new ConfigOption("trevor_helper", "Trevor Helper",
+                "For Trevor the Trapper's tasks: a HUD with the hunt in progress, the wait for the next task, your pelts, the average time per animal and the animals hunted by kind, and a waypoint on the hunted animal while you can see it. Move the HUD in the HUD editor.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.trevorHelperEnabled,
+                v -> { AlpakaConfig.instance.trevorHelperEnabled = v; AlpakaConfig.save(); },
+                "trevor trapper helper pelts animal hunt tracker cow pig sheep chicken rabbit horse mushroom desert farming islands cooldown timer waypoint hud"));
+
+        OPTIONS.add(new ConfigOption("trevor_waypoint", "Waypoint",
+                "Marks the hunted animal with a box, a beam and its distance while it is in your line of sight.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.trevorWaypoint,
+                v -> { AlpakaConfig.instance.trevorWaypoint = v; AlpakaConfig.save(); },
+                "trevor waypoint beam box mark animal line of sight"));
+
+        OPTIONS.add(ConfigOption.color("trevor_waypoint_color", "Waypoint Color",
+                "Color of the hunted animal's waypoint.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.trevorWaypointColor,
+                v -> { AlpakaConfig.instance.trevorWaypointColor = v; AlpakaConfig.save(); },
+                "trevor waypoint color colour"));
+
+        OPTIONS.add(new ConfigOption("trevor_ready_alert", "Ready Alert",
+                "Shows a notification once the hunt is over and Trevor has the next task for you.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.trevorReadyAlert,
+                v -> { AlpakaConfig.instance.trevorReadyAlert = v; AlpakaConfig.save(); },
+                "trevor ready alert notification next task cooldown"));
+
+        OPTIONS.add(new ConfigOption("trevor_reset", "Reset Tracker",
+                "Sets the animals, pelts and average time back to zero.",
+                ConfigCategory.SKYBLOCK,
+                "Reset Tracker",
+                parent -> net.alpaka.addons.features.trevor.TrevorTracker.resetStats(),
+                "trevor reset tracker clear stats pelts animals zero")
+                .confirm("Reset Tracker", "Set the Trevor tracker's animals, pelts and average time back to zero?", "Reset", true));
+
         OPTIONS.add(new ConfigOption("deployable_timer", "Deployable Timer",
                 "Shows the deployables in range with the time they have left: power orbs and flares, mining lanterns, the Umberella, your Totem of Corruption and your Black Hole. Move it in the HUD editor.",
                 ConfigCategory.SKYBLOCK,
@@ -3875,6 +3911,10 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.slayerTimerHudBlur, v -> AlpakaConfig.instance.slayerTimerHudBlur = v);
         styleToggle("slayer_timer_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
                 () -> AlpakaConfig.instance.slayerTimerHudSmoothFont, v -> AlpakaConfig.instance.slayerTimerHudSmoothFont = v);
+        styleToggle("trevor_hud_blur", "Blur", ConfigCategory.SKYBLOCK, true,
+                () -> AlpakaConfig.instance.trevorHudBlur, v -> AlpakaConfig.instance.trevorHudBlur = v);
+        styleToggle("trevor_hud_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
+                () -> AlpakaConfig.instance.trevorHudSmoothFont, v -> AlpakaConfig.instance.trevorHudSmoothFont = v);
         styleToggle("deployable_timer_blur", "Blur", ConfigCategory.SKYBLOCK, true,
                 () -> AlpakaConfig.instance.deployableTimerHudBlur, v -> AlpakaConfig.instance.deployableTimerHudBlur = v);
         styleToggle("deployable_timer_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,

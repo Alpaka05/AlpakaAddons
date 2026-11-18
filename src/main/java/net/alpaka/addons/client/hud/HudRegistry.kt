@@ -23,6 +23,7 @@ object HudRegistry {
         PerformanceHudElement,
         SlayerHudElement,
         net.alpaka.addons.features.garden.FarmingHudElement,
+        net.alpaka.addons.features.trevor.TrevorHudElement,
         SlayerTimerHudElement,
         DeployableTimerHudElement,
         PlayerModelHudElement,

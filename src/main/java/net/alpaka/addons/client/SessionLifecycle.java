@@ -73,6 +73,7 @@ public final class SessionLifecycle {
     }
 
     private static void onLevelChange() {
+        net.alpaka.addons.features.trevor.TrevorTracker.reset();
         net.alpaka.addons.features.commands.WarpCooldownQueue.onWorldChange();
         SlayerQuestDetector.INSTANCE.resetForLevelChange();
         FirePitFeature.reset();

@@ -1153,6 +1153,10 @@ public class AlpakaConfig {
     public boolean chestValueShown = false;
     /** Whether a chest's panel counts the player's own inventory below it too. */
     public boolean chestValueIncludeInventory = false;
+    /** In the Sack of Sacks: whether the panel values what the sacks hold (as last seen) rather than the sacks themselves. */
+    public boolean chestValueSackContents = true;
+    /** Which sack menu each sack of the Sack of Sacks opens, learned on opening it, by ChestValue.sackKey. */
+    public Map<String, String> chestValueSackMenus = new HashMap<>();
     /** Which side of the menu the panel sits on: 0 left, 1 right (where the item list mods usually are). */
     public int chestValueSide = 0;
     /** How its list is ordered, an index into ChestValue.Sort: value, price each, amount. */

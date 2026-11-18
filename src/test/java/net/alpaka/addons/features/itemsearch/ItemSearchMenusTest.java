@@ -27,6 +27,8 @@ class ItemSearchMenusTest {
             "Mining Sack|SACKS|1|Mining Sack",
             "Enchanted Agronomy Sack|SACKS|1|Enchanted Agronomy Sack",
             "Gemstones Sack (2/2)|SACKS|2|Gemstones Sack",
+            "(1/2) Runes Sack|SACKS|1|Runes Sack",
+            "(2/2) Runes Sack|SACKS|2|Runes Sack",
     })
     void readsTheMenusItKnows(String title, ItemSearchSource source, int page, String label) {
         ItemSearchMenus.Menu menu = ItemSearchMenus.parseTitle(title);

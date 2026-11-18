@@ -37,9 +37,11 @@ public final class ChestValueFeature {
                 GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY));
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (!(screen instanceof AbstractContainerScreen<?>)) return;
+            ChestValuePanel.menuOpened(screen);
             ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> !KEY.matches(event) || !keyPressed(s));
             ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> {
                 if (KEY.matchesMouse(event)) return !keyPressed(s);
+                ChestValuePanel.noteClick(s);
                 return !ChestValuePanel.mouseClicked(s, event.x(), event.y(), event.button());
             });
             ScreenMouseEvents.allowMouseRelease(screen).register((s, event) -> !ChestValuePanel.mouseReleased(event.button()));

@@ -131,4 +131,38 @@ class ChestValueTest {
                 "Obsidian Collection", "Recipe Book", "Farm Merchant"))
             assertFalse(ChestValue.holdsOwnItems(title), title);
     }
+
+    @Test
+    void tellsTheMenusThatListSacks() {
+        for (String title : List.of("Sack of Sacks", "Sacks", "Sacks (2/2)", "(1/2) Sack of Sacks"))
+            assertTrue(ChestValue.listsSacks(title), title);
+        for (String title : List.of("Mining Sack", "Gemstones Sack (1/2)", "Chest", "Large Sack of Sacks"))
+            assertFalse(ChestValue.listsSacks(title), title);
+        assertTrue(ChestValue.isSack("Large Slayer Sack"));
+        assertTrue(ChestValue.isSack("Dungeon Sack"));
+        assertFalse(ChestValue.isSack("Sack of Sacks"));
+        assertFalse(ChestValue.isSack("Go Back"));
+    }
+
+    @Test
+    void findsASackUnderItsMenusName() {
+        assertEquals(ChestValue.sackKey("Gemstones Sack"), ChestValue.sackKey("Large Gemstone Sack"));
+        assertEquals(ChestValue.sackKey("Mining Sack"), ChestValue.sackKey("Small Mining Sack"));
+        assertEquals(ChestValue.sackKey("Enchanted Agronomy Sack"), ChestValue.sackKey("Large Enchanted Agronomy Sack"));
+        assertEquals(ChestValue.sackKey("Runes Sack"), ChestValue.sackKey("Rune Sack"));
+        assertFalse(ChestValue.sackKey("Mining Sack").equals(ChestValue.sackKey("Enchanted Mining Sack")));
+        assertEquals(ChestValue.sackKey("Dwarven Mines Sack"), ChestValue.menuKey("Large Dwarven Sack", java.util.Map.of()));
+        assertEquals("trophy fishing sack", ChestValue.menuKey("Bronze Trophy Fishing Sack",
+                java.util.Map.of("bronze trophy fishing sack", "trophy fishing sack")));
+    }
+
+    @Test
+    void pricesEachGemQualityAndRuneLevelOnItsOwn() {
+        assertEquals("FINE_RUBY_GEM", ChestValue.gemId("Fine Ruby Gemstone"));
+        assertEquals("ROUGH_AQUAMARINE_GEM", ChestValue.gemId("Rough Aquamarine Gemstone"));
+        assertNull(ChestValue.gemId("Ruby Gemstones"));
+        assertEquals(2, ChestValue.runeLevel("Blood Rune II"));
+        assertEquals(3, ChestValue.runeLevel("Snow Rune III"));
+        assertEquals(0, ChestValue.runeLevel("Enchanted Coal"));
+    }
 }

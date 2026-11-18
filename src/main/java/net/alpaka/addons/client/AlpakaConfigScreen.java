@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import net.alpaka.addons.utils.MouseButtons;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.ConfigCategory;
 import net.alpaka.addons.client.gui.ConfigOption;
@@ -1324,12 +1325,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             // so they leave the key as it was, as a click outside a text field does.
             ConfigOption option = listeningKey;
             listeningKey = null;
-            if (event.button() > 1 && option.getKeyMapping() != null) {
+            if (!MouseButtons.isLeftOrRight(event.button()) && option.getKeyMapping() != null) {
                 AlpakaKeyBinds.set(option.getKeyMapping(), InputConstants.Type.MOUSE.getOrCreate(event.button()));
             }
             return true;
         }
-        if (event.button() != 0) return super.mouseClicked(event, doubleClick);
+        if (event.button() != MouseButtons.LEFT) return super.mouseClicked(event, doubleClick);
         double mx = event.x();
         double my = event.y();
 
@@ -1357,7 +1358,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        if (event.button() == 0 && draggedSlider != null) {
+        if (event.button() == MouseButtons.LEFT && draggedSlider != null) {
             draggedSlider = null;
             AlpakaConfig.endDeferredSaves();
         }
@@ -1449,12 +1450,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             ConfigOption option = listeningKey;
             listeningKey = null;
             if (option.getKeyMapping() != null) {
-                AlpakaKeyBinds.set(option.getKeyMapping(), key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE
+                AlpakaKeyBinds.set(option.getKeyMapping(), key == InputConstants.KEY_ESCAPE
                         ? InputConstants.UNKNOWN : InputConstants.getKey(event));
             }
             return true;
         }
-        if (event.hasControlDownWithQuirk() && key == org.lwjgl.glfw.GLFW.GLFW_KEY_F) {
+        if (event.hasControlDownWithQuirk() && key == InputConstants.KEY_F) {
             searchFocused = true;
             caretBlinkFrom = System.currentTimeMillis();
             search.selectAll();
@@ -1469,19 +1470,19 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 caretBlinkFrom = System.currentTimeMillis();
                 return true;
             }
-            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE || key == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
-                    || key == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER) {
+            if (key == InputConstants.KEY_ESCAPE || key == InputConstants.KEY_RETURN
+                    || key == InputConstants.KEY_NUMPADENTER) {
                 focusedText = null;
                 AlpakaConfig.save();
                 return true;
             }
         }
-        if (openChoice != null && key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+        if (openChoice != null && key == InputConstants.KEY_ESCAPE) {
             openChoice = null;
             return true;
         }
         if (searchFocused) {
-            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+            if (key == InputConstants.KEY_ESCAPE) {
                 searchFocused = false;
                 search.clearSelection();
                 return true;

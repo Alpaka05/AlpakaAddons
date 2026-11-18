@@ -1,5 +1,6 @@
 package net.alpaka.addons.mixin;
 
+import net.alpaka.addons.utils.MouseButtons;
 import net.alpaka.addons.features.chat.ChatScrollbar;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -29,20 +30,20 @@ public abstract class ChatScreenScrollbarMixin extends Screen {
             cancellable = true
     )
     private void alpaka$grabScrollbar(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
-        if (event.button() == 0 && ChatScrollbar.press(event.x(), event.y())) {
+        if (event.button() == MouseButtons.LEFT && ChatScrollbar.press(event.x(), event.y())) {
             cir.setReturnValue(true);
         }
     }
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
-        if (event.button() == 0 && ChatScrollbar.drag(event.y())) return true;
+        if (event.button() == MouseButtons.LEFT && ChatScrollbar.drag(event.y())) return true;
         return super.mouseDragged(event, deltaX, deltaY);
     }
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        if (event.button() == 0 && ChatScrollbar.release()) return true;
+        if (event.button() == MouseButtons.LEFT && ChatScrollbar.release()) return true;
         return super.mouseReleased(event);
     }
 }

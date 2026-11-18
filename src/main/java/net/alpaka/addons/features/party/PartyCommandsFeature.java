@@ -186,11 +186,11 @@ public final class PartyCommandsFeature {
     }
 
     /** A key press with no screen open. True when it was the request's Y or N, which then goes no further. */
-    public static boolean onKey(int key, int scancode, boolean repeat) {
+    public static boolean onKey(int key, int keycode, boolean repeat) {
         if (!isShowing()) return false;
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.screen() != null || mc.player == null) return false;
-        char pressed = PartyInviteFeature.keyCharacter(key, scancode);
+        char pressed = PartyInviteFeature.keyCharacter(key, keycode);
         if (pressed != 'y' && pressed != 'n') return false;
         if (!repeat) {
             if (pressed == 'y') {

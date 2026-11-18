@@ -6,7 +6,6 @@ import net.alpaka.addons.config.AlpakaConfig
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.alpaka.addons.client.AlpakaKeyBinds
 import net.minecraft.client.KeyMapping
-import org.lwjgl.glfw.GLFW
 
 object CommandWheelFeature {
     @JvmField
@@ -17,10 +16,10 @@ object CommandWheelFeature {
         COMMAND_WHEEL_KEY = AlpakaKeyBinds.register(
             KeyMapping(
                 "key.alpaka.command_wheel",
-                InputConstants.Type.KEYSYM,
+                InputConstants.Type.KEYBOARD,
                 // Unbound for fresh installs: V is Skyblocker's item protection. A key the player
                 // bound stays as it is.
-                GLFW.GLFW_KEY_UNKNOWN,
+                InputConstants.UNKNOWN.value,
                 AlpakaKeyCategory.CATEGORY
             )
         )

@@ -75,8 +75,8 @@ public final class HideMobDeathsFeature {
 
     /** A poof particle packet from the server that lands on a dying or just removed mob. */
     public static boolean shouldHideSmokePacket(ClientboundLevelParticlesPacket packet, ClientLevel level) {
-        if (!smokeEnabled() || packet.getParticle() != ParticleTypes.POOF) return false;
-        double x = packet.getX(), y = packet.getY(), z = packet.getZ();
+        if (!smokeEnabled() || packet.particle() != ParticleTypes.POOF) return false;
+        double x = packet.x(), y = packet.y(), z = packet.z();
 
         long now = System.currentTimeMillis();
         while (!REMOVED.isEmpty() && now - REMOVED.peekFirst().removedAt() > REMOVED_SMOKE_WINDOW_MS) {

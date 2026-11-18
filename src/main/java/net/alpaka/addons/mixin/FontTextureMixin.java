@@ -1,7 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.renderpearl.api.textures.FilterMode;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.minecraft.client.gui.font.FontTexture;
 import net.minecraft.client.gui.font.GlyphRenderTypes;

@@ -1,22 +1,23 @@
 #version 330
+#extension GL_ARB_separate_shader_objects : require
 
 layout(std140) uniform Globals {
     ivec3 CameraBlockPos;
-    vec3 CameraOffset;
-    vec2 ScreenSize;
     float GlintAlpha;
+    vec3 CameraOffset;
     float GameTime;
+    vec2 ScreenSize;
     int MenuBlurRadius;
     int UseRgss;
 };
 
-in vec3 viewPos;
-flat in vec3 viewToWorld0;
-flat in vec3 viewToWorld1;
-flat in vec3 viewToWorld2;
-in vec4 vertexColor;
+layout(location = 0) in vec3 viewPos;
+layout(location = 1) flat in vec3 viewToWorld0;
+layout(location = 2) flat in vec3 viewToWorld1;
+layout(location = 3) flat in vec3 viewToWorld2;
+layout(location = 4) in vec4 vertexColor;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 // A starry nebula seen through the held item, as if the item were a window into space. The galaxy
 // hangs in the sky around the player: each pixel shows the part of it in the direction, in the

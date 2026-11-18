@@ -19,7 +19,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -181,11 +180,7 @@ public final class CustomTabFeature {
     /** Whether the player list key is physically down, whatever screen is open. */
     private static boolean playerListKeyHeld(Minecraft mc) {
         InputConstants.Key key = InputConstants.getKey(mc.options.keyPlayerList.saveString());
-        return switch (key.getType()) {
-            case KEYSYM -> key.getValue() != GLFW.GLFW_KEY_UNKNOWN && InputConstants.isKeyDown(mc.getWindow(), key.getValue());
-            case MOUSE -> GLFW.glfwGetMouseButton(mc.getWindow().handle(), key.getValue()) == GLFW.GLFW_PRESS;
-            case SCANCODE -> false;
-        };
+        return net.alpaka.addons.utils.PhysicalInput.isDown(key);
     }
 
     /**

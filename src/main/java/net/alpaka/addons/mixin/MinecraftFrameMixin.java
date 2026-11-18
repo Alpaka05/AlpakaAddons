@@ -2,8 +2,8 @@ package net.alpaka.addons.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.mojang.blaze3d.systems.CommandEncoder;
-import com.mojang.blaze3d.systems.GpuSurface;
+import com.mojang.renderpearl.api.commands.CommandEncoder;
+import com.mojang.renderpearl.api.device.GpuSurface;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.alpaka.addons.utils.AlpakaPerf.Phase;
 import net.minecraft.client.DeltaTracker;
@@ -83,18 +83,18 @@ public class MinecraftFrameMixin {
     }
 
     @WrapOperation(method = "renderFrame",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GameRenderer;render(Lnet/minecraft/client/DeltaTracker;Z)V"))
-    private void alpaka$timeRender(GameRenderer renderer, DeltaTracker delta, boolean advance, Operation<Void> original) {
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GameRenderer;render()V"))
+    private void alpaka$timeRender(GameRenderer renderer, Operation<Void> original) {
         long t = AlpakaPerf.phaseBegin();
         try {
-            original.call(renderer, delta, advance);
+            original.call(renderer);
         } finally {
             AlpakaPerf.phaseEnd(Phase.RENDER, t);
         }
     }
 
     @WrapOperation(method = "renderFrame",
-            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/GpuSurface;acquireNextTexture()V"))
+            at = @At(value = "INVOKE", target = "Lcom/mojang/renderpearl/api/device/GpuSurface;acquireNextTexture()V"))
     private void alpaka$timeAcquire(GpuSurface surface, Operation<Void> original) {
         long t = AlpakaPerf.phaseBegin();
         try {
@@ -105,7 +105,7 @@ public class MinecraftFrameMixin {
     }
 
     @WrapOperation(method = "renderFrame",
-            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/CommandEncoder;submit()V"))
+            at = @At(value = "INVOKE", target = "Lcom/mojang/renderpearl/api/commands/CommandEncoder;submit()V"))
     private void alpaka$timeSubmit(CommandEncoder encoder, Operation<Void> original) {
         long t = AlpakaPerf.phaseBegin();
         try {
@@ -116,7 +116,7 @@ public class MinecraftFrameMixin {
     }
 
     @WrapOperation(method = "renderFrame",
-            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/GpuSurface;present()V"))
+            at = @At(value = "INVOKE", target = "Lcom/mojang/renderpearl/api/device/GpuSurface;present()V"))
     private void alpaka$timePresent(GpuSurface surface, Operation<Void> original) {
         long t = AlpakaPerf.phaseBegin();
         try {

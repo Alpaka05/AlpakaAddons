@@ -34,7 +34,6 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.item.component.CustomData
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.lwjgl.glfw.GLFW
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -132,7 +131,7 @@ object PestFinder {
     @JvmStatic
     fun register() {
         TELEPORT_KEY = AlpakaKeyBinds.register(KeyMapping("key.alpaka.pest_finder_teleport",
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY))
+            InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.value, AlpakaKeyCategory.CATEGORY))
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
         ClientPlayConnectionEvents.JOIN.register { _, _, _ -> reset() }
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> reset() }
@@ -183,10 +182,10 @@ object PestFinder {
         if (!isEnabled()) return false
         val hide = AlpakaConfig.instance.pestFinderHideParticles
         val type = packet.particle.type
-        val still = packet.maxSpeed == 0f && packet.xDist == 0f && packet.yDist == 0f && packet.zDist == 0f
+        val still = packet.xMaxSpeed == 0f && packet.yMaxSpeed == 0f && packet.zMaxSpeed == 0f && packet.xDist == 0f && packet.yDist == 0f && packet.zDist == 0f
 
         // The swirl of enchanting glyphs that goes with the trail.
-        if (type == ParticleTypes.ENCHANT && packet.count == 10 && packet.maxSpeed == -2f) return hide
+        if (type == ParticleTypes.ENCHANT && packet.count == 10 && packet.xMaxSpeed == -2f) return hide
         if (type != ParticleTypes.ANGRY_VILLAGER || packet.count != 1 || !still) return false
 
         val player = Minecraft.getInstance().player ?: return hide

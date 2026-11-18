@@ -22,7 +22,7 @@ import java.util.Set;
  *
  * How it works: item quads are handed to the deferred renderer as an {@code ItemSubmit}, and the
  * feature renderer later picks the buffer from each quad's own render type. Neither of those carries
- * a "this came from the hand" marker, so {@code ItemInHandRenderer.renderItem} sets
+ * a "this came from the hand" marker, so {@code FirstPersonHandsAndItemsRenderer.submitArmWithItem} sets
  * {@link #capturing} for the duration of its submit call, the collector mixin remembers every
  * ItemSubmit created while it is set, and the feature renderer mixin swaps the render type for the
  * remembered submits. The replacement is the breeze wind type: the same entity vertex format and
@@ -55,7 +55,7 @@ public final class HandItemLightingFeature {
         return AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemLightingDisabled;
     }
 
-    /** Called right before ItemInHandRenderer hands the item state to the collector. */
+    /** Called right before FirstPersonHandsAndItemsRenderer hands the item state to the collector. */
     public static void beginHandItem(LivingEntity entity, ItemDisplayContext context) {
         capturing = isEnabled() && context.firstPerson() && entity == Minecraft.getInstance().player;
     }

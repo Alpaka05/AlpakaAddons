@@ -267,7 +267,7 @@ public final class SolverDraw {
             float scale = TEXT_SCALE * label.scale();
             poseStack.pushPose();
             poseStack.translate(label.at().x - camera.pos.x, label.at().y - camera.pos.y, label.at().z - camera.pos.z);
-            poseStack.mulPose(camera.orientation);
+            poseStack.rotate(camera.orientation);
             poseStack.scale(scale, -scale, scale);
             // NORMAL: depth-tested like the world. Never SEE_THROUGH.
             out.submitText(poseStack, -width / 2.0f, -4.0f, text, true, Font.DisplayMode.NORMAL,

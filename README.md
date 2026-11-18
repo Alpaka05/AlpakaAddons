@@ -8,7 +8,7 @@
 
 [![Latest release](https://img.shields.io/github/v/release/Alpaka05/AlpakaAddons?label=release&color=29B6B2)](https://github.com/Alpaka05/AlpakaAddons/releases/latest)
 [![Build](https://github.com/Alpaka05/AlpakaAddons/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Alpaka05/AlpakaAddons/actions/workflows/build.yml)
-![Minecraft 26.2](https://img.shields.io/badge/Minecraft-26.2-8A6FDF)
+![Minecraft 26.3](https://img.shields.io/badge/Minecraft-26.3-8A6FDF)
 ![Fabric](https://img.shields.io/badge/loader-Fabric-DBB47E)
 ![Client-side](https://img.shields.io/badge/client--side-only-4C9A2A)
 
@@ -28,7 +28,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 
 ## Getting Started
 
-1. **Install:** you need [Fabric Loader](https://fabricmc.net/use/installer/), [Fabric API](https://modrinth.com/mod/fabric-api), [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin) and Java 25. Download the latest `alpaka-<version>-mc26.2.jar` from [Releases](https://github.com/Alpaka05/AlpakaAddons/releases/latest) and put it in your `mods` folder. [Mod Menu](https://modrinth.com/mod/modmenu) is optional.
+1. **Install:** you need [Fabric Loader](https://fabricmc.net/use/installer/), [Fabric API](https://modrinth.com/mod/fabric-api), [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin) and Java 25. Download the latest `alpaka-<version>-mc26.3.jar` from [Releases](https://github.com/Alpaka05/AlpakaAddons/releases/latest) and put it in your `mods` folder. [Mod Menu](https://modrinth.com/mod/modmenu) is optional.
 2. **Set up:** type `/aa` in-game to open the config. Every feature has its own toggle and is easy to find with the search bar, and `/aa <term>` opens the config with that search already filled in.
 3. **Arrange your HUD:** `/alpakahud` opens the HUD editor, where you can move and resize every overlay.
 

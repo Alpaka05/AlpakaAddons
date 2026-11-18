@@ -148,7 +148,7 @@ public final class CommandShortcuts {
         return key == InputConstants.KEY_LSHIFT || key == InputConstants.KEY_RSHIFT
                 || key == InputConstants.KEY_LCONTROL || key == InputConstants.KEY_RCONTROL
                 || key == InputConstants.KEY_LALT || key == InputConstants.KEY_RALT
-                || key == InputConstants.KEY_LSUPER || key == InputConstants.KEY_RSUPER;
+                || key == InputConstants.KEY_LGUI || key == InputConstants.KEY_RGUI;
     }
 
     /** How a shortcut's key reads: "Ctrl + Shift + Y", or "Not Bound". */

@@ -15,7 +15,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * The Chest Value key: pressed in any menu - a chest, a backpack, the Ender Chest, the inventory -
@@ -33,8 +32,8 @@ public final class ChestValueFeature {
     public static KeyMapping KEY;
 
     public static void register() {
-        KEY = AlpakaKeyBinds.register(new KeyMapping("key.alpaka.chest_value", InputConstants.Type.KEYSYM,
-                GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY));
+        KEY = AlpakaKeyBinds.register(new KeyMapping("key.alpaka.chest_value", InputConstants.Type.KEYBOARD,
+                InputConstants.UNKNOWN.getValue(), AlpakaKeyCategory.CATEGORY));
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (!(screen instanceof AbstractContainerScreen<?>)) return;
             ChestValuePanel.menuOpened(screen);

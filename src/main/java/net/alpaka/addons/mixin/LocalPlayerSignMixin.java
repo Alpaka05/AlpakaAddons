@@ -1,5 +1,6 @@
 package net.alpaka.addons.mixin;
 
+import net.minecraft.world.level.block.entity.SignTextSlot;
 import net.alpaka.addons.features.market.MarketInputScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
@@ -16,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(LocalPlayer.class)
 public class LocalPlayerSignMixin {
     @Inject(method = "openTextEdit", at = @At("HEAD"), cancellable = true)
-    private void alpaka$openMarketInput(SignBlockEntity sign, boolean isFrontText, CallbackInfo ci) {
-        if (MarketInputScreen.tryOpen(sign, isFrontText)) ci.cancel();
+    private void alpaka$openMarketInput(SignBlockEntity sign, SignTextSlot slot, CallbackInfo ci) {
+        if (MarketInputScreen.tryOpen(sign, slot)) ci.cancel();
     }
 }

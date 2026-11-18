@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.market;
 
+import net.alpaka.addons.utils.MouseButtons;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.GuiItemFade;
@@ -29,7 +31,6 @@ import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemLore;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -1943,7 +1944,7 @@ public class MarketScreen extends ContainerScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         // A market key bound to a side button of the mouse, say back and forward for the pages.
-        if (!classic() && event.button() > 1 && model != null && Markets.hotkeys(kind)) {
+        if (!classic() && !MouseButtons.isLeftOrRight(event.button()) && model != null && Markets.hotkeys(kind)) {
             Integer target = boundTarget(mapping -> mapping.matchesMouse(event));
             if (target != null) {
                 AlpakaStyle.click();
@@ -1956,9 +1957,9 @@ public class MarketScreen extends ContainerScreen {
             Hit hit = hits.get(i);
             if (classic() && !hit.sound()) continue;
             if (hit.contains(event.x(), event.y())) {
-                if (event.button() != 0 && event.button() != 1) return true;
+                if (!MouseButtons.isLeftOrRight(event.button())) return true;
                 if (hit.sound()) AlpakaStyle.click();
-                hit.action().run(event.button(), event.hasShiftDown());
+                hit.action().run(MouseButtons.containerButton(event.button()), event.hasShiftDown());
                 return true;
             }
         }
@@ -2018,11 +2019,11 @@ public class MarketScreen extends ContainerScreen {
     private Integer hotkeyTarget(KeyEvent event) {
         if (model == null) return null;
         int mods = event.modifiers();
-        boolean command = (mods & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0;
-        boolean alt = (mods & GLFW.GLFW_MOD_ALT) != 0;
-        boolean shift = (mods & GLFW.GLFW_MOD_SHIFT) != 0;
+        boolean command = (mods & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0;
+        boolean alt = (mods & InputConstants.MOD_ALT) != 0;
+        boolean shift = (mods & InputConstants.MOD_SHIFT) != 0;
         int key = event.key();
-        if (command && !alt && !shift) return key == GLFW.GLFW_KEY_F ? model.controls.get(MarketMenu.Control.SEARCH) : null;
+        if (command && !alt && !shift) return key == InputConstants.KEY_F ? model.controls.get(MarketMenu.Control.SEARCH) : null;
         if (command || alt) return null;
         int digit = digit(key);
         if (digit >= 0) {
@@ -2069,8 +2070,8 @@ public class MarketScreen extends ContainerScreen {
 
     /** 0 for the key 1 (on the number row or the keypad) up to 8 for 9; -1 for any other key. */
     private static int digit(int key) {
-        if (key >= GLFW.GLFW_KEY_1 && key <= GLFW.GLFW_KEY_9) return key - GLFW.GLFW_KEY_1;
-        if (key >= GLFW.GLFW_KEY_KP_1 && key <= GLFW.GLFW_KEY_KP_9) return key - GLFW.GLFW_KEY_KP_1;
+        if (key >= InputConstants.KEY_1 && key <= InputConstants.KEY_9) return key - InputConstants.KEY_1;
+        if (key >= InputConstants.KEY_NUMPAD1 && key <= InputConstants.KEY_NUMPAD9) return key - InputConstants.KEY_NUMPAD1;
         return -1;
     }
 

@@ -1,5 +1,6 @@
 package net.alpaka.addons.client
 
+import net.alpaka.addons.utils.MouseButtons
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.EditableText
@@ -15,7 +16,6 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import org.lwjgl.glfw.GLFW
 import kotlin.math.max
 import kotlin.math.min
 
@@ -260,7 +260,7 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
     // ------------------------------------------------------------------ input
 
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
-        if (event.button() != 0) return super.mouseClicked(event, isDoubleClick)
+        if (event.button() != MouseButtons.LEFT) return super.mouseClicked(event, isDoubleClick)
         val mouseX = event.x().toInt()
         val mouseY = event.y().toInt()
         val f = frame()
@@ -383,7 +383,7 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
         swallowChar = false
         if (capturingKey >= 0) {
             val shortcut = keys.getOrNull(capturingKey)
-            if (event.key() == GLFW.GLFW_KEY_ESCAPE || shortcut == null) {
+            if (event.key() == InputConstants.KEY_ESCAPE || shortcut == null) {
                 capturingKey = -1
                 return true
             }
@@ -410,14 +410,14 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
                 }
             }
             when {
-                event.key() == GLFW.GLFW_KEY_TAB -> {
+                event.key() == InputConstants.KEY_TAB -> {
                     // From an alias on to its command; from a command, out of the field.
                     if (focusKind == Kind.ALIAS && focusColumn == 0) focus(Kind.ALIAS, focusIndex, 1)
                     else endEditing()
                     return true
                 }
-                event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER
-                        || event.key() == GLFW.GLFW_KEY_ESCAPE -> {
+                event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER
+                        || event.key() == InputConstants.KEY_ESCAPE -> {
                     endEditing()
                     return true
                 }

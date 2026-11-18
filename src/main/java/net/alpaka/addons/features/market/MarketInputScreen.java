@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.market;
 
+import net.alpaka.addons.utils.MouseButtons;
+import net.minecraft.world.level.block.entity.SignTextSlot;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
@@ -112,8 +114,8 @@ public class MarketInputScreen extends SignEditScreen {
         }
     }
 
-    public MarketInputScreen(SignBlockEntity sign, boolean isFrontText, boolean filtered, SignPrompt prompt, MarketKind context) {
-        super(sign, isFrontText, filtered);
+    public MarketInputScreen(SignBlockEntity sign, SignTextSlot slot, boolean filtered, SignPrompt prompt, MarketKind context) {
+        super(sign, slot, filtered);
         this.prompt = prompt;
         this.context = context;
         this.selling = prompt.type() == SignPrompt.Type.PRICE && prompt.auctionPrice() ? LowestBin.selling() : null;
@@ -124,17 +126,17 @@ public class MarketInputScreen extends SignEditScreen {
      * Opens the input bar for a sign Hypixel is opening, if it is one of its prompts. Returns false,
      * leaving the sign to vanilla, for every other sign.
      */
-    public static boolean tryOpen(SignBlockEntity sign, boolean isFrontText) {
+    public static boolean tryOpen(SignBlockEntity sign, SignTextSlot slot) {
         if (!Markets.signInput() || sign instanceof HangingSignBlockEntity) return false;
         Minecraft mc = Minecraft.getInstance();
         boolean filtered = mc.isTextFilteringEnabled();
         String[] lines = new String[4];
         for (int i = 0; i < 4; i++) {
-            lines[i] = SkyblockUtils.cleanColor(sign.getText(isFrontText).getMessage(i, filtered).getString());
+            lines[i] = SkyblockUtils.cleanColor(sign.getText(slot).getMessages(filtered).get(i).getString());
         }
         SignPrompt prompt = SignPrompt.of(lines);
         if (prompt == null) return false;
-        mc.gui.setScreen(new MarketInputScreen(sign, isFrontText, filtered, prompt, Markets.recentContext(mc.gui.screen())));
+        mc.gui.setScreen(new MarketInputScreen(sign, slot, filtered, prompt, Markets.recentContext(mc.gui.screen())));
         return true;
     }
 
@@ -823,7 +825,7 @@ public class MarketInputScreen extends SignEditScreen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0) {
+        if (event.button() == MouseButtons.LEFT) {
             for (int i = hits.size() - 1; i >= 0; i--) {
                 Hit hit = hits.get(i);
                 if (hit.contains(event.x(), event.y())) {

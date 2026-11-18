@@ -1,5 +1,8 @@
 package net.alpaka.addons.features.escapemenu;
 
+import net.alpaka.addons.utils.MouseButtons;
+import com.mojang.blaze3d.platform.InputConstants;
+
 import net.alpaka.addons.client.AlpakaConfigScreen;
 import net.alpaka.addons.client.AlpakaConfirmScreen;
 import net.alpaka.addons.client.gui.GuiFont;
@@ -173,7 +176,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
                 if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
                     net.alpaka.addons.compat.ModMenuCompat.openModsScreen(this);
                 } else {
-                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true));
+                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options));
                 }
             }
         });
@@ -185,7 +188,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
             if (this.minecraft != null) {
                 // In a world, as vanilla's pause menu opens it: without that the singleplayer
                 // difficulty and the world's own options are missing.
-                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true));
+                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options));
             }
         });
         this.addRenderableWidget(this.optionsButton);
@@ -197,7 +200,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
                 this.returningFromDialog = true;
                 this.minecraft.gui.setScreen(new AlpakaConfirmScreen(this, "Open Wiki",
                         "Opens the Hypixel SkyBlock wiki in your browser: " + WIKI_URL, "Open", false,
-                        () -> net.minecraft.util.Util.getPlatform().openUri(WIKI_URL)));
+                        () -> com.mojang.blaze3d.Blaze3D.openUri(java.net.URI.create(WIKI_URL))));
             }
         });
         this.addRenderableWidget(this.wikiButton);
@@ -299,7 +302,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0 && isOverLogo(event.x(), event.y()) && this.minecraft != null) {
+        if (event.button() == MouseButtons.LEFT && isOverLogo(event.x(), event.y()) && this.minecraft != null) {
             // Vanilla's click, which the custom-sound swap replaces when the player opted in.
             net.minecraft.client.gui.components.AbstractWidget.playButtonClickSound(this.minecraft.getSoundManager());
             this.minecraft.gui.setScreen(new AlpakaConfigScreen(this));
@@ -311,7 +314,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == 256) { // GLFW_KEY_ESCAPE
+        if (event.key() == InputConstants.KEY_ESCAPE) {
             this.onClose();
             return true;
         }

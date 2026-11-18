@@ -56,25 +56,26 @@ public class MouseHandlerMixin {
     }
 
     /**
-     * Keep Cursor Position: release at the remembered spot instead of the centre. GLFW only moves a
-     * disabled cursor virtually and, on leaving that mode, puts it back where the grab found it
-     * (the centre), so the position is set a second time once the cursor is visible again.
+     * Keep Cursor Position: release at the remembered spot instead of the centre. The window may only
+     * move the cursor virtually while it is captured and, on leaving that mode, put it back where the
+     * grab found it (the centre), so the position is set a second time once the cursor is visible
+     * again.
      */
     @WrapOperation(method = "releaseMouse", at = @At(value = "INVOKE",
-            target = "Lcom/mojang/blaze3d/platform/InputConstants;grabOrReleaseMouse(Lcom/mojang/blaze3d/platform/Window;IDD)V"))
-    private void alpaka$keepCursor(Window window, int mode, double x, double y, Operation<Void> original) {
+            target = "Lcom/mojang/blaze3d/platform/InputConstants;releaseMouse(Lcom/mojang/blaze3d/platform/Window;DD)V"))
+    private void alpaka$keepCursor(Window window, double x, double y, Operation<Void> original) {
         double[] kept = AlpakaConfig.instance.keepCursorPositionEnabled
                 ? KeepCursorPositionFeature.restoreFor(
                         this.minecraft.gui.screen() instanceof AbstractContainerScreen<?>, Util.getMillis(),
                         window.getScreenWidth(), window.getScreenHeight())
                 : null;
         if (kept == null) {
-            original.call(window, mode, x, y);
+            original.call(window, x, y);
             return;
         }
         this.xpos = kept[0];
         this.ypos = kept[1];
-        original.call(window, mode, kept[0], kept[1]);
-        original.call(window, mode, kept[0], kept[1]);
+        original.call(window, kept[0], kept[1]);
+        original.call(window, kept[0], kept[1]);
     }
 }

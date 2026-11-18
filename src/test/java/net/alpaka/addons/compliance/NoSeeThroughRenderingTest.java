@@ -68,7 +68,7 @@ class NoSeeThroughRenderingTest {
     private static final Map<String, Set<String>> FORBIDDEN_MEMBERS = Map.of(
             "net/minecraft/client/gui/Font$DisplayMode", Set.of("SEE_THROUGH"),
             "net/minecraft/gizmos/GizmoProperties", Set.of("setAlwaysOnTop"),
-            "com/mojang/blaze3d/platform/CompareOp", Set.of("ALWAYS_PASS", "NOT_EQUAL"),
+            "com/mojang/renderpearl/api/pipeline/CompareOp", Set.of("ALWAYS_PASS", "NOT_EQUAL"),
             "net/alpaka/addons/features/blockoverlay/BlockOverlayRenderTypes", Set.of("noDepthQuads"),
             "net/minecraft/client/renderer/rendertype/RenderTypes", Set.of("outline"),
             "net/minecraft/client/renderer/RenderPipelines", Set.of("OUTLINE_NO_CULL"));
@@ -82,8 +82,8 @@ class NoSeeThroughRenderingTest {
             "net/minecraft/network/Connection",
             "net/fabricmc/fabric/api/event/client/player/ClientPreAttackCallback",
             // A depth test of its own choosing: only through a pipeline built here.
-            "com/mojang/blaze3d/pipeline/DepthStencilState",
-            "com/mojang/blaze3d/pipeline/RenderPipeline$Builder",
+            "com/mojang/renderpearl/api/pipeline/DepthStencilState",
+            "com/mojang/renderpearl/api/pipeline/RenderPipeline$Builder",
             "net/alpaka/addons/mixin/RenderPipelinesAccessor",
             "net/alpaka/addons/mixin/RenderTypeInvoker");
 
@@ -116,7 +116,7 @@ class NoSeeThroughRenderingTest {
         String displayMode = "net/minecraft/client/gui/Font$DisplayMode";
         String renderTypes = "net/minecraft/client/renderer/rendertype/RenderTypes";
         String renderType = "()Lnet/minecraft/client/renderer/rendertype/RenderType;";
-        String compareOp = "com/mojang/blaze3d/platform/CompareOp";
+        String compareOp = "com/mojang/renderpearl/api/pipeline/CompareOp";
 
         assertNotNull(check(field(displayMode, "SEE_THROUGH", "L" + displayMode + ";")));
         assertNull(check(field(displayMode, "NORMAL", "L" + displayMode + ";")));
@@ -128,7 +128,7 @@ class NoSeeThroughRenderingTest {
         assertNotNull(check(call(renderTypes, "textSeeThrough", "(Lnet/minecraft/resources/Identifier;)Lnet/minecraft/client/renderer/rendertype/RenderType;")));
         assertNotNull(check(call(renderTypes, "textBackgroundSeeThrough", renderType)));
         assertNotNull(check(call(renderTypes, "outline", "(Lnet/minecraft/resources/Identifier;)Lnet/minecraft/client/renderer/rendertype/RenderType;")));
-        assertNotNull(check(field("net/minecraft/client/renderer/RenderPipelines", "TEXT_SEE_THROUGH", "Lcom/mojang/blaze3d/pipeline/RenderPipeline;")));
+        assertNotNull(check(field("net/minecraft/client/renderer/RenderPipelines", "TEXT_SEE_THROUGH", "Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;")));
         assertNull(check(call(renderTypes, "lines", renderType)));
         assertNull(check(call(renderTypes, "linesTranslucent", renderType)));
         assertNull(check(call(renderTypes, "debugFilledBox", renderType)));
@@ -138,16 +138,16 @@ class NoSeeThroughRenderingTest {
         assertNull(check(field(compareOp, "GREATER_THAN_OR_EQUAL", "L" + compareOp + ";")));
 
         assertNotNull(check(call("net/alpaka/addons/features/blockoverlay/BlockOverlayRenderTypes", "noDepthQuads", renderType)));
-        assertNotNull(check(field("net/minecraft/client/renderer/RenderPipelines", "OUTLINE_NO_CULL", "Lcom/mojang/blaze3d/pipeline/RenderPipeline;")));
-        assertNull(check(field("net/minecraft/client/renderer/RenderPipelines", "LINES", "Lcom/mojang/blaze3d/pipeline/RenderPipeline;")));
+        assertNotNull(check(field("net/minecraft/client/renderer/RenderPipelines", "OUTLINE_NO_CULL", "Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;")));
+        assertNull(check(field("net/minecraft/client/renderer/RenderPipelines", "LINES", "Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;")));
         assertNotNull(check(new FieldInsnNode(Opcodes.PUTFIELD, "net/minecraft/client/renderer/state/level/LevelRenderState",
                 "shouldShowEntityOutlines", "Z")));
         // A pipeline of its own, with whatever depth test it likes.
-        assertNotNull(check(new TypeInsnNode(Opcodes.NEW, "com/mojang/blaze3d/pipeline/DepthStencilState")));
-        assertNotNull(check(call("com/mojang/blaze3d/pipeline/RenderPipeline$Builder", "withDepthStencilState",
-                "(Lcom/mojang/blaze3d/pipeline/DepthStencilState;)Lcom/mojang/blaze3d/pipeline/RenderPipeline$Builder;")));
-        assertNotNull(check(call("com/mojang/blaze3d/pipeline/RenderPipeline", "builder",
-                "([Lcom/mojang/blaze3d/pipeline/RenderPipeline$Snippet;)Lcom/mojang/blaze3d/pipeline/RenderPipeline$Builder;")));
+        assertNotNull(check(new TypeInsnNode(Opcodes.NEW, "com/mojang/renderpearl/api/pipeline/DepthStencilState")));
+        assertNotNull(check(call("com/mojang/renderpearl/api/pipeline/RenderPipeline$Builder", "withDepthStencilState",
+                "(Lcom/mojang/renderpearl/api/pipeline/DepthStencilState;)Lcom/mojang/renderpearl/api/pipeline/RenderPipeline$Builder;")));
+        assertNotNull(check(call("com/mojang/renderpearl/api/pipeline/RenderPipeline", "builder",
+                "([Lcom/mojang/renderpearl/api/pipeline/RenderPipeline$Snippet;)Lcom/mojang/renderpearl/api/pipeline/RenderPipeline$Builder;")));
         assertNotNull(check(new MethodInsnNode(Opcodes.INVOKESTATIC, "net/alpaka/addons/mixin/RenderTypeInvoker", "alpaka$create",
                 "()Lnet/minecraft/client/renderer/rendertype/RenderType;")));
         assertNotNull(check(call("net/minecraft/world/entity/Entity", "setGlowingTag", "(Z)V")));

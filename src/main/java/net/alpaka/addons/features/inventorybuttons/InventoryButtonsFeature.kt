@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.inventorybuttons
 
+import net.alpaka.addons.utils.MouseButtons
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.compliance.Outbound
 import net.alpaka.addons.config.AlpakaConfig
@@ -53,7 +54,7 @@ object InventoryButtonsFeature {
                 extract(s as AbstractContainerScreen<*>, graphics, mouseX, mouseY)
             }
             ScreenMouseEvents.allowMouseClick(screen).register { s, event ->
-                if (event.button() != 0) return@register true
+                if (event.button() != MouseButtons.LEFT) return@register true
                 val button = buttonAt(s as AbstractContainerScreen<*>, event.x(), event.y()) ?: return@register true
                 pressConsumed = true
                 click(button)

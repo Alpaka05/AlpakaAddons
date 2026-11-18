@@ -1,5 +1,6 @@
 package net.alpaka.addons.mixin;
 
+import net.minecraft.client.input.MouseButtonEvent;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.config.AlpakaConfig;
@@ -50,7 +51,7 @@ public abstract class AbstractContainerScreenMixin {
     }
 
     /** Every click path of the screen ends here; a refused terminal click stops before anything happens. */
-    @Inject(method = "slotClicked", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V", at = @At("HEAD"), cancellable = true)
     private void alpaka$terminalClickGuard(Slot slot, int slotId, int button, ContainerInput input, CallbackInfo ci) {
         if (!AlpakaConfig.instance.terminalSolversEnabled) return;
         if (!TerminalOverlay.allowSlotClick((AbstractContainerScreen<?>) (Object) this, slot, slotId, button, input)) {
@@ -63,7 +64,7 @@ public abstract class AbstractContainerScreenMixin {
      * records it and notes what the slot holds now. Only reached when the click really went out -
      * a cancel at HEAD, or another mod's cancel before the call, skips it. Observes only.
      */
-    @Inject(method = "slotClicked", at = @At(value = "INVOKE",
+    @Inject(method = "slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;handleContainerInput(IIILnet/minecraft/world/inventory/ContainerInput;Lnet/minecraft/world/entity/player/Player;)V",
             shift = At.Shift.AFTER))
     private void alpaka$terminalClickSent(Slot slot, int slotId, int button, ContainerInput input, CallbackInfo ci) {
@@ -78,9 +79,9 @@ public abstract class AbstractContainerScreenMixin {
      * all within one tick. Only ever sends less.
      */
     @WrapOperation(method = "mouseReleased", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V",
+            target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;slotClicked(Lnet/minecraft/world/inventory/Slot;ILnet/minecraft/client/input/MouseButtonEvent;Lnet/minecraft/world/inventory/ContainerInput;)V",
             ordinal = 0))
-    private void alpaka$terminalNoShiftCollect(AbstractContainerScreen<?> screen, Slot slot, int slotId, int button,
+    private void alpaka$terminalNoShiftCollect(AbstractContainerScreen<?> screen, Slot slot, int slotId, MouseButtonEvent button,
                                                ContainerInput input, Operation<Void> original) {
         if (AlpakaConfig.instance.terminalSolversEnabled && input == ContainerInput.QUICK_MOVE
                 && !TerminalOverlay.allowShiftCollect(screen)) {

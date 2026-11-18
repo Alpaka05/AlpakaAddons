@@ -1,4 +1,5 @@
 #version 330
+#extension GL_ARB_separate_shader_objects : require
 
 // One step up the dual Kawase blur: renders a target twice the input's size from eight samples
 // in a ring around the pixel, the four diagonal ones weighted double.
@@ -9,9 +10,9 @@ layout(std140) uniform BlurConfig {
     float Offset;
 };
 
-in vec2 texCoord;
+layout(location = 0) in vec2 texCoord;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 void main() {
     // Half a texel of the target, which is twice the input's size.

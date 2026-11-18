@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.leapmenu
 
+import net.alpaka.addons.utils.MouseButtons
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.compliance.Outbound
@@ -141,7 +142,7 @@ class LeapMenuScreen(menu: ChestMenu, inventory: Inventory, title: Component, pr
         buttons.firstOrNull { x >= it.x && x < it.x + BUTTON_W && y >= it.y && y < it.y + BUTTON_H }
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
-        if (event.button() != 0) return true
+        if (event.button() != MouseButtons.LEFT) return true
         val name = hovered ?: return true
         val target = buttons.firstOrNull { it.target.name.equals(name, true) }?.target ?: return true
         if (target.dead) return true

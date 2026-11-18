@@ -317,7 +317,7 @@ object CustomDamageTagFeature {
                 tag.y + rise - camera.pos.y,
                 tag.z + tag.driftZ * drift - camera.pos.z,
             )
-            poseStack.mulPose(camera.orientation)
+            poseStack.rotate(camera.orientation)
             poseStack.scale(scale, -scale, scale)
 
             val color = ARGB.color(alpha, 0xFFFFFF)

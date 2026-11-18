@@ -5,7 +5,6 @@ import net.alpaka.addons.client.AlpakaKeyBinds;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.KeyMapping;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * Zoom: narrows the field of view while the key is held, or from one press to the next in toggle
@@ -44,9 +43,9 @@ public class ZoomFeature {
     public static void register() {
         ZOOM_KEY = AlpakaKeyBinds.register(new KeyMapping(
                 "key.alpaka.zoom",
-                InputConstants.Type.KEYSYM,
+                InputConstants.Type.KEYBOARD,
                 // Unbound until the player picks a key, like every key of the mod.
-                GLFW.GLFW_KEY_UNKNOWN,
+                InputConstants.UNKNOWN.getValue(),
                 net.alpaka.addons.client.AlpakaKeyCategory.CATEGORY
         ));
 

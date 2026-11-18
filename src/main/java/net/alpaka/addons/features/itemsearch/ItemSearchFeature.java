@@ -23,7 +23,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.inventory.Slot;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * Item Search: a window with a search bar over everything the player owns - the inventory, the Ender
@@ -41,8 +40,8 @@ public final class ItemSearchFeature {
     public static KeyMapping KEY;
 
     public static void register() {
-        KEY = AlpakaKeyBinds.register(new KeyMapping("key.alpaka.item_search", InputConstants.Type.KEYSYM,
-                GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY));
+        KEY = AlpakaKeyBinds.register(new KeyMapping("key.alpaka.item_search", InputConstants.Type.KEYBOARD,
+                InputConstants.UNKNOWN.getValue(), AlpakaKeyCategory.CATEGORY));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             ItemSearchStore.tick();

@@ -1,13 +1,11 @@
 package net.alpaka.addons.features.nametag
 
 import com.mojang.blaze3d.vertex.PoseStack
-import com.mojang.blaze3d.vertex.VertexConsumer
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.client.renderer.entity.state.AvatarRenderState
-import net.minecraft.client.renderer.rendertype.RenderTypes
 import net.minecraft.client.renderer.state.level.CameraRenderState
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
@@ -86,8 +84,8 @@ object CustomNameTagFeature {
     /** Thickness of the chroma frame around the backdrop, in text pixels. */
     private const val FRAME_THICKNESS = 0.6f
 
-    /** Depth 26.2's own text background sits at (behind the glyphs), so ours layers the same way. */
-    private const val BACKDROP_Z = -0.01f
+    /** How many flat segments the frame's top and bottom bars are cut into to show the hue sweep. */
+    private const val FRAME_SEGMENTS = 16
 
     /**
      * True while `EntityRenderDispatcher.extractEntity` is running, i.e. while the state being
@@ -164,7 +162,7 @@ object CustomNameTagFeature {
 
         poseStack.pushPose()
         poseStack.translate(attachment.x, attachment.y + ATTACHMENT_LIFT + cfg.nameTagHeightOffset, attachment.z)
-        poseStack.mulPose(camera.orientation)
+        poseStack.rotate(camera.orientation)
         val scale = NAMETAG_SCALE * cfg.nameTagScale
         poseStack.scale(scale, -scale, scale)
 
@@ -325,57 +323,46 @@ object CustomNameTagFeature {
 
         // The backdrop goes in once: through walls unless sneaking, like vanilla's. The frame goes in
         // twice, at full strength where the tag is in plain view and faintly through walls.
-        val backdropType = if (seeThrough) RenderTypes.textBackgroundSeeThrough() else RenderTypes.textBackground()
-        collector.submitCustomGeometry(poseStack, backdropType) { pose, consumer ->
-            if (backdropAlpha > 0) {
-                val color = ARGB.color(backdropAlpha, 0)
-                consumer.addVertex(pose, left, top, BACKDROP_Z).setColor(color).setLight(light)
-                consumer.addVertex(pose, left, bottom, BACKDROP_Z).setColor(color).setLight(light)
-                consumer.addVertex(pose, right, bottom, BACKDROP_Z).setColor(color).setLight(light)
-                consumer.addVertex(pose, right, top, BACKDROP_Z).setColor(color).setLight(light)
-            }
-            if (frame && seeThrough) submitFrame(pose, consumer, left, right, top, bottom, time, light, FRAME_SEE_THROUGH_ALPHA)
+        val backdropMode = if (seeThrough) Font.DisplayMode.SEE_THROUGH else Font.DisplayMode.NORMAL
+        if (backdropAlpha > 0) {
+            collector.submitTextBackground(poseStack, left, top, right, bottom, ARGB.color(backdropAlpha, 0), backdropMode, light)
+        }
+        if (frame && seeThrough) {
+            submitFrame(poseStack, collector, left, right, top, bottom, time, light, FRAME_SEE_THROUGH_ALPHA, Font.DisplayMode.SEE_THROUGH)
         }
         if (frame) {
-            collector.submitCustomGeometry(poseStack, RenderTypes.textBackground()) { pose, consumer ->
-                submitFrame(pose, consumer, left, right, top, bottom, time, light, 255)
-            }
+            submitFrame(poseStack, collector, left, right, top, bottom, time, light, 255, Font.DisplayMode.NORMAL)
         }
     }
 
-    /** The chroma frame around the backdrop, at the given alpha. */
+    /**
+     * The chroma frame as four bars. 26.3 draws text backgrounds only as flat-colored rectangles, so
+     * the top and bottom bars are cut into short segments that step through the hues along x.
+     */
     private fun submitFrame(
-        pose: PoseStack.Pose, consumer: com.mojang.blaze3d.vertex.VertexConsumer,
+        poseStack: PoseStack, collector: SubmitNodeCollector,
         left: Float, right: Float, top: Float, bottom: Float, time: Double, light: Int, alpha: Int,
+        mode: Font.DisplayMode,
     ) {
         val t = FRAME_THICKNESS
         // Hue runs along x, so the four sides meet in matching colors at the corners.
-        val leftColor = ARGB.color(alpha, frameColor(time, 0f))
-        val rightColor = ARGB.color(alpha, frameColor(time, 1f))
-        // Top and bottom bars.
-        frameQuad(pose, consumer, left - t, top - t, right + t, top, leftColor, rightColor, light)
-        frameQuad(pose, consumer, left - t, bottom, right + t, bottom + t, leftColor, rightColor, light)
+        val x0 = left - t
+        val x1 = right + t
+        for (i in 0 until FRAME_SEGMENTS) {
+            val a = x0 + (x1 - x0) * i / FRAME_SEGMENTS
+            val b = x0 + (x1 - x0) * (i + 1) / FRAME_SEGMENTS
+            val color = ARGB.color(alpha, frameColor(time, (i + 0.5f) / FRAME_SEGMENTS))
+            collector.submitTextBackground(poseStack, a, top - t, b, top, color, mode, light)
+            collector.submitTextBackground(poseStack, a, bottom, b, bottom + t, color, mode, light)
+        }
         // Left and right bars, each a single color.
-        frameQuad(pose, consumer, left - t, top, left, bottom, leftColor, leftColor, light)
-        frameQuad(pose, consumer, right, top, right + t, bottom, rightColor, rightColor, light)
+        collector.submitTextBackground(poseStack, x0, top, left, bottom, ARGB.color(alpha, frameColor(time, 0f)), mode, light)
+        collector.submitTextBackground(poseStack, right, top, x1, bottom, ARGB.color(alpha, frameColor(time, 1f)), mode, light)
     }
 
     /** The frame's color at a position along its width, 0 being the left end and 1 the right. */
     private fun frameColor(time: Double, position: Float): Int =
         ARGB.color(255, Mth.hsvToRgb(fract(time * 0.2 + position * 0.5).toFloat(), 0.9f, 1.0f))
-
-    /** One frame bar, colored [leftColor] at its left edge and [rightColor] at its right. */
-    private fun frameQuad(
-        pose: PoseStack.Pose,
-        consumer: VertexConsumer,
-        x0: Float, y0: Float, x1: Float, y1: Float,
-        leftColor: Int, rightColor: Int, light: Int,
-    ) {
-        consumer.addVertex(pose, x0, y0, BACKDROP_Z).setColor(leftColor).setLight(light)
-        consumer.addVertex(pose, x0, y1, BACKDROP_Z).setColor(leftColor).setLight(light)
-        consumer.addVertex(pose, x1, y1, BACKDROP_Z).setColor(rightColor).setLight(light)
-        consumer.addVertex(pose, x1, y0, BACKDROP_Z).setColor(rightColor).setLight(light)
-    }
 
     /** Letters ride a sine wave, each a little behind the one before it. */
     private fun waveOffset(time: Double, index: Int): Float =

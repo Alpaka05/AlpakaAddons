@@ -1,11 +1,13 @@
 package net.alpaka.addons.features.viewmodel;
 
-import com.mojang.blaze3d.pipeline.BindGroupLayout;
-import com.mojang.blaze3d.pipeline.ColorTargetState;
-import com.mojang.blaze3d.pipeline.DepthStencilState;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.ShaderType;
+import net.minecraft.client.resources.model.geometry.ItemQuads;
+import com.mojang.renderpearl.api.pipeline.BindGroupLayout;
+import com.mojang.renderpearl.api.pipeline.ColorTargetState;
+import com.mojang.renderpearl.api.pipeline.DepthStencilState;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.renderpearl.api.vertex.VertexFormat;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.mixin.RenderTypeInvoker;
 import net.minecraft.client.Minecraft;
@@ -131,7 +133,7 @@ public final class ItemMotionBlurFeature {
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Hooks from ItemInHandRenderer
+    // Hooks from FirstPersonHandsAndItemsRenderer
     // ---------------------------------------------------------------------------------------------
 
     /**
@@ -145,7 +147,7 @@ public final class ItemMotionBlurFeature {
         }
     }
 
-    /** Called right before ItemInHandRenderer hands the item state to the collector. */
+    /** Called right before FirstPersonHandsAndItemsRenderer hands the item state to the collector. */
     public static void beginHandItem(LivingEntity entity, ItemDisplayContext context) {
         currentSubmits.clear();
         capturing = isEnabled() && context.firstPerson() && entity == Minecraft.getInstance().player;
@@ -223,7 +225,7 @@ public final class ItemMotionBlurFeature {
                     }
                     pendingGhostAlpha = alpha;
                     collector.submitItem(GHOST_STACK, submit.displayContext(), submit.lightCoords(),
-                            submit.overlayCoords(), 0, submit.tintLayers(), submit.quads(),
+                            submit.overlayCoords(), 0, submit.tintLayers(), ItemQuads.split(submit.quads()),
                             ItemStackRenderState.FoilType.NONE);
                 }
             }
@@ -378,23 +380,24 @@ public final class ItemMotionBlurFeature {
         DepthStencilState depth = base.getDepthStencilState();
         RenderPipeline.Builder builder = RenderPipeline.builder()
                 .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/" + name))
-                .withVertexShader(base.getVertexShader())
-                .withFragmentShader(base.getFragmentShader())
+                .withVertexShader(base.getShaders().get(ShaderType.VERTEX))
+                .withFragmentShader(base.getShaders().get(ShaderType.FRAGMENT))
+                .withPushConstantSize(base.pushConstantSize())
                 .withPrimitiveTopology(base.getPrimitiveTopology())
                 .withPolygonMode(base.getPolygonMode())
                 .withCull(base.isCull())
                 .withDepthStencilState(new DepthStencilState(depth.depthTest(), false,
                         depth.depthBiasScaleFactor(), depth.depthBiasConstant()));
-        VertexFormat[] vertexBindings = base.getVertexFormatBindings();
-        for (int i = 0; i < vertexBindings.length; i++) {
-            if (vertexBindings[i] != null) {
-                builder.withVertexBinding(i, vertexBindings[i]);
+        List<VertexFormat> vertexBindings = base.getVertexFormatBindings();
+        for (int i = 0; i < vertexBindings.size(); i++) {
+            if (vertexBindings.get(i) != null) {
+                builder.withVertexBinding(i, vertexBindings.get(i));
             }
         }
-        ColorTargetState[] colorTargets = base.getColorTargetStates();
-        for (int i = 0; i < colorTargets.length; i++) {
-            if (colorTargets[i] != null) {
-                builder.withColorTargetState(i, colorTargets[i]);
+        List<ColorTargetState> colorTargets = base.getColorTargetStates();
+        for (int i = 0; i < colorTargets.size(); i++) {
+            if (colorTargets.get(i) != null) {
+                builder.withColorTargetState(i, colorTargets.get(i));
             } else {
                 builder.withUnusedColorTargetState(i);
             }

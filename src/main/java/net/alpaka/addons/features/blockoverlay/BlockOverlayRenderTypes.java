@@ -1,8 +1,8 @@
 package net.alpaka.addons.features.blockoverlay;
 
-import com.mojang.blaze3d.pipeline.DepthStencilState;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.platform.CompareOp;
+import com.mojang.renderpearl.api.pipeline.DepthStencilState;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.CompareOp;
 import net.alpaka.addons.mixin.RenderPipelinesAccessor;
 import net.alpaka.addons.mixin.RenderTypeInvoker;
 import net.minecraft.client.renderer.rendertype.RenderSetup;

@@ -1,7 +1,7 @@
 plugins {
     id "net.fabricmc.fabric-loom" version "1.17.20"
     id "maven-publish"
-    id "org.jetbrains.kotlin.jvm" version "2.1.10"
+    id "org.jetbrains.kotlin.jvm" version "2.4.20"
 }
 
 /**
@@ -132,6 +132,10 @@ tasks.withType(JavaCompile).configureEach {
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_23
+        // The compiler is new enough to read the Kotlin metadata of 26.3's libraries (JOML), but the
+        // code only uses the stdlib of Kotlin 2.1, so the Fabric Language Kotlin that
+        // fabric.mod.json asks for still has everything it calls.
+        apiVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1
     }
 }
 

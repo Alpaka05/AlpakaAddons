@@ -1,5 +1,7 @@
 package net.alpaka.addons.client
 
+import net.alpaka.addons.utils.MouseButtons
+import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.InventoryButtonsSkin as Skin
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.EditableText
@@ -19,7 +21,6 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
-import org.lwjgl.glfw.GLFW
 
 /**
  * Where the inventory buttons are set up.
@@ -399,7 +400,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
         val mx = event.x()
         val my = event.y()
-        if (event.button() != 0) return super.mouseClicked(event, isDoubleClick)
+        if (event.button() != MouseButtons.LEFT) return super.mouseClicked(event, isDoubleClick)
         clickShift = event.hasShiftDown()
 
         if (inPanel(mx, my)) {
@@ -506,7 +507,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         if (previousFocus == field) {
             AlpakaStyle.clickTextField(font, text, null, fieldX, fieldW, mouseX, true, clickShift)
         } else {
-            text.keyPressed(GLFW.GLFW_KEY_END, false, false)
+            text.keyPressed(InputConstants.KEY_END, false, false)
         }
     }
 
@@ -534,7 +535,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     }
 
     override fun mouseReleased(event: MouseButtonEvent): Boolean {
-        if (dragging != null && event.button() == 0) {
+        if (dragging != null && event.button() == MouseButtons.LEFT) {
             if (moved) AlpakaConfig.save()
             dragging = null
             moved = false
@@ -582,18 +583,18 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         val text = focusedText()
         if (text != null) {
             when (key) {
-                GLFW.GLFW_KEY_ESCAPE -> {
+                InputConstants.KEY_ESCAPE -> {
                     focus = Field.NONE
                     return true
                 }
-                GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER, GLFW.GLFW_KEY_TAB -> {
+                InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER, InputConstants.KEY_TAB -> {
                     // On to the next field, the way a form goes.
                     focus = when (focus) {
                         Field.COMMAND -> Field.LABEL
                         Field.LABEL -> Field.SEARCH
                         else -> Field.NONE
                     }
-                    focusedText()?.keyPressed(GLFW.GLFW_KEY_END, false, false)
+                    focusedText()?.keyPressed(InputConstants.KEY_END, false, false)
                     return true
                 }
             }
@@ -607,8 +608,8 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         val button = selected
         if (button != null) {
             val step = if (event.hasShiftDown()) 10 else 1
-            val dx = when (key) { GLFW.GLFW_KEY_LEFT -> -step; GLFW.GLFW_KEY_RIGHT -> step; else -> 0 }
-            val dy = when (key) { GLFW.GLFW_KEY_UP -> -step; GLFW.GLFW_KEY_DOWN -> step; else -> 0 }
+            val dx = when (key) { InputConstants.KEY_LEFT -> -step; InputConstants.KEY_RIGHT -> step; else -> 0 }
+            val dy = when (key) { InputConstants.KEY_UP -> -step; InputConstants.KEY_DOWN -> step; else -> 0 }
             if (dx != 0 || dy != 0) {
                 val box = box()
                 val p = InventoryButtonLayout.place(button, box, width, height)
@@ -618,11 +619,11 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
                 AlpakaConfig.save()
                 return true
             }
-            if (key == GLFW.GLFW_KEY_DELETE || key == GLFW.GLFW_KEY_BACKSPACE) {
+            if (key == InputConstants.KEY_DELETE || key == InputConstants.KEY_BACKSPACE) {
                 deleteSelected()
                 return true
             }
-            if (key == GLFW.GLFW_KEY_ESCAPE) {
+            if (key == InputConstants.KEY_ESCAPE) {
                 select(null)
                 return true
             }

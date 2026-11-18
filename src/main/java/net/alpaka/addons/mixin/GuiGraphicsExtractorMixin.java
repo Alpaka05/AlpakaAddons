@@ -95,7 +95,7 @@ public abstract class GuiGraphicsExtractorMixin implements AlpakaGuiElementSink 
      * shift it.
      */
     @WrapOperation(
-            method = "tooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;IILnet/minecraft/client/gui/screens/inventory/tooltip/ClientTooltipPositioner;Lnet/minecraft/resources/Identifier;)V",
+            method = "tooltip(Lnet/minecraft/client/gui/Font;Ljava/util/List;IILnet/minecraft/client/gui/screens/inventory/tooltip/ClientTooltipPositioner;Lnet/minecraft/resources/Identifier;Z)V",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/tooltip/ClientTooltipPositioner;positionTooltip(IIIIII)Lorg/joml/Vector2ic;")
     )
     private Vector2ic alpaka$scrollTallTooltip(ClientTooltipPositioner positioner, int guiWidth, int guiHeight,
@@ -127,7 +127,7 @@ public abstract class GuiGraphicsExtractorMixin implements AlpakaGuiElementSink 
     /** The durability and cooldown bars fade with their item. */
     @ModifyArg(
             method = {"itemBar", "itemCooldown"},
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(Lcom/mojang/blaze3d/pipeline/RenderPipeline;IIIII)V"),
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;IIIII)V"),
             index = 5
     )
     private int alpaka$fadeItemBar(int color) {

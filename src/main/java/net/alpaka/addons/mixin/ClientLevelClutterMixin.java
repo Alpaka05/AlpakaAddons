@@ -26,14 +26,15 @@ public class ClientLevelClutterMixin {
         if (HideVisualClutterFeature.shouldHideBlockParticles()) ci.cancel();
     }
 
-    @Inject(method = "addBreakingBlockEffect", at = @At("HEAD"), cancellable = true)
-    private void alpaka$hideBreakingParticles(BlockPos pos, Direction direction, CallbackInfo ci) {
+    // Only the particles: 26.3 plays the breaking sound from the same effect, and that stays.
+    @Inject(method = "addBreakingParticles", at = @At("HEAD"), cancellable = true)
+    private void alpaka$hideBreakingParticles(BlockPos pos, Direction direction, BlockState state, CallbackInfo ci) {
         if (HideVisualClutterFeature.shouldHideBlockParticles()) ci.cancel();
     }
 
     @Inject(method = "createFireworks", at = @At("HEAD"), cancellable = true)
     private void alpaka$hideFireworkBurst(double x, double y, double z, double xd, double yd, double zd,
-                                          List<FireworkExplosion> explosions, CallbackInfo ci) {
+                                          List<FireworkExplosion> explosions, boolean silent, CallbackInfo ci) {
         if (HideVisualClutterFeature.shouldHideFireworkBurst()) ci.cancel();
     }
 }

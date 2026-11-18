@@ -1,18 +1,18 @@
 package net.alpaka.addons.features.chat;
 
-import com.mojang.blaze3d.GpuFormat;
-import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.renderpearl.api.GpuFormat;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.Std140Builder;
-import com.mojang.blaze3d.pipeline.BindGroupLayout;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.BindGroupLayout;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.TextureTarget;
-import com.mojang.blaze3d.shaders.UniformType;
-import com.mojang.blaze3d.systems.CommandEncoder;
-import com.mojang.blaze3d.systems.RenderPass;
+import com.mojang.renderpearl.api.pipeline.UniformType;
+import com.mojang.renderpearl.api.commands.CommandEncoder;
+import com.mojang.renderpearl.api.commands.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.FilterMode;
-import com.mojang.blaze3d.textures.GpuSampler;
-import com.mojang.blaze3d.textures.GpuTextureView;
+import com.mojang.renderpearl.api.textures.FilterMode;
+import com.mojang.renderpearl.api.textures.GpuSampler;
+import com.mojang.renderpearl.api.textures.GpuTextureView;
 import net.alpaka.addons.mixin.RenderPipelinesAccessor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
@@ -81,7 +81,7 @@ final class DualKawaseBlur {
                         .withVertexShader(Identifier.withDefaultNamespace("core/screenquad"))
                         .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "post/" + name))
                         .withBindGroupLayout(BindGroupLayout.builder()
-                                .withSampler("InSampler")
+                                .withUniform("InSampler", UniformType.COMBINED_IMAGE_SAMPLER)
                                 .withUniform("BlurConfig", UniformType.UNIFORM_BUFFER)
                                 .build())
                         .build());
@@ -133,7 +133,7 @@ final class DualKawaseBlur {
         for (int i = 1; i <= MAX_LEVELS; i++) {
             int w = Math.max(1, (frameWidth + (1 << i) - 1) >> i);
             int h = Math.max(1, (frameHeight + (1 << i) - 1) >> i);
-            levels.add(new TextureTarget("Alpaka blur 1/" + (1 << i), w, h, false, format));
+            levels.add(new TextureTarget("Alpaka blur 1/" + (1 << i), w, h, format, null));
         }
     }
 
@@ -182,10 +182,10 @@ final class DualKawaseBlur {
                       GpuSampler sampler, GpuBuffer config, List<int[]> areas) {
         TextureTarget target = levels.get(level);
         try (RenderPass pass = encoder.createRenderPass(() -> "Alpaka blur", target.getColorTextureView(), Optional.empty())) {
-            pass.setPipeline(pipeline);
+            pass.setPipeline(RenderSystem.getCompiledPipeline(pipeline));
             RenderSystem.bindDefaultUniforms(pass);
             pass.setUniform("BlurConfig", config);
-            pass.bindTexture("InSampler", input, sampler);
+            pass.setUniform("InSampler", input, sampler);
             if (areas.isEmpty()) {
                 pass.draw(3, 1, 0, 0);
                 return;

@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.party;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -7,7 +8,6 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 import java.util.regex.Matcher;
@@ -159,15 +159,15 @@ public final class PartyInviteFeature {
      * no further.
      *
      * The key is identified by the character it produces on the player's keyboard layout, not by
-     * its GLFW code: GLFW codes name positions on a US keyboard, so on a German QWERTZ keyboard the
-     * key labelled Y arrives as {@code GLFW_KEY_Z}. The notice says Y, so the key that says Y is the
+     * its scan code: scan codes name positions on a US keyboard, so on a German QWERTZ keyboard the
+     * key labelled Y arrives as {@code KEY_Z}. The notice says Y, so the key that says Y is the
      * one that joins.
      */
-    public static boolean onKey(int key, int scancode, boolean repeat) {
+    public static boolean onKey(int key, int keycode, boolean repeat) {
         if (!isShowing()) return false;
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.screen() != null || mc.player == null) return false;
-        char pressed = keyCharacter(key, scancode);
+        char pressed = keyCharacter(key, keycode);
         if (pressed != 'y' && pressed != 'n') return false;
         // A held key's repeats are taken as well, so nothing else sees them, but act only once.
         if (!repeat) {
@@ -180,14 +180,12 @@ public final class PartyInviteFeature {
     }
 
     /** The lower-case character a key produces on the current layout, or 0 when it has none. */
-    static char keyCharacter(int key, int scancode) {
-        String name = GLFW.glfwGetKeyName(key, scancode);
-        if (name != null && name.length() == 1) {
-            return Character.toLowerCase(name.charAt(0));
-        }
+    static char keyCharacter(int key, int keycode) {
+        // SDL's key code is the character the key types on the current layout, for letters at least.
+        if (keycode >= 'a' && keycode <= 'z') return (char) keycode;
         // No layout name (some keyboards, some platforms): fall back to the US position.
-        if (key == GLFW.GLFW_KEY_Y) return 'y';
-        if (key == GLFW.GLFW_KEY_N) return 'n';
+        if (key == InputConstants.KEY_Y) return 'y';
+        if (key == InputConstants.KEY_N) return 'n';
         return 0;
     }
 

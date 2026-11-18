@@ -47,7 +47,7 @@ public class ClientPacketListenerMixin {
             cancellable = true
     )
     private void alpaka$hideExplosionParticles(ClientboundLevelParticlesPacket packet, CallbackInfo ci) {
-        if (HideVisualClutterFeature.shouldHideParticlePacket(packet.getParticle())) {
+        if (HideVisualClutterFeature.shouldHideParticlePacket(packet.particle())) {
             ci.cancel();
         }
     }

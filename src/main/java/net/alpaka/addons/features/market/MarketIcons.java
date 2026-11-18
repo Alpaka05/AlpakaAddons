@@ -19,7 +19,7 @@ public final class MarketIcons {
         // The markets
         AUCTION_HOUSE, BAZAAR,
         // Small symbols
-        COIN, CLOCK, SEARCH, SORT, TIER, BIN, ORDERS, SELL, SACK, INVENTORY, CLASSIC, PERSON, BACK, CLOSE, BOX, PROMPT
+        COIN, CLOCK, SEARCH, SORT, TIER, BIN, ORDERS, SELL, SACK, INVENTORY, CLASSIC, PERSON, BACK, CLOSE, BOX, PROMPT, LINK
     }
 
     /** The icon of a market, for the header. */
@@ -51,6 +51,7 @@ public final class MarketIcons {
             case CLOSE -> cross(pen, color);
             case BOX -> box(pen, color);
             case PROMPT -> chevron(pen, color);
+            case LINK -> externalLink(pen, color);
         }
         mesh.submit(graphics);
     }
@@ -161,6 +162,20 @@ public final class MarketIcons {
     private static void cross(Pen p, int color) {
         p.line(3.5f, 3.5f, 12.5f, 12.5f, 1.8f, color);
         p.line(12.5f, 3.5f, 3.5f, 12.5f, 1.8f, color);
+    }
+
+    /** "Opens elsewhere", as browsers and sites draw it: a box open at its top right, an arrow leaving it there. */
+    private static void externalLink(Pen p, int color) {
+        float w = 1.6f;
+        float h = w / 2;
+        // The box, each side a little longer so the corners close.
+        p.line(3f, 4.5f - h, 3f, 13f + h, w, color);
+        p.line(3f - h, 13f, 11.5f + h, 13f, w, color);
+        p.line(11.5f, 13f + h, 11.5f, 9f, w, color);
+        p.line(3f - h, 4.5f, 7.5f, 4.5f, w, color);
+        // The arrow, out of the box's middle through the gap.
+        p.line(7f, 9.5f, 12.2f, 4.3f, w, color);
+        p.poly(color, 14f, 2f, 14f, 7.6f, 8.4f, 2f);
     }
 
     private static void chevron(Pen p, int color) {

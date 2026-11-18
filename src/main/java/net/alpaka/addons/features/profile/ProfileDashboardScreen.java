@@ -679,15 +679,18 @@ public class ProfileDashboardScreen extends Screen {
             rowY += rowH + 1;
         }
         if (!footer) {
-            // Without the footer (folded, or a short window), a globe at the bottom opens the same sites.
-            int size = 14;
+            // Without the footer (folded, or a short window), the "open elsewhere" sign at the bottom
+            // opens the same sites. A globe of eleven pixels read as nothing in particular.
+            int size = 16;
             int gx = rowX + (rowW - size) / 2;
-            int gy = y + h - size - 6;
+            int gy = y + h - size - 5;
             if (session.playerName == null || gy < rowY + 2) return;
-            boolean hoverGlobe = AlpakaStyle.inside(mx, my, gx, gy, size, size) && !menuOpen;
-            AlpakaStyle.globeButton(graphics, gx, gy, size, hoverGlobe);
+            boolean hoverLink = AlpakaStyle.inside(mx, my, gx, gy, size, size) && !menuOpen;
+            if (hoverLink) ModernGuiUtils.drawRoundedRect(graphics, gx, gy, size, size, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.ROW_SELECTED);
+            MarketIcons.draw(graphics, MarketIcons.Glyph.LINK, gx + 2.5f, gy + 2.5f, size - 5,
+                    hoverLink ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT_SOFT);
             hits.add(new Hit(gx, gy, size, size, () -> openSourceMenu(gx, gy)));
-            if (hoverGlobe) tip("source", sourcesTip());
+            if (hoverLink) tip("source", sourcesTip());
             return;
         }
 

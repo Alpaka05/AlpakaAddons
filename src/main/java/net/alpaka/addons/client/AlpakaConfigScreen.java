@@ -947,7 +947,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                     if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
                     drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - SWATCH_W - 8 - (rowX + 4));
                     int sy = rowY + (rowH - SWATCH_H) / 2;
-                    AlpakaStyle.swatch(graphics, right - SWATCH_W, sy, SWATCH_W, SWATCH_H, option.getColor());
+                    Integer gradientEnd = option.getGradientEnd();
+                    if (gradientEnd != null) {
+                        AlpakaStyle.gradientSwatch(graphics, right - SWATCH_W, sy, SWATCH_W, SWATCH_H, option.getColor(), gradientEnd);
+                    } else {
+                        AlpakaStyle.swatch(graphics, right - SWATCH_W, sy, SWATCH_W, SWATCH_H, option.getColor());
+                    }
                     // A white ring while the mouse is on the swatch itself, the spot that opens the picker.
                     if (hover && inside(mouseX, mouseY, right - SWATCH_W - 2, sy - 2, SWATCH_W + 4, SWATCH_H + 4)) {
                         ModernGuiUtils.drawRoundedOutline(graphics, right - SWATCH_W - 1, sy - 1, SWATCH_W + 2, SWATCH_H + 2, 3, AlpakaStyle.TEXT);

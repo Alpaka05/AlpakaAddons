@@ -50,6 +50,39 @@ class AlpakaConfigLoadTest {
     }
 
     @Test
+    void chromaSwitchesMoveIntoTheColorPickers() throws IOException {
+        AlpakaConfig config = load("{\"configVersion\": " + AlpakaConfig.CONFIG_VERSION
+                + ", \"blockChromaEnabled\": true, \"blockChromaSpeed\": 1.5"
+                + ", \"chromaHatRainbow\": true, \"chromaHatSpeed\": 2.0"
+                + ", \"nameTagColorMode\": 1, \"nameTagAnimationSpeed\": 2.0}");
+
+        assertTrue(config.blockOutlineChroma.enabled);
+        assertTrue(config.blockFillChroma.enabled);
+        assertEquals(1.5f, config.blockFillChroma.speed);
+        assertTrue(config.chromaHatChroma.enabled);
+        assertEquals(1.0f, config.chromaHatChroma.speed);
+        assertEquals(1, config.nameTagColorEffect);
+        assertTrue(config.nameTagChroma.enabled);
+        assertEquals(0.48f, config.nameTagChroma.speed, 1e-6f);
+        assertNull(config.blockChromaEnabled);
+        assertNull(config.chromaHatRainbow);
+        assertNull(config.nameTagColorMode);
+        assertFalse(saved().contains("blockChromaEnabled"), "the old switches are not written back");
+    }
+
+    @Test
+    void oldNameTagEffectsKeepTheirLook() throws IOException {
+        assertEquals(0, load("{\"nameTagColorMode\": 0}").nameTagColorEffect);
+        AlpakaConfig gradient = load("{\"nameTagColorMode\": 2}");
+        assertEquals(1, gradient.nameTagColorEffect);
+        assertFalse(gradient.nameTagChroma.enabled);
+        assertEquals(2, load("{\"nameTagColorMode\": 3}").nameTagColorEffect);
+        AlpakaConfig plainBlocks = load("{\"blockChromaEnabled\": false, \"blockChromaSpeed\": 0.5}");
+        assertFalse(plainBlocks.blockOutlineChroma.enabled);
+        assertEquals(0.5f, plainBlocks.blockOutlineChroma.speed);
+    }
+
+    @Test
     void nanAndInfinityGoBackToTheirDefaults() throws IOException {
         AlpakaConfig config = load("{\"configVersion\": 1, \"notificationHoldSeconds\": NaN, \"itemScale\": -Infinity, \"chatHistoryLimit\": 300}");
 

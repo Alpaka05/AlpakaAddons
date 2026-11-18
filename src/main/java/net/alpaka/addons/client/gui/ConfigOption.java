@@ -164,13 +164,87 @@ public class ConfigOption {
                                      java.util.function.IntConsumer setter, String keywords) {
         java.util.function.IntSupplier getter = () -> field.applyAsInt(AlpakaConfig.instance);
         int defaultColor = field.applyAsInt(defaults());
+        ConfigOption[] self = new ConfigOption[1];
         ConfigOption option = new ConfigOption(id, title, description, category, "Choose Color",
                 parent -> net.minecraft.client.Minecraft.getInstance().gui.setScreen(
                         new net.alpaka.addons.client.ColorPickerScreen(parent, title, getter.getAsInt(),
-                                defaultColor, setter::accept)),
+                                defaultColor, setter::accept, self[0].chromaSpec(), self[0].gradientSpec())),
                 keywords);
+        self[0] = option;
         option.colorGetter = getter;
         return option;
+    }
+
+    /** The color option's rainbow, or null for one without; see {@link #withChroma}. */
+    private java.util.function.Function<AlpakaConfig, net.alpaka.addons.config.Chroma> chromaField;
+    private boolean chromaSpread;
+
+    /**
+     * Lets this color option be a moving rainbow instead: its picker gets a Chroma switch with
+     * speed and saturation sliders. Only for options where a rainbow makes sense, so it is asked for
+     * per option rather than offered by every picker.
+     *
+     * @param spread whether the rainbow runs along something (the letters of a text), which adds
+     *               a Size slider for how far one rainbow reaches
+     */
+    public ConfigOption withChroma(java.util.function.Function<AlpakaConfig, net.alpaka.addons.config.Chroma> field,
+                                   boolean spread) {
+        this.chromaField = field;
+        this.chromaSpread = spread;
+        return this;
+    }
+
+    private net.alpaka.addons.client.ColorPickerScreen.ChromaSpec chromaSpec() {
+        if (chromaField == null) return null;
+        // The sanitizer puts a missing chroma back on load, so the live one is always there.
+        return new net.alpaka.addons.client.ColorPickerScreen.ChromaSpec(
+                chromaField.apply(AlpakaConfig.instance), chromaField.apply(defaults()), chromaSpread);
+    }
+
+    /** The color option's second color and its Gradient switch, or null; see {@link #withGradient}. */
+    private java.util.function.ToIntFunction<AlpakaConfig> gradientEndField;
+    private java.util.function.IntConsumer gradientEndSetter;
+    private java.util.function.Predicate<AlpakaConfig> gradientOnField;
+    private java.util.function.Consumer<Boolean> gradientOnSetter;
+
+    /**
+     * Lets this color option be a gradient as well: its picker offers Solid and Gradient, and in
+     * Gradient edits a second color, the end, next to the option's own, the start. Only for
+     * options that color text, where a gradient runs along the letters.
+     */
+    public ConfigOption withGradient(java.util.function.ToIntFunction<AlpakaConfig> endField,
+                                     java.util.function.IntConsumer endSetter,
+                                     java.util.function.Predicate<AlpakaConfig> onField,
+                                     java.util.function.Consumer<Boolean> onSetter) {
+        this.gradientEndField = endField;
+        this.gradientEndSetter = endSetter;
+        this.gradientOnField = onField;
+        this.gradientOnSetter = onSetter;
+        return this;
+    }
+
+    private net.alpaka.addons.client.ColorPickerScreen.GradientSpec gradientSpec() {
+        if (gradientEndField == null) return null;
+        return new net.alpaka.addons.client.ColorPickerScreen.GradientSpec(
+                gradientEndField.applyAsInt(AlpakaConfig.instance), gradientEndField.applyAsInt(defaults()),
+                gradientOnField.test(AlpakaConfig.instance), gradientOnField.test(defaults()),
+                (on, end) -> {
+                    gradientEndSetter.accept(end);
+                    gradientOnSetter.accept(on);
+                });
+    }
+
+    /**
+     * The end color while this option shows a gradient, for its swatch in the config list; null
+     * while it is one color (or a rainbow, which {@link #getColor} shows).
+     */
+    public Integer getGradientEnd() {
+        if (gradientEndField == null || !gradientOnField.test(AlpakaConfig.instance)) return null;
+        if (chromaField != null) {
+            net.alpaka.addons.config.Chroma chroma = chromaField.apply(AlpakaConfig.instance);
+            if (chroma != null && chroma.enabled) return null;
+        }
+        return gradientEndField.applyAsInt(AlpakaConfig.instance);
     }
 
     /** A config as freshly created, for reading defaults from; made once, never saved. */
@@ -397,7 +471,15 @@ public class ConfigOption {
     public boolean isColor() { return colorGetter != null; }
 
     /** The color a color option currently holds. */
-    public int getColor() { return colorGetter.getAsInt(); }
+    public int getColor() {
+        int color = colorGetter.getAsInt();
+        if (chromaField != null) {
+            net.alpaka.addons.config.Chroma chroma = chromaField.apply(AlpakaConfig.instance);
+            // The swatch shows the rainbow moving, so the row tells at a glance that Chroma is on.
+            if (chroma != null && chroma.enabled) return (color & 0xFF000000) | chroma.rgbNow(0.0);
+        }
+        return color;
+    }
 
     private boolean dangerous = false;
 

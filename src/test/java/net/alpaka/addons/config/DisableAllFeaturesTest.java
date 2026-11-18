@@ -84,7 +84,7 @@ class DisableAllFeaturesTest {
             "leapMenuShowMap",
             "starredMobsHideNames", "starredMobsHighlightStyle",
             // Block Overlay
-            "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled", "blockChromaEnabled",
+            "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled",
             "blockIgnoreDepth", "blockIgnorePlants", "blockHideOnEtherwarp",
             // Better Chat, Chat Peek, Chat Tabs, screenshots
             "smoothChatEnabled", "chatOpenAnimationEnabled", "chatSmoothScrollEnabled", "chatBlurEnabled",

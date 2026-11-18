@@ -56,7 +56,9 @@ public final class Outbound {
          */
         PARTY_CHAT_REQUEST,
         /** Clicked one of the player's own inventory buttons. */
-        INVENTORY_BUTTON
+        INVENTORY_BUTTON,
+        /** Clicked in the open chat to answer an NPC's yes/no question (NpcQuickAnswer). */
+        CHAT_CLICK
     }
 
     /** The same command again this soon is taken as a double input and dropped. */

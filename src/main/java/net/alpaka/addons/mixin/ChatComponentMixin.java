@@ -19,7 +19,6 @@ import net.alpaka.addons.features.chat.ChatScrollAnimator;
 import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.CompactChatFeature;
-import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
 import net.alpaka.addons.features.chat.SmoothChatFeature;
 import net.alpaka.addons.features.guild.GuildPrefixFormatter;
 import net.alpaka.addons.features.slayer.SlayerChatFilter;
@@ -174,15 +173,6 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         if (SlayerDropTracker.shouldHideDropMessage(component)
                 || (AlpakaConfig.instance.messageFilterEnabled
                     && SlayerChatFilter.shouldCancelChatMessage(component.getString()))) {
-            ci.cancel();
-            return;
-        }
-        // The screenshot notice: replaced by the line with buttons, or held back until the automatic
-        // copy is done. The replacement comes back in through addClientSystemMessage, as a plain
-        // literal that this hook then lets through.
-        ChatComponent self = (ChatComponent) (Object) this;
-        if (ScreenshotMessageFeature.handleNotice(component,
-                replacement -> this.minecraft.execute(() -> self.addClientSystemMessage(replacement)))) {
             ci.cancel();
             return;
         }

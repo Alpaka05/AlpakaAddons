@@ -45,7 +45,7 @@ class DisableAllFeaturesTest {
             "scrollableTooltipsEnabled", "persistentItemNameEnabled", "oldMasterStarsEnabled",
             "wideHealthBarEnabled", "betterChatEnabled", "chatSearchEnabled", "chatCopyEnabled", "expandChatHistory",
             "compactChatEnabled", "mentionNotificationEnabled", "chatPeekEnabled", "chatTabsEnabled",
-            "betterScreenshotMessageEnabled", "playerModelEnabled", "performanceHudEnabled",
+            "playerModelEnabled", "performanceHudEnabled",
             "inventoryHudEnabled", "scoreboardBlurEnabled", "scoreboardAlpakaFooter",
             "itemSizeFeatureEnabled", "itemStarlightEnabled", "itemMotionBlurEnabled", "blockOverlayEnabled",
             "etherwarpOverlayEnabled", "etherwarpSoundEnabled",
@@ -86,10 +86,9 @@ class DisableAllFeaturesTest {
             // Block Overlay
             "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled",
             "blockIgnoreDepth", "blockIgnorePlants", "blockHideOnEtherwarp",
-            // Better Chat, Chat Peek, Chat Tabs, screenshots
+            // Better Chat, Chat Peek, Chat Tabs
             "smoothChatEnabled", "chatOpenAnimationEnabled", "chatSmoothScrollEnabled", "chatBlurEnabled",
             "chatScrollbarEnabled", "chatMovable", "chatPeekInMenus", "chatTabsSendToChannel",
-            "autoCopyScreenshots",
             // Slayer timer and session HUD
             "slayerTimerChatEnabled", "slayerTimerHudEnabled", "slayerHudOnlyInSlayerAreas",
             "slayerHudPauseOutsideArea",

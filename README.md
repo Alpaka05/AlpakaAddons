@@ -55,7 +55,6 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Expand Chat History:** keeps 1000 messages (up to 5000), even after leaving a server.
 - **Smooth Chat:** messages slide in, scrolling glides, and an optional blurred, rounded background.
 - **Chat Mentions**, **Custom Guild Tag** and a **Bridge Bot Formatter** that shows relayed Discord messages as `[Discord]`.
-- **Better Screenshots**: a preview that shrinks into the corner, and Open, Copy and Delete buttons.
 
 </details>
 
@@ -152,7 +151,6 @@ Player heads load their skins from Mojang, as everywhere in Minecraft. With "All
 
 - Smooth perspective only eases between the vanilla camera views. There is no free look, and every transition ends exactly where vanilla's camera is.
 - Commands that delete or move your data (`/alpakaslayer reset`, `/alpakastats folder`, `/alpakapreset save`) work only when you type them. A clickable chat message cannot run them.
-- Screenshot buttons only act on screenshots this session posted, and Delete needs a second click.
 - An update installs only after you confirm it on a screen. The chat button and `/alpakaupdate install` just open that screen, and the command works only when you type it.
 
 ## Feedback & Bugs

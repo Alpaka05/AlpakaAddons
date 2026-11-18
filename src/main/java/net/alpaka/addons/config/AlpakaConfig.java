@@ -927,26 +927,6 @@ public class AlpakaConfig {
     public boolean chatPeekEnabled = true;
     /** Chat Peek also works with an inventory or another menu open, drawn on top of it. */
     public boolean chatPeekInMenus = true;
-    /** Better Screenshots: everything below. The key keeps its old name so the setting carries over. */
-    public boolean betterScreenshotMessageEnabled = false;
-    /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
-    public boolean screenshotChatButtons = true;
-    /** The screenshot shrinking into the corner for a moment after it is taken. */
-    public boolean screenshotPreviewEnabled = true;
-    /** How long the preview stays in the corner, in seconds. */
-    public float screenshotPreviewSeconds = 3.0f;
-    /** The preview's width, in percent of the screen's. */
-    public float screenshotPreviewSize = 20.0f;
-    /** Which parts the screenshot line shows. */
-    public boolean screenshotShowFileName = false;
-    public boolean screenshotShowOpen = true;
-    public boolean screenshotShowCopy = true;
-    public boolean screenshotShowDelete = true;
-    public boolean screenshotShowFolder = false;
-    /** What clicking the preview does; an index into ScreenshotMessageFeature.PREVIEW_CLICK_NAMES. */
-    public int screenshotPreviewClickAction = 1;
-    /** Every screenshot goes to the clipboard the moment it is taken. */
-    public boolean autoCopyScreenshots = false;
     /** A message repeated right after itself becomes one line with (x2), (x3)... */
     public boolean compactChatEnabled = false;
     /** Seconds since the last identical message within which a repeat still stacks; 0 = back-to-back only. */
@@ -2166,7 +2146,6 @@ public class AlpakaConfig {
         this.quickJoinEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
-        this.betterScreenshotMessageEnabled = false;
         this.compactChatEnabled = false;
         this.messageFilterEnabled = false;
         this.chatTabsEnabled = false;

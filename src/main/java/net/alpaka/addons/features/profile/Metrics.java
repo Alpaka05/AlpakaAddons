@@ -39,7 +39,7 @@ public final class Metrics {
     public static final String MINIONS = "minions";
 
     /**
-     * Whether some service keeps a history of this metric (Elite, Soopy, SkyKings), so its graph
+     * Whether some service keeps a history of this metric (Soopy, SkyKings), so its graph
      * reaches back before the player first opened the dashboard. The rest only grow from the
      * dashboard's own snapshots, which stay nearly empty, so they get no graph. Kuudra runs and
      * trophy fish come from SkyKings alone, so only with a SkyKings key.

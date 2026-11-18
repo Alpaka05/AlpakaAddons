@@ -1,0 +1,22 @@
+# The AlpakaAddons API as a systemd user service on the server behind api.alpaka.yt.
+# Install (as the user that runs it, with lingering on so it starts at boot):
+#   mkdir -p ~/.local/share/alpaka-api && cp backend/build/libs/alpaka-api-*.jar ~/.local/share/alpaka-api/alpaka-api.jar
+#   ln -sf "$(ls -d ~/.jdks/*25* | head -1)/bin/java" ~/.local/share/alpaka-api/java
+#   cp backend/deploy/alpaka-api.service ~/.config/systemd/user/ && systemctl --user daemon-reload
+#   systemctl --user enable --now alpaka-api
+# The Hypixel key goes into ~/.config/alpaka-api/hypixel.key (chmod 600), never into the repository.
+# Until the Hypixel app is approved, a drop-in can point ALPAKA_HYPIXEL_KEY_FILE at the development key.
+[Unit]
+Description=AlpakaAddons API (Profile Dashboard backend)
+After=network-online.target
+
+[Service]
+Environment=ALPAKA_API_BIND=127.0.0.1
+Environment=ALPAKA_API_PORT=8787
+Environment=ALPAKA_HYPIXEL_KEY_FILE=%h/.config/alpaka-api/hypixel.key
+ExecStart=%h/.local/share/alpaka-api/java -Xmx512m -jar %h/.local/share/alpaka-api/alpaka-api.jar
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

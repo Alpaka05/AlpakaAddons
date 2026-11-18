@@ -17,7 +17,7 @@ import java.util.Locale
  *
  * Items are filed under the key the price lists know them by, the one Item Value prices with: the
  * SkyBlock id for most, "TYPE;rarity" for a pet ("ENDER_DRAGON;4"), "ENCHANTMENT_NAME_LEVEL" for a
- * book with one enchantment. So a Legendary and an Epic pet of the same kind are two lines, and
+ * book with one enchantment, "RUNE_NAME_LEVEL" for a rune. So a Legendary and an Epic pet of the same kind are two lines, and
  * every book is priced as what is written in it.
  */
 object ProfitItems {
@@ -50,6 +50,15 @@ object ProfitItems {
                 if (names.size == 1) {
                     val name = names.first()
                     "ENCHANTMENT_" + name.uppercase(Locale.ROOT) + "_" + enchants.getIntOr(name, 0)
+                } else id
+            }
+            // Priced like Item Value prices a rune: "RUNE_LAVATEARS_1".
+            "RUNE", "UNIQUE_RUNE" -> {
+                val runes = tag.getCompoundOrEmpty("runes")
+                val names = runes.keySet()
+                if (names.size == 1) {
+                    val name = names.first()
+                    "RUNE_" + name.uppercase(Locale.ROOT) + "_" + runes.getIntOr(name, 0)
                 } else id
             }
             else -> id

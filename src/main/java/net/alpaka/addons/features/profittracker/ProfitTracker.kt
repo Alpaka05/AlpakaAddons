@@ -9,6 +9,7 @@ import net.alpaka.addons.features.itemsearch.ItemSearchMenus
 import net.alpaka.addons.features.market.ItemIcons
 import net.alpaka.addons.features.slayer.SkyblockProfileTracker
 import net.alpaka.addons.features.slayer.SlayerQuestDetector
+import net.alpaka.addons.features.slayer.SlayerSessionTracker
 import net.alpaka.addons.features.slayer.SlayerType
 import net.alpaka.addons.utils.DungeonState
 import net.alpaka.addons.utils.SkyblockUtils
@@ -36,7 +37,8 @@ import java.util.Optional
  *
  * What other mods spread over a tracker per activity (SkyHanni has about twenty, each with its own
  * sources) runs through one pipeline here, and only the bucket a gain goes into depends on what the
- * player is doing at that moment ([detect]):
+ * player is doing at that moment ([detectOther], or the slayer while in its area). A slayer only gets
+ * what its boss drops ([ProfitSlayerDrops]); other loot during a quest goes to the island:
  *
  *  - Items: the player's inventory, compared with a moment ago. Only increases count, and only
  *    while no menu is open and for a moment after one closed, so buying, taking things out of a
@@ -101,6 +103,8 @@ object ProfitTracker {
 
     private var ticks = 0
     private var current: ProfitActivity = ProfitActivity.UNKNOWN
+    /** What the player does apart from a slayer quest: where loot that is no slayer drop goes. */
+    private var other: ProfitActivity = ProfitActivity.UNKNOWN
     /** The last activity anything was counted for: the HUD stays on it while the player walks elsewhere. */
     private var lastActive: String? = null
 
@@ -256,7 +260,10 @@ object ProfitTracker {
         trackMenus(mc, now)
         player.fishing?.let { if (it.isInWater || it.isInLava) lastFishingMs = now }
 
-        if (ticks % DETECT_EVERY_TICKS == 0) current = detect(mc, now)
+        if (ticks % DETECT_EVERY_TICKS == 0) {
+            other = detectOther(mc, now)
+            current = slayerHere()?.let { ProfitActivity.slayer(it) } ?: other
+        }
         if (ticks % INVENTORY_EVERY_TICKS == 0) readInventory(player, now)
         if (ticks % PURSE_EVERY_TICKS == 0) readPurse(now)
 
@@ -286,12 +293,20 @@ object ProfitTracker {
     private fun inventoryCounts(now: Long): Boolean =
         !menuOpen && now - menuClosedAt >= MENU_CLOSE_GRACE_MS && now - worldChangedAt >= WORLD_CHANGE_GRACE_MS
 
+    /** The slayer whose quest runs (or just ended), if any. */
+    private fun questSlayer(): SlayerType? = SlayerQuestDetector.currentOrRecent()?.takeIf { it != SlayerType.GUARDIAN }
+
     /**
-     * What the player does right now, most specific first. A slayer quest wins over the island it
-     * is run on; fishing wins wherever the bobber is; the island is what is left.
+     * The slayer, while its quest runs and the player is where that boss is fought. A quest left
+     * running while mining or fishing elsewhere doesn't make that the slayer's.
      */
-    private fun detect(mc: Minecraft, now: Long): ProfitActivity {
-        SlayerQuestDetector.currentOrRecent()?.let { if (it != SlayerType.GUARDIAN) return ProfitActivity.slayer(it) }
+    private fun slayerHere(): SlayerType? = questSlayer()?.takeIf { SlayerSessionTracker.isInTrackerArea(it) }
+
+    /**
+     * What the player does apart from slayer, most specific first: fishing wins wherever the bobber
+     * is; the island is what is left. The slayer goes over this in [current] while in its area.
+     */
+    private fun detectOther(mc: Minecraft, now: Long): ProfitActivity {
         if (DungeonState.inDungeon()) return ProfitActivity.DUNGEONS
         if (now - lastFishingMs < FISHING_MEMORY_MS) return ProfitActivity.FISHING
         val area = area()
@@ -381,20 +396,32 @@ object ProfitTracker {
             }
         }
         if (left <= 0) return false
-        record(current) { bucket, n -> bucket.addItem(key, name, left, n) }
-        log(current, key, name, left, now)
+        val target = itemTarget(key)
+        record(target) { bucket, n -> bucket.addItem(key, name, left, n) }
+        log(target, key, name, left, now)
         return true
+    }
+
+    /**
+     * Where an item goes: to the slayer only if its boss drops it, wherever the player picked it up
+     * while the quest ran (the [Sacks] line can come half a minute late); anything else, from a
+     * corpse, a gift or a trade, to what the player does besides.
+     */
+    private fun itemTarget(key: String): ProfitActivity {
+        val type = questSlayer()
+        if (type != null && ProfitSlayerDrops.isDrop(type, key)) return ProfitActivity.slayer(type)
+        return if (current.id.startsWith("slayer:")) other else current
     }
 
     /** Takes items back off the activity's figures, at most what this session counted of them. */
     private fun uncount(key: String, amount: Long, now: Long) {
-        val profile = profile()
-        val inSession = ProfitStore.session(profile, current.id)?.items?.get(key)?.amount ?: return
+        val target = itemTarget(key)
+        val inSession = ProfitStore.session(profile(), target.id)?.items?.get(key)?.amount ?: return
         val back = minOf(inSession, amount)
         if (back <= 0) return
         val name = names[key] ?: key
-        record(current) { bucket, n -> bucket.addItem(key, name, -back, n) }
-        log(current, key, name, -back, now)
+        record(target) { bucket, n -> bucket.addItem(key, name, -back, n) }
+        log(target, key, name, -back, now)
     }
 
     private fun ignored(key: String, name: String, now: Long): Boolean {
@@ -514,8 +541,9 @@ object ProfitTracker {
                 if (ignored("sack:" + name.lowercase(Locale.ROOT), name, now)) continue
                 val key = ItemIcons.idForName(name) ?: name.uppercase(Locale.ROOT).replace(' ', '_')
                 if (ignored(key, name, now)) continue
-                record(current) { bucket, n -> bucket.addItem(key, name, change.delta(), n) }
-                log(current, key, name, change.delta(), now)
+                val target = itemTarget(key)
+                record(target) { bucket, n -> bucket.addItem(key, name, change.delta(), n) }
+                log(target, key, name, change.delta(), now)
             }
         }
     }

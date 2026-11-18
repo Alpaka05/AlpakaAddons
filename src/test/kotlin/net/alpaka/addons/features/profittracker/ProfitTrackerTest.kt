@@ -115,4 +115,29 @@ class ProfitTrackerTest {
         assertEquals("kiwi,Fishing,session,TOTAL,Total Profit,,,700,0,0.50,1400", rows.last())
         assertEquals("kiwi,Fishing,session,C,No Price,5,,,,,", rows[2])
     }
+
+    @Test
+    fun slayerOnlyGetsWhatItsBossDrops() {
+        assertTrue(ProfitSlayerDrops.isDrop(SlayerType.BLAZE, "DERELICT_ASHE"))
+        assertTrue(ProfitSlayerDrops.isDrop(SlayerType.BLAZE, "SCORCHED_POWER_CRYSTAL"))
+        // Books in the tracker's key, runes at any level, pets by rarity.
+        assertTrue(ProfitSlayerDrops.isDrop(SlayerType.BLAZE, "ENCHANTMENT_ULTIMATE_REITERATE_1"))
+        assertTrue(ProfitSlayerDrops.isDrop(SlayerType.BLAZE, "RUNE_LAVATEARS_1"))
+        assertTrue(ProfitSlayerDrops.isDrop(SlayerType.BLAZE, "RUNE_LAVATEARS_3"))
+        assertTrue(ProfitSlayerDrops.isDrop(SlayerType.ZOMBIE, "GHOUL;4"))
+        // Loot from a Glacite corpse during an Inferno quest is no slayer drop.
+        assertFalse(ProfitSlayerDrops.isDrop(SlayerType.BLAZE, "TUNGSTEN_KEY"))
+        assertFalse(ProfitSlayerDrops.isDrop(SlayerType.BLAZE, "REFINED_TUNGSTEN"))
+        assertFalse(ProfitSlayerDrops.isDrop(SlayerType.BLAZE, "FLAWLESS_PERIDOT_GEM"))
+        assertFalse(ProfitSlayerDrops.isDrop(SlayerType.BLAZE, "ENCHANTMENT_SMITE_6"))
+        assertFalse(ProfitSlayerDrops.isDrop(SlayerType.GUARDIAN, "DERELICT_ASHE"))
+    }
+
+    @Test
+    fun neuKeysBecomeTheTrackersKeys() {
+        assertEquals(listOf("WARDEN_HEART"), ProfitSlayerDrops.ownKeys("WARDEN_HEART"))
+        assertEquals(listOf("RUNE_SNAKE"), ProfitSlayerDrops.ownKeys("SNAKE_RUNE;1"))
+        assertEquals(listOf("ATTRIBUTE_SHARD"), ProfitSlayerDrops.ownKeys("ATTRIBUTE_SHARD_COMBO;1"))
+        assertEquals(listOf("SMITE;6", "ENCHANTMENT_SMITE_6"), ProfitSlayerDrops.ownKeys("SMITE;6"))
+    }
 }

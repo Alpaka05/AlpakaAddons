@@ -176,13 +176,13 @@ object ProfitTrackerHudRenderer {
         if (overflow > 0) add(Line("$overflow more", Coins.compact(overflowValue), COLOR_UNPRICED, COLOR_UNPRICED))
         if (hiddenCount > 0) add(Line("$hiddenCount hidden", "", COLOR_UNPRICED))
 
-        val income = bucket.coins - shown.costs
-        if (income != 0L) {
-            add(Line("Coins", signed(income), valueColor = if (income >= 0) COLOR_GOOD else COLOR_BAD, gapAbove = first))
+        // Coins earned and what was paid stand on lines of their own, and both go into the total.
+        if (bucket.coins != 0L) {
+            add(Line("Coins", signed(bucket.coins), valueColor = if (bucket.coins >= 0) COLOR_GOOD else COLOR_BAD, gapAbove = first))
             first = false
         }
         if (shown.costs != 0L) add(Line(shown.costLabel, signed(-shown.costs), valueColor = COLOR_BAD, gapAbove = first))
-        total += bucket.coins
+        total += bucket.coins - shown.costs
 
         if (bucket.actions > 0 && shown.actionLabel != null) {
             add(Line(shown.actionLabel, Coins.full(bucket.actions.toDouble()), gapAbove = true))

@@ -2808,11 +2808,11 @@ public class AlpakaConfigRegistry {
                 "trevor waypoint color colour"));
 
         OPTIONS.add(new ConfigOption("trevor_ready_alert", "Ready Alert",
-                "Shows a notification once the hunt is over and Trevor has the next task for you.",
+                "Shows a notification once the hunt is over and Trevor has the next task for you: Y calls him with /call trevor, N dismisses it.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.trevorReadyAlert,
                 v -> { AlpakaConfig.instance.trevorReadyAlert = v; AlpakaConfig.save(); },
-                "trevor ready alert notification next task cooldown"));
+                "trevor ready alert notification next task cooldown call abiphone y n prompt key"));
 
         OPTIONS.add(new ConfigOption("trevor_reset", "Reset Tracker",
                 "Sets the animals, pelts and average time back to zero.",

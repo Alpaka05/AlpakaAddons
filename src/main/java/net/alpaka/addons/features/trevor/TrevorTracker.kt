@@ -2,6 +2,9 @@ package net.alpaka.addons.features.trevor
 
 import com.google.gson.GsonBuilder
 import net.alpaka.addons.AlpakaAddons
+import net.alpaka.addons.compliance.Outbound
+import net.alpaka.addons.features.party.PartyInviteFeature
+import net.minecraft.ChatFormatting
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AtomicJsonFile
 import net.alpaka.addons.features.notification.AlpakaNotifications
@@ -135,6 +138,7 @@ object TrevorTracker {
     internal fun onEvent(event: TrevorParse.Event, now: Long) {
         when (event) {
             is TrevorParse.Accepted -> {
+                dismissReadyPrompt()
                 huntActive = true
                 rarity = event.rarity
                 location = event.location
@@ -210,9 +214,7 @@ object TrevorTracker {
 
         if (readyAlertDue && !huntActive && now >= nextTaskAtMs) {
             readyAlertDue = false
-            if (AlpakaConfig.instance.trevorReadyAlert && onFarmingIslands()) {
-                AlpakaNotifications.send("Trevor Ready", "You can take the next task.")
-            }
+            if (AlpakaConfig.instance.trevorReadyAlert && onFarmingIslands()) showReadyPrompt()
         }
 
         if (!huntActive) {
@@ -287,6 +289,66 @@ object TrevorTracker {
     @JvmStatic
     fun reset() {
         clearTarget()
+        dismissReadyPrompt()
+    }
+
+    // ---------------------------------------------------------------- ready prompt
+
+    /** The notice stays at least this long, so there is time to read it and reach for Y. */
+    private const val PROMPT_MIN_HOLD_MS = 8_000L
+
+    private var promptId = 0L
+
+    /**
+     * The ready notice, with Y to call Trevor on the Abiphone (/call trevor) for the next task and
+     * N to wave it away, like the Party Invite Prompt.
+     */
+    private fun showReadyPrompt() {
+        dismissReadyPrompt()
+        val lines = listOf(
+            Component.literal("Trevor has your next task"),
+            Component.literal("[Y]").withStyle(ChatFormatting.GREEN)
+                .append(Component.literal(" Call Trevor    ").withStyle(ChatFormatting.WHITE))
+                .append(Component.literal("[N]").withStyle(ChatFormatting.RED))
+                .append(Component.literal(" Dismiss").withStyle(ChatFormatting.WHITE)),
+        )
+        val hold = maxOf(AlpakaNotifications.configuredHoldMs(), PROMPT_MIN_HOLD_MS)
+        promptId = AlpakaNotifications.sendLines("Trevor Ready", lines, 0, hold)
+    }
+
+    private fun promptShowing(): Boolean {
+        if (promptId == 0L) return false
+        if (!isEnabled() || !AlpakaNotifications.isShowing(promptId)) {
+            promptId = 0L
+            return false
+        }
+        return true
+    }
+
+    /**
+     * A key press with no screen open. True when it was the notice's Y or N, which then goes no
+     * further. Keys are read by the character they type, as for the party invite (QWERTZ's Y).
+     */
+    @JvmStatic
+    fun onKey(key: Int, scancode: Int, repeat: Boolean): Boolean {
+        if (!promptShowing()) return false
+        val mc = Minecraft.getInstance()
+        if (mc.gui.screen() != null || mc.player == null) return false
+        val pressed = PartyInviteFeature.keyCharacter(key, scancode)
+        if (pressed != 'y' && pressed != 'n') return false
+        // A held key's repeats are taken too, so nothing else sees them, but act only once.
+        if (!repeat) {
+            if (pressed == 'y') Outbound.command("call trevor", Outbound.Cause.KEY_PRESS)
+            dismissReadyPrompt()
+        }
+        return true
+    }
+
+    private fun dismissReadyPrompt() {
+        if (promptId != 0L) {
+            AlpakaNotifications.dismiss(promptId)
+            promptId = 0L
+        }
     }
 
     // ---------------------------------------------------------------- waypoint

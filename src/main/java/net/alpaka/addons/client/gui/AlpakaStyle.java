@@ -334,8 +334,13 @@ public final class AlpakaStyle {
      * hovered, then in the accent color on a soft square.
      */
     public static void globeButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
-        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
-        int color = hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        globeButton(graphics, x, y, size, hover, 1.0f);
+    }
+
+    /** The web button at a share of its opacity, for one that fades in or out. */
+    public static void globeButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover, float alpha) {
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, fade(ROW_SELECTED, alpha));
+        int color = fade(hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED, alpha);
         int ox = x + (size - GLOBE[0].length()) / 2;
         int oy = y + (size - GLOBE.length) / 2;
         for (int row = 0; row < GLOBE.length; row++) {
@@ -351,6 +356,13 @@ public final class AlpakaStyle {
                 ModernGuiUtils.drawRect(graphics, ox + start, oy + row, col - start, 1, color);
             }
         }
+    }
+
+    /** The color at a share of its alpha. */
+    public static int fade(int color, float alpha) {
+        if (alpha >= 1.0f) return color;
+        int a = Math.round((color >>> 24) * Math.max(0.0f, alpha));
+        return (a << 24) | (color & 0x00FFFFFF);
     }
 
     /**

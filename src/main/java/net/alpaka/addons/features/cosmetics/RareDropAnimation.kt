@@ -283,7 +283,26 @@ object RareDropAnimation {
         RareDrops.bookId(name, ultimate = true)?.let { ultimate ->
             return if (ItemPrices.bazaar(ultimate) != null) ultimate else RareDrops.bookId(name, ultimate = false)
         }
-        return ItemIcons.idForName(name) ?: RareDrops.dyeId(name)
+        return idByName(name) ?: RareDrops.dyeId(name)
+    }
+
+    /** Every SkyBlock item's id by its name in lower case, built once Hypixel's item list is in. */
+    private var idsByName: Map<String, String>? = null
+
+    /**
+     * The id of the item with this name in Hypixel's list, such as NECRON_HANDLE for "Necron's
+     * Handle"; null while the list loads or for a name it lacks. Where several items share a name,
+     * the shortest id wins: the plain item rather than a variant of it.
+     */
+    private fun idByName(name: String): String? {
+        val map = idsByName ?: ItemIcons.skyblockItems()?.let { items ->
+            val byName = HashMap<String, String>()
+            for ((id, itemName) in items) {
+                byName.merge(itemName.lowercase(Locale.ROOT), id) { a, b -> if (b.length < a.length || (b.length == a.length && b < a)) b else a }
+            }
+            byName.also { idsByName = it }
+        } ?: return null
+        return map[name.trim().lowercase(Locale.ROOT)]
     }
 
     /**

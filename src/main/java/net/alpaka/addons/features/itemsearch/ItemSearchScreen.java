@@ -73,6 +73,8 @@ public class ItemSearchScreen extends Screen {
     private static ItemSearchSource lastCategory = null;
 
     private final Screen parent;
+    /** Opened from the item list for one item's recipe: closes with that item instead of showing a list. */
+    private boolean recipeOnly = false;
     private final EditableText input = new EditableText(64);
     private ItemSearchSource category = lastCategory;
 
@@ -364,6 +366,13 @@ public class ItemSearchScreen extends Screen {
 
     private void drawBar(GuiGraphicsExtractor graphics, Frame f) {
         int cy = f.y + f.barH / 2;
+        if (recipeOnly) {
+            // Opened from the item list for one item: a title instead of a search.
+            graphics.text(this.font, GuiFont.text("Recipe"), f.x + 12, cy - 4, AlpakaStyle.TEXT, false);
+            String hint = "Esc to go back";
+            graphics.text(this.font, GuiFont.text(hint), f.x + f.w - 12 - GuiFont.width(this.font, hint), cy - 4, AlpakaStyle.TEXT_MUTED, false);
+            return;
+        }
         drawMagnifier(graphics, f.x + 12, cy, AlpakaStyle.TEXT_MUTED);
         int textX = f.x + 28;
 
@@ -482,7 +491,7 @@ public class ItemSearchScreen extends Screen {
                 case Calc calc -> drawCalc(graphics, f, y, calc, isSelected);
                 case Owned owned -> {
                     drawOwned(graphics, f, y, owned.entry(), isSelected);
-                    if (iconHover) tooltip = tooltip(owned.entry());
+                    if (iconHover) tooltip = tooltip(owned.entry(), parent, false);
                 }
                 case CatalogRow catalog -> {
                     drawCatalog(graphics, f, y, catalog.item(), isSelected);
@@ -866,7 +875,7 @@ public class ItemSearchScreen extends Screen {
     }
 
     /** The item's own tooltip, then how many there are and where. */
-    private List<Component> tooltip(ItemSearchResults.Entry entry) {
+    static List<Component> tooltip(ItemSearchResults.Entry entry, Screen parent, boolean inList) {
         List<Component> lines = new ArrayList<>(Screen.getTooltipFromItem(Minecraft.getInstance(), entry.stack));
         lines.add(Component.empty());
         lines.add(Component.literal("Total: ").withStyle(ChatFormatting.GRAY)
@@ -885,7 +894,8 @@ public class ItemSearchScreen extends Screen {
         if (entry.places.size() > listed) {
             lines.add(Component.literal(" and " + (entry.places.size() - listed) + " more places").withStyle(ChatFormatting.DARK_GRAY));
         }
-        lines.add(Component.literal(action(entry.best())).withStyle(ChatFormatting.YELLOW));
+        lines.add(Component.literal(action(entry.best(), parent)).withStyle(ChatFormatting.YELLOW));
+        if (inList && entry.id != null) lines.add(Component.literal("Right-click: Recipe").withStyle(ChatFormatting.YELLOW));
         return lines;
     }
 
@@ -904,7 +914,7 @@ public class ItemSearchScreen extends Screen {
     }
 
     /** What opening the place does, in words. */
-    private String action(ItemSearchResults.Place place) {
+    private static String action(ItemSearchResults.Place place, Screen parent) {
         return switch (place.source()) {
             case INVENTORY -> parent instanceof AbstractContainerScreen<?> ? "Click to go back and see it outlined."
                     : "Click to open your inventory with it outlined.";
@@ -945,6 +955,7 @@ public class ItemSearchScreen extends Screen {
         Frame f = frame();
 
         if (inside(mx, my, f.x, f.y, f.w, f.barH)) {
+            if (recipeOnly) return true;
             caretFrom = System.currentTimeMillis();
             int textX = f.x + 28 + (category == null ? 0 : GuiFont.width(this.font, category.label) + 30);
             if (category != null && mx < textX) {
@@ -966,7 +977,7 @@ public class ItemSearchScreen extends Screen {
         if (!details.isEmpty()) {
             if (hit(backButton, mx, my)) {
                 AlpakaStyle.click();
-                details.pop();
+                back();
                 return true;
             }
             if (hit(wikiButton, mx, my)) {
@@ -1053,10 +1064,15 @@ public class ItemSearchScreen extends Screen {
      * the page the NEU repository names, else a search on the official wiki for its name.
      */
     private void openWiki(String id, String name) {
+        openWiki(id, name, this);
+    }
+
+    /** The same from anywhere: the question comes over {@code back}, and goes back to it. */
+    static void openWiki(String id, String name, Screen back) {
         ItemRecipes.Info info = ItemRecipes.get(id);
         String url = ItemRecipes.wikiUrl(info, name);
         Minecraft mc = Minecraft.getInstance();
-        mc.gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(this, "Open Wiki",
+        mc.gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(back, "Open Wiki",
                 "Opens the wiki page of " + name + " in your browser: " + url, "Open", false,
                 () -> net.minecraft.util.Util.getPlatform().openUri(url)));
     }
@@ -1087,15 +1103,26 @@ public class ItemSearchScreen extends Screen {
      * outlined there. One command per click or Enter, the input being the player's.
      */
     private void go(ItemSearchResults.Entry entry, ItemSearchResults.Place place) {
+        lastCategory = category;
+        goTo(entry, place, parent);
+    }
+
+    /**
+     * The same from the item list beside a menu, {@code parent} being that menu, or whatever
+     * screen to go back to. In the menu's own inventory the item is only outlined.
+     */
+    static void goTo(ItemSearchResults.Entry entry, ItemSearchResults.Place place, Screen parent) {
         Minecraft mc = Minecraft.getInstance();
         ItemSearchHighlight.item(entry.key);
-        lastCategory = category;
         switch (place.source()) {
-            case INVENTORY -> mc.gui.setScreen(parent instanceof AbstractContainerScreen<?> ? parent
-                    : mc.player == null ? null : new InventoryScreen(mc.player));
+            case INVENTORY -> {
+                Screen target = parent instanceof AbstractContainerScreen<?> ? parent
+                        : mc.player == null ? null : new InventoryScreen(mc.player);
+                if (mc.gui.screen() != target) mc.gui.setScreen(target);
+            }
             case CHEST -> {
                 ItemSearchHighlight.chest(place.pos(), place.pos2());
-                mc.gui.setScreen(parent);
+                if (mc.gui.screen() != parent) mc.gui.setScreen(parent);
                 if (!ItemSearchTracker.onOwnIsland()) {
                     SlayerDropTracker.sendModMessage("§7" + entry.name + " is in the chest at §f"
                             + place.pos().getX() + ", " + place.pos().getY() + ", " + place.pos().getZ()
@@ -1103,7 +1130,7 @@ public class ItemSearchScreen extends Screen {
                 }
             }
             default -> {
-                mc.gui.setScreen(parent);
+                if (mc.gui.screen() != parent) mc.gui.setScreen(parent);
                 Outbound.command(place.source().command(place.page()), Outbound.Cause.BUTTON);
             }
         }
@@ -1139,6 +1166,7 @@ public class ItemSearchScreen extends Screen {
     @Override
     public boolean charTyped(CharacterEvent event) {
         int codePoint = event.codepoint();
+        if (recipeOnly) return true;
         if (Character.isBmpCodePoint(codePoint) && input.insert((char) codePoint)) {
             // Typing goes back to the list, to search for what is typed.
             details.clear();
@@ -1211,7 +1239,7 @@ public class ItemSearchScreen extends Screen {
             }
         }
         String before = input.getText();
-        if (input.keyPressed(event)) {
+        if (!recipeOnly && input.keyPressed(event)) {
             if (!before.equals(input.getText())) {
                 showAllOwned = false;
                 details.clear();
@@ -1227,7 +1255,7 @@ public class ItemSearchScreen extends Screen {
         Detail d = details.peek();
         switch (event.key()) {
             case GLFW.GLFW_KEY_ESCAPE, GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_BACKSPACE -> {
-                details.pop();
+                back();
                 return true;
             }
             case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
@@ -1245,6 +1273,22 @@ public class ItemSearchScreen extends Screen {
                 return false;
             }
         }
+    }
+
+    /** Back from the item view; the recipe window of the item list closes with its last item. */
+    private void back() {
+        details.pop();
+        if (recipeOnly && details.isEmpty()) onClose();
+    }
+
+    /**
+     * How an item is made, as the item list beside a menu opens it: the item view on its own, over
+     * the menu, which it goes back to when closed.
+     */
+    public static void openRecipe(String id, Screen parent) {
+        ItemSearchScreen screen = new ItemSearchScreen(null, parent);
+        screen.recipeOnly = true;
+        Minecraft.getInstance().gui.setScreen(screen.devOpenItem(id));
     }
 
     /** For the screenshot tour: the item view of the item with this id, as Enter on its row opens it. */

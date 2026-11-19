@@ -63,10 +63,22 @@ public final class ItemSearchFeature {
                 return;
             }
             ItemSearchTracker.onMenuOpened();
-            ScreenEvents.remove(screen).register(s -> ItemSearchTracker.onMenuClosed(s.getTitle(), container.getMenu()));
-            // In a menu the key searches for the item under the mouse.
-            ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> !KEY.matches(event) || !keyPressed(s));
-            ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> !KEY.matchesMouse(event) || !keyPressed(s));
+            ScreenEvents.remove(screen).register(s -> {
+                ItemSearchTracker.onMenuClosed(s.getTitle(), container.getMenu());
+                ItemListOverlay.menuClosed(s);
+            });
+            // While the item list's bar has the keyboard every key types into it; else the key in a
+            // menu puts the bar's caret in, with the item under the mouse searched for.
+            ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> {
+                if (ItemListOverlay.keyPressed(s, event)) return false;
+                return !KEY.matches(event) || !keyPressed(s);
+            });
+            ScreenKeyboardEvents.allowCharType(screen).register((s, event) -> !ItemListOverlay.charTyped(s, event.codepoint()));
+            ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> {
+                if (KEY.matchesMouse(event)) return !keyPressed(s);
+                return !ItemListOverlay.mouseClicked(s, event.x(), event.y(), event.button());
+            });
+            ScreenMouseEvents.allowMouseScroll(screen).register((s, mx, my, h, v) -> !ItemListOverlay.mouseScrolled(s, mx, my, v));
         });
 
         UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
@@ -92,7 +104,8 @@ public final class ItemSearchFeature {
         if (!(screen instanceof AbstractContainerScreen<?> container)) return false;
         Slot slot = ((AbstractContainerScreenAccessor) container).alpaka$hoveredSlot();
         String query = slot == null || !slot.hasItem() ? null : SkyblockUtils.cleanColor(slot.getItem().getHoverName().getString()).trim();
-        open(query, screen);
+        if (AlpakaConfig.instance.itemListEnabled) ItemListOverlay.focus(query);
+        else open(query, screen);
         return true;
     }
 
@@ -110,6 +123,15 @@ public final class ItemSearchFeature {
         if (mc.player == null || mc.level == null) return;
         if (!SkyblockUtils.isOnSkyblock()) {
             SlayerDropTracker.sendModMessage("§cItem Search only works on SkyBlock.");
+            return;
+        }
+        if (AlpakaConfig.instance.itemListEnabled) {
+            // The search lives in the item list beside the inventory: the inventory opens with its bar ready to type in.
+            mc.execute(() -> {
+                if (mc.player == null) return;
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player));
+                ItemListOverlay.focus(query);
+            });
             return;
         }
         mc.execute(() -> mc.gui.setScreen(new ItemSearchScreen(query, parent)));

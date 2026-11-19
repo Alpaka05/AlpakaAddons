@@ -2604,10 +2604,17 @@ public class AlpakaConfigRegistry {
                 "item search find where storage ender chest echest backpack sack sacks wardrobe accessory bag vault island chest inventory lookup locate"));
 
         OPTIONS.add(ConfigOption.keybind("item_search_key", "Key",
-                "Opens Item Search. In a menu, it searches for the item under the mouse. Unbound by default.",
+                "In a menu, puts the caret in the item list's search bar; over an item, it searches your items for it. Elsewhere it opens your inventory with the bar ready. Unbound by default.",
                 ConfigCategory.SKYBLOCK,
                 () -> net.alpaka.addons.features.itemsearch.ItemSearchFeature.KEY,
                 "item search find"));
+
+        OPTIONS.add(new ConfigOption("item_list", "Item List",
+                "Every SkyBlock item beside your menus, with a search bar under the menu. Click an item for its recipe, right-click for its wiki page. Mine shows your own items instead, and a click goes to where they are. A sum typed into the bar is worked out.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.itemListEnabled,
+                v -> { AlpakaConfig.instance.itemListEnabled = v; AlpakaConfig.save(); },
+                "item list recipe recipes wiki viewer neu all items search bar calculator math sum inventory side panel"));
 
         OPTIONS.add(new ConfigOption("item_search_open", "Open Item Search",
                 "Opens the search window. Works on SkyBlock only.",

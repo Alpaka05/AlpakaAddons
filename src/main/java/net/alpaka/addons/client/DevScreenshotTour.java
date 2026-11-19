@@ -60,36 +60,30 @@ public final class DevScreenshotTour {
     }
 
     private static final List<Stop> STOPS = "spotlight".equals(System.getenv(ENV)) ? List.of(
-            // The search bar with everything in it: the player's items and every SkyBlock item, a sum,
-            // an item's recipe, and the bar over the inventory it was opened from.
+            // The item list beside the inventory: every item, a search, the player's own items, a sum
+            // and a recipe opened from the list.
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
-            new Stop("spotlight-empty", () -> Minecraft.getInstance().gui.setScreen(
-                    net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen(null)), () -> true, 30),
-            new Stop("spotlight-diamond", () -> Minecraft.getInstance().gui.setScreen(
-                    net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("diamond")),
-                    () -> net.alpaka.addons.features.itemsearch.ItemCatalog.all() != null
-                            && net.alpaka.addons.features.itemvalue.ItemPrices.updatedAt() > 0, 60),
-            new Stop("spotlight-hyperion", () -> Minecraft.getInstance().gui.setScreen(
-                    net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("hyperion")), () -> true, 60),
-            new Stop("spotlight-math", () -> Minecraft.getInstance().gui.setScreen(
-                    net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("2.5m * 3 + 500k")), () -> true, 20),
-            new Stop("spotlight-math-price", () -> Minecraft.getInstance().gui.setScreen(
-                    net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("bz(enchanted diamond) * 160")), () -> true, 20),
-            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(
-                    net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("hyperion").devOpenItem("HYPERION")),
-                    () -> net.alpaka.addons.features.itemsearch.ItemRecipes.get("HYPERION") != null, 1),
-            new Stop("spotlight-recipe-hyperion", () -> {}, () -> true, 80),
-            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(
-                    net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("refined mithril").devOpenItem("REFINED_MITHRIL")),
-                    () -> net.alpaka.addons.features.itemsearch.ItemRecipes.get("REFINED_MITHRIL") != null, 1),
-            new Stop("spotlight-recipe-forge", () -> {}, () -> true, 80),
-            new Stop("spotlight-inventory", () -> {
+            new Stop("spotlight-list-all", () -> {
+                net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen(null);
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("", false, false);
                 Minecraft mc = Minecraft.getInstance();
-                net.minecraft.client.gui.screens.Screen inventory = new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player);
-                mc.gui.setScreen(inventory);
-                mc.gui.setScreen(net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("ench", inventory));
-            }, () -> true, 40)
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player));
+            }, () -> net.alpaka.addons.features.itemsearch.ItemCatalog.all() != null
+                    && net.alpaka.addons.features.itemvalue.ItemPrices.updatedAt() > 0, 60),
+            new Stop("spotlight-list-diamond", () -> {
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("diamond", false, true);
+                placeMouse(0.97, 0.12);
+            }, () -> true, 30),
+            new Stop("spotlight-list-mine", () -> {
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("", true, false);
+                placeMouse(0.5, 0.5);
+            }, () -> true, 30),
+            new Stop("spotlight-list-math", () -> net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("2.5m * 3 + 500k", false, true),
+                    () -> true, 20),
+            new Stop(null, () -> net.alpaka.addons.features.itemsearch.ItemSearchScreen.openRecipe("HYPERION", Minecraft.getInstance().gui.screen()),
+                    () -> net.alpaka.addons.features.itemsearch.ItemRecipes.get("HYPERION") != null, 1),
+            new Stop("spotlight-list-recipe", () -> {}, () -> true, 80)
     ) : "leap-menu".equals(System.getenv(ENV)) ? List.of(
             screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
             screen("leap-menu-map", () -> leapMenuPreview(true)),

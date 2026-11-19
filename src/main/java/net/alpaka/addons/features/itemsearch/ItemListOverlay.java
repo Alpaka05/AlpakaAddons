@@ -90,6 +90,9 @@ public final class ItemListOverlay {
     private static int page = 0;
     private static long caretFrom = 0L;
     private static long copiedAt = 0L;
+    /** Whether the search lights up the open menu's items too; a double-click on the bar switches it, for the session. */
+    private static boolean highlightMenu = false;
+    private static long lastBarClickAt = 0L;
     private static final Deque<View> views = new ArrayDeque<>();
     /** For the screenshot tour, which is not on SkyBlock. */
     private static boolean devForce = false;
@@ -147,6 +150,7 @@ public final class ItemListOverlay {
     /** For the screenshot tour: the list with this search and mode, outside SkyBlock too. */
     public static void devShow(String search, boolean mine, boolean focus) {
         devForce = true;
+        highlightMenu = false;
         slotMatches.clear();
         query.setText(search == null ? "" : search);
         mode = mine ? Mode.MINE : Mode.ALL;
@@ -156,6 +160,12 @@ public final class ItemListOverlay {
         caretFrom = System.currentTimeMillis();
         builtFor = null;
         ownedAt = 0L;
+    }
+
+    /** For the screenshot tour: the open menu searched too, as a double-click on the bar switches on. */
+    public static void devHighlightMenu() {
+        highlightMenu = true;
+        slotMatches.clear();
     }
 
     /** For the screenshot tour: the view of this item, on its recipes or on what it is used in. */
@@ -223,6 +233,7 @@ public final class ItemListOverlay {
     private static String menuQuery() {
         Minecraft mc = Minecraft.getInstance();
         if (drawnOn == null || mc.gui.screen() != drawnOn || regionW <= 0 || !enabled()) return null;
+        if (!highlightMenu) return null;
         String q = query.getText().trim();
         return q.isEmpty() || sum() != null ? null : q;
     }
@@ -451,6 +462,13 @@ public final class ItemListOverlay {
         boolean hover = AlpakaStyle.inside(mx, my, barX, barY, barW, BAR_H);
         String placeholder = mode == Mode.MINE ? "Search your items" : "Search items, or type a sum";
         AlpakaStyle.textField(graphics, font, barX, barY, barW, BAR_H, query, null, placeholder, focused, hover, caretFrom);
+        // While the open menu is searched too, the bar says so with an outline in the accent color.
+        if (highlightMenu) ModernGuiUtils.drawRoundedOutline(graphics, barX - 1, barY - 1, barW + 2, BAR_H + 2, AlpakaStyle.FIELD_RADIUS + 1, AlpakaStyle.accent());
+        if (hover && !focused) {
+            graphics.setComponentTooltipForNextFrame(font, List.of(
+                    Component.literal(highlightMenu ? "Double-click: stop searching this menu" : "Double-click: search this menu too")
+                            .withStyle(ChatFormatting.GRAY)), mx, my);
+        }
         Double result = sum();
         if (result == null) return;
         // The result just above the bar, as a calculator's display.
@@ -909,6 +927,16 @@ public final class ItemListOverlay {
                 textChanged();
             } else {
                 AlpakaStyle.clickTextField(Minecraft.getInstance().font, query, null, barX, barW, mx, focused, false);
+                long now = System.currentTimeMillis();
+                if (now - lastBarClickAt < 300) {
+                    // A double-click switches searching the open menu on or off.
+                    highlightMenu = !highlightMenu;
+                    slotMatches.clear();
+                    AlpakaStyle.click();
+                    lastBarClickAt = 0L;
+                } else {
+                    lastBarClickAt = now;
+                }
             }
             focused = true;
             caretFrom = System.currentTimeMillis();

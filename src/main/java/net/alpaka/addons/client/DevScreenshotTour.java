@@ -77,6 +77,7 @@ public final class DevScreenshotTour {
             }, () -> true, 30),
             new Stop("spotlight-list-menu", () -> {
                 net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("spruce", false, true);
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devHighlightMenu();
                 placeMouse(0.5, 0.97);
             }, () -> true, 30),
             new Stop("spotlight-list-mine", () -> {

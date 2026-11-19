@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.damagetags
 
 import net.alpaka.addons.client.gui.AlpakaStyle
+import net.alpaka.addons.client.gui.GuiFont
 import com.mojang.blaze3d.vertex.PoseStack
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.Chroma
@@ -116,19 +117,21 @@ object CustomDamageTagFeature {
 
         /**
          * The still gradient last built for this tag, and the two colors it was built from. Only used while
-         * Flowing Gradient is off, when the gradient cannot change unless the colors do.
+         * Flowing Gradient is off, when the gradient cannot change unless the colors or the font do.
          */
         var gradient: FormattedCharSequence? = null
         var gradientStart = 0
         var gradientEnd = 0
+        var gradientFont: Style? = null
 
         /**
-         * The text's width and the font generation it was measured in. The gradient only colors the
-         * characters, which never changes a width, so it is measured once per tag and again only
-         * after a resource reload changed the glyphs.
+         * The text's width, and the font generation and font it was measured in. The gradient only
+         * colors the characters, which never changes a width, so it is measured once per tag and
+         * again only after a resource reload changed the glyphs or another font was picked.
          */
         var width = 0
         var widthGeneration = -1
+        var widthFont: Style? = null
     }
 
     private val tags = ArrayDeque<Tag>()
@@ -271,6 +274,9 @@ object CustomDamageTagFeature {
         val now = System.currentTimeMillis()
         val lifetime = cfg.customDamageTagDurationMs.toFloat()
         val time = (now % 3_600_000L) / 1000.0
+        // The chosen font as the base of every character's style; GuiFont hands out one instance per
+        // font, so comparing by identity tells whether a cached gradient or width is still current.
+        val fontStyle = GuiFont.worldStyle(cfg.customDamageTagFont)
 
         for (tag in tags) {
             val ageMs = (now - tag.bornMs).toFloat()
@@ -296,18 +302,21 @@ object CustomDamageTagFeature {
             val chroma = if (tag.crit) cfg.customDamageTagCritChroma else cfg.customDamageTagNormalChroma
             val sequence = if (chroma != null && chroma.enabled) {
                 // A rainbow along the number instead of the gradient; it moves, so it is built every frame.
-                rainbow(text, chroma, chroma.shift(now))
+                rainbow(text, fontStyle, chroma, chroma.shift(now))
             } else if (cfg.customDamageTagFlowingGradient) {
-                gradient(text, start, end, time)
+                gradient(text, fontStyle, start, end, time)
             } else {
                 val built = tag.gradient
-                if (built != null && tag.gradientStart == start && tag.gradientEnd == end) built
-                else gradient(text, start, end, null).also { tag.gradient = it; tag.gradientStart = start; tag.gradientEnd = end }
+                if (built != null && tag.gradientStart == start && tag.gradientEnd == end && tag.gradientFont === fontStyle) built
+                else gradient(text, fontStyle, start, end, null).also {
+                    tag.gradient = it; tag.gradientStart = start; tag.gradientEnd = end; tag.gradientFont = fontStyle
+                }
             }
             val generation = AlpakaStyle.fontGeneration
-            if (tag.widthGeneration != generation) {
+            if (tag.widthGeneration != generation || tag.widthFont !== fontStyle) {
                 tag.width = font.width(sequence)
                 tag.widthGeneration = generation
+                tag.widthFont = fontStyle
             }
             val width = tag.width
 
@@ -327,7 +336,8 @@ object CustomDamageTagFeature {
     }
 
     /**
-     * The number with each character in its own color, running from [start] to [end]. With a
+     * The number with each character in its own color, running from [start] to [end], in the font
+     * [base] names (empty for Minecraft's own). With a
      * [time], the gradient sways back and forth along the number.
      *
      * Built straight as the sequence the font draws rather than as a Component read through
@@ -338,12 +348,12 @@ object CustomDamageTagFeature {
      * tag ever hold other characters, it has to go back through visualOrderText. The styles are worked out up
      * front, so the width pass and the later draw see the same ones.
      */
-    private fun gradient(text: String, start: Int, end: Int, time: Double?): FormattedCharSequence {
+    private fun gradient(text: String, base: Style, start: Int, end: Int, time: Double?): FormattedCharSequence {
         val count = text.length
         val styles = Array(count) { index ->
             var position = if (count > 1) index.toFloat() / (count - 1) else 0f
             if (time != null) position = (position + 0.35f * sin(time * 3.0 + index * 0.6).toFloat()).coerceIn(0f, 1f)
-            Style.EMPTY.withColor(lerpRgb(start, end, position))
+            base.withColor(lerpRgb(start, end, position))
         }
         return FormattedCharSequence { sink ->
             for (i in 0 until count) {
@@ -353,10 +363,10 @@ object CustomDamageTagFeature {
         }
     }
 
-    /** The number with each character in [chroma]'s rainbow, which moves along it over time. */
-    private fun rainbow(text: String, chroma: Chroma, shift: Double): FormattedCharSequence {
+    /** The number with each character in [chroma]'s rainbow, which moves along it over time, in [base]'s font. */
+    private fun rainbow(text: String, base: Style, chroma: Chroma, shift: Double): FormattedCharSequence {
         val count = text.length
-        val styles = Array(count) { index -> Style.EMPTY.withColor(chroma.rgb(shift, index.toDouble())) }
+        val styles = Array(count) { index -> base.withColor(chroma.rgb(shift, index.toDouble())) }
         return FormattedCharSequence { sink ->
             for (i in 0 until count) {
                 if (!sink.accept(i, styles[i], text[i].code)) return@FormattedCharSequence false

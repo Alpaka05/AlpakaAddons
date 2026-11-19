@@ -3239,6 +3239,15 @@ public class AlpakaConfigRegistry {
                 val -> CustomDamageTagFeature.FORMAT_NAMES[Math.round(val)],
                 "damage tag number format compact short million k m b separator as hypixel compact full").choices(CustomDamageTagFeature.FORMAT_NAMES));
 
+        OPTIONS.add(new ConfigOption("custom_damage_tag_font", "Damage Tag Font",
+                "The typeface the custom damage numbers are written in.",
+                ConfigCategory.COSMETICS,
+                () -> (float) Math.max(0, Math.min(GuiFont.NAMES.length - 1, AlpakaConfig.instance.customDamageTagFont)),
+                v -> { AlpakaConfig.instance.customDamageTagFont = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (GuiFont.NAMES.length - 1),
+                val -> GuiFont.NAMES[Math.round(val)],
+                "damage tag font typeface text smooth inter poppins varela round outfit nunito minecraft pixel").choices(GuiFont.NAMES));
+
         OPTIONS.add(new ConfigOption("custom_damage_tag_flow", "Flowing Gradient",
                 "Makes the gradient sway along the digits instead of standing still.",
                 ConfigCategory.COSMETICS,

@@ -40,7 +40,7 @@ class DisableAllFeaturesTest {
             // Visuals
             "fullbrightEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
             "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideVisualClutter", "hideEntityFire", "firstPersonFireStatic",
-            "nameTagTextShadow", "showOwnNameTag", "renderHandInThirdPerson", "smoothPerspectiveEnabled",
+            "renderHandInThirdPerson", "smoothPerspectiveEnabled",
             "disableFrontPerspective", "zoomEnabled", "containerBgFadeInEnabled", "inventorySnowEnabled",
             "scrollableTooltipsEnabled", "persistentItemNameEnabled", "oldMasterStarsEnabled",
             "wideHealthBarEnabled", "betterChatEnabled", "chatSearchEnabled", "chatCopyEnabled", "expandChatHistory",
@@ -118,7 +118,7 @@ class DisableAllFeaturesTest {
             "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",
             "notificationBlur", "notificationSmoothFont", "menuFontInChat", "menuFontInScoreboard",
             // Values
-            "menuFont", "menuAccentColor", "nameTagBackgroundColor", "firstPersonFireOpacity",
+            "menuFont", "menuAccentColor", "firstPersonFireOpacity",
             "firstPersonFireHeight", "containerBgOpacity"
     );
 

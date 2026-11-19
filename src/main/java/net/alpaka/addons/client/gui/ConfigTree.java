@@ -168,7 +168,6 @@ public final class ConfigTree {
             "HUD Style", "HUD Style",
             "Notification Customization", "Notifications",
             "Scoreboard", "Scoreboard Style",
-            "Nametags", "Nametags",
             "Hide Fire Overlay", "Hide Fire Overlay",
             "Enchantments", "Enchantments"
     );
@@ -179,7 +178,6 @@ public final class ConfigTree {
             "Viewmodel Presets", "Save your viewmodel and swing settings to a preset and load them back later.",
             "HUD Style", "Main switches for the blurred panels and the smooth font of every HUD, and how strongly the world is blurred.",
             "Scoreboard", "The sidebar scoreboard's footer, background and font.",
-            "Nametags", "How the nametags above players and mobs look, and whether you see your own.",
             "Hide Fire Overlay", "Hides the flames on burning mobs, and fades, lowers or stills the fire on your screen while you burn.",
             "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result.",
             "Enchantments", "Maxed enchantments in their own color in tooltips, and the books that combine with the one in the anvil highlighted."
@@ -201,7 +199,7 @@ public final class ConfigTree {
                             "custom_sound_zombie_remedy", "custom_sound_blaze_death", "custom_sound_low_hp_heartbeat"}},
             {{"Visuals"},
                     {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_visual_clutter",
-                            "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom"},
+                            "#Hide Fire Overlay", "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
                             "hide_inventory_effects",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar", "custom_tab", "#Scoreboard"},

@@ -29,6 +29,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.sugar.Local;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -43,10 +46,15 @@ public class FirstPersonHandsAndItemsRendererMixin {
     private static long swingStartTime = 0;
     @Unique
     private static boolean wasSwinging = false;
+    /**
+     * The player's swing last seen. Vanilla makes a new one for every swing it starts, even one that
+     * restarts an identical swing, so a different object is exactly a new swing.
+     */
     @Unique
-    private static float lastSwingTime = 0.0f;
+    private static LivingEntity.SwingDescription lastSeenSwing = null;
+    /** The swing the custom animation is playing: its hand and kind (whack, stab). */
     @Unique
-    private static boolean lastSwinging = false;
+    private static LivingEntity.SwingDescription activeSwing = null;
 
     @Shadow
     private void applyItemArmAttackTransform(PoseStack poseStack, HumanoidArm arm, float swingProgress) {
@@ -186,26 +194,38 @@ public class FirstPersonHandsAndItemsRendererMixin {
             if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled && item.isEmpty()) {
                 return swingProgress;
             }
-            // Only the hand that is swinging, as vanilla does; the other gets its 0 unchanged.
-            InteractionHand swinging = hands.attackHand != null ? hands.attackHand : InteractionHand.MAIN_HAND;
+            float progress = getCustomSwingProgress(player);
+            // Only the hand that is swinging, as vanilla does; the other gets its 0 unchanged. The
+            // custom swing can outlast vanilla's, so its hand is the one it remembered, not
+            // vanilla's attack hand, which is gone by then.
+            InteractionHand swinging = activeSwing != null ? activeSwing.hand()
+                    : hands.attackHand != null ? hands.attackHand : InteractionHand.MAIN_HAND;
             if (hand != swinging) return swingProgress;
-            return getCustomSwingProgress(player, swingProgress);
+            return progress;
         }
         return swingProgress;
     }
 
-    @ModifyVariable(method = "renderPlayerArm", at = @At("HEAD"), ordinal = 1, argsOnly = true)
-    private float modifySwingProgressHand(float swingProgress) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled) {
-            if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled) {
-                return swingProgress;
-            }
-            LocalPlayer player = Minecraft.getInstance().player;
-            if (player != null) {
-                return getCustomSwingProgress(player, swingProgress);
-            }
-        }
-        return swingProgress;
+    /**
+     * Since 26.3 vanilla only animates a hand while the player's own swing is running, and stops the
+     * moment it ends. A slower swing speed, or "Always Finish Swing", plays on past that point, so
+     * without this the item snapped back to rest mid-swing. While the custom swing is playing on
+     * this hand, the renderer sees the swing it belongs to. The bare arm needs nothing: vanilla
+     * draws its swing from the progress alone. The swing progress here is the one adjusted above,
+     * since the argument is read after the ModifyVariable at HEAD has run.
+     */
+    @ModifyExpressionValue(
+            method = "submitArmWithItem",
+            at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;currentSwing:Lnet/minecraft/world/entity/LivingEntity$SwingDescription;", opcode = Opcodes.GETFIELD)
+    )
+    private LivingEntity.SwingDescription alpaka$keepCustomSwing(
+            LivingEntity.SwingDescription original,
+            @Local(argsOnly = true) InteractionHand hand,
+            @Local(argsOnly = true, ordinal = 2) float swingProgress) {
+        if (!AlpakaConfig.instance.itemSizeFeatureEnabled) return original;
+        LivingEntity.SwingDescription active = activeSwing;
+        if (active == null || active.hand() != hand || swingProgress <= 0.0f) return original;
+        return active;
     }
 
     @Unique
@@ -280,9 +300,9 @@ public class FirstPersonHandsAndItemsRendererMixin {
         HandItemLightingFeature.endHandItem();
     }
 
-    /** Set when a vanilla swing began while a custom swing was still playing under "Always Finish Swing". */
+    /** A vanilla swing that began while a custom swing was still playing under "Always Finish Swing". */
     @Unique
-    private static boolean pendingSwing = false;
+    private static LivingEntity.SwingDescription pendingSwing = null;
 
     /**
      * The swing progress the hand is drawn at, on the mod's own clock rather than vanilla's tick
@@ -298,46 +318,48 @@ public class FirstPersonHandsAndItemsRendererMixin {
      * the motion read as swing, pause, swing. Once the button is released the queued swing is
      * dropped, so the hand comes to rest with the current stroke instead of throwing one more.
      */
-    private float getCustomSwingProgress(LocalPlayer player, float originalProgress) {
-        // The swing's progress only grows during one swing, so a drop means it restarted.
-        float currentSwingTime = player.getSwingAnimation(0f);
-        boolean isSwingingNow = player.isSwinging();
+    private float getCustomSwingProgress(LocalPlayer player) {
+        // Seen at once, unlike a drop in the swing's progress, which vanilla only shows a tick or
+        // two after the restart. Called for both hands each frame; the second call sees no new
+        // swing, so it changes nothing.
+        LivingEntity.SwingDescription current = player.getCurrentSwing();
+        boolean newSwing = current != null && current != lastSeenSwing;
+        lastSeenSwing = current;
         long now = System.currentTimeMillis();
         boolean alwaysFinish = AlpakaConfig.instance.itemSwingAlwaysFinishEnabled;
 
-        if (isSwingingNow) {
-            boolean freshStart = !lastSwinging;
-            boolean newSwingReset = lastSwinging && (currentSwingTime < lastSwingTime);
-            if (freshStart || newSwingReset) {
-                if (!wasSwinging) {
-                    swingStartTime = now;
-                    wasSwinging = true;
-                } else if (alwaysFinish) {
-                    pendingSwing = true;
-                } else if (now - swingStartTime > 100) {
-                    swingStartTime = now;
-                }
+        if (newSwing) {
+            if (!wasSwinging) {
+                swingStartTime = now;
+                wasSwinging = true;
+                activeSwing = current;
+            } else if (alwaysFinish) {
+                pendingSwing = current;
+            } else if (now - swingStartTime > 100) {
+                swingStartTime = now;
+                activeSwing = current;
             }
         }
-        lastSwingTime = currentSwingTime;
-        lastSwinging = isSwingingNow;
 
         if (!wasSwinging) {
-            pendingSwing = false;
+            pendingSwing = null;
+            activeSwing = null;
             return 0.0f;
         }
         float duration = 250.0f / AlpakaConfig.instance.itemSwingSpeed;
         long elapsed = now - swingStartTime;
         if (elapsed >= duration) {
-            if (!pendingSwing || !alpaka$attackHeld()) {
+            if (pendingSwing == null || !alpaka$attackHeld()) {
                 wasSwinging = false;
-                pendingSwing = false;
+                pendingSwing = null;
+                activeSwing = null;
                 return 0.0f;
             }
             // Chain the queued swing onto the end of this one, keeping the time already spent past
             // the boundary so the motion does not hitch by a frame. After a stall long enough to
             // miss a whole swing, resync to now instead of racing to catch up.
-            pendingSwing = false;
+            activeSwing = pendingSwing;
+            pendingSwing = null;
             swingStartTime += (long) duration;
             elapsed -= (long) duration;
             if (elapsed >= duration) {

@@ -85,8 +85,8 @@ object PlayerModelRenderer {
     // swing timing, reach and hit registration are untouched.
     private var slowSwingStartMs = 0L
     private var slowSwingActive = false
-    private var wasSwinging = false
-    private var lastSwingTime = 0f
+    /** The player's swing last seen; vanilla makes a new one for every swing it starts. */
+    private var lastSeenSwing: LivingEntity.SwingDescription? = null
 
     /**
      * Set when the player swings while a slowed arc is still playing, and consumed the moment that
@@ -298,22 +298,19 @@ object PlayerModelRenderer {
     }
 
     /**
-     * Watches the player's swing counter and restarts a wall-clock timer whenever a new swing
+     * Watches the player's swing and restarts a wall-clock timer whenever a new swing
      * begins, so the avatar's arm can be animated on our own slower schedule.
      *
      * Called once per frame from [render]. Repeat calls within a frame are harmless: the player's
-     * swing counter cannot change between them, so no second swing is detected.
+     * swing cannot change between them, so no second swing is detected.
      */
     private fun updateSlowSwing(player: LocalPlayer) {
-        val swinging = player.isSwinging
-        // The swing's progress only grows during one swing, so a drop means it restarted.
-        val swingTime = player.getSwingAnimation(0f)
+        // Either a swing starting from rest, or a re-swing mid-arc: both are a new swing object,
+        // seen at once rather than when the swing's progress drops a tick or two later.
+        val swing = player.currentSwing
+        val newSwing = swing != null && swing !== lastSeenSwing
+        lastSeenSwing = swing
         val now = System.currentTimeMillis()
-
-        // Either a swing starting from rest, or a re-swing that reset the counter mid-arc.
-        val newSwing = swinging && (!wasSwinging || swingTime < lastSwingTime)
-        wasSwinging = swinging
-        lastSwingTime = swingTime
         if (newSwing) lastNewSwingAtMs = now
 
         if (slowSwingActive && now - slowSwingStartMs >= SLOW_SWING_DURATION_MS) {

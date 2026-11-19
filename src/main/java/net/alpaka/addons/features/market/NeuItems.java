@@ -79,8 +79,11 @@ final class NeuItems {
     /**
      * The repository's names to try for SkyCofl's tag, best guess first. Pets are filed under their
      * rarity ({@code GRIFFIN;4}), which the tag does not say, so every rarity is tried, Legendary
-     * first; runes under their level, Bazaar shards under the attribute they carry.
+     * first; runes under their level, which SkyCofl's tag for a price may carry ({@code
+     * RUNE_FIERY_BURST_1}) and other tags leave out, and Bazaar shards under the attribute they carry.
      */
+    private static final Pattern RUNE_LEVEL = Pattern.compile("^RUNE_(.+)_(\\d)$");
+
     static List<String> candidates(String tag, Map<String, String> shards) {
         List<String> out = new ArrayList<>();
         if (shards != null && shards.containsKey(tag)) out.add(shards.get(tag));
@@ -90,8 +93,13 @@ final class NeuItems {
         } else if (tag.startsWith("UNIQUE_RUNE_")) {
             out.add(tag.substring(12) + "_RUNE;3");
         } else if (tag.startsWith("RUNE_")) {
-            String rune = tag.substring(5) + "_RUNE;";
-            for (int level = 1; level <= 3; level++) out.add(rune + level);
+            Matcher levelled = RUNE_LEVEL.matcher(tag);
+            if (levelled.matches()) {
+                out.add(levelled.group(1) + "_RUNE;" + levelled.group(2));
+            } else {
+                String rune = tag.substring(5) + "_RUNE;";
+                for (int level = 1; level <= 3; level++) out.add(rune + level);
+            }
         }
         out.add(tag);
         return out;

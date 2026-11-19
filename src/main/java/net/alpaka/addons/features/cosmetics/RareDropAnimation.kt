@@ -281,7 +281,7 @@ object RareDropAnimation {
             val rarity = RARITY_COLORS.indexOf(color ?: return null)
             return if (rarity < 0) null else RareDrops.petId(name, rarity)
         }
-        return RareDrops.bookId(name) ?: idByName(name) ?: RareDrops.dyeId(name)
+        return RareDrops.bookId(name) ?: RareDrops.runeId(name) ?: idByName(name) ?: RareDrops.dyeId(name)
     }
 
     /** Every SkyBlock item's id by its name in lower case, built once Hypixel's item list is in. */

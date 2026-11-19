@@ -511,6 +511,7 @@ class MarketParsingTest {
         assertEquals(List.of("PET_ITEM_BIG_TEETH_COMMON"), NeuItems.candidates("PET_ITEM_BIG_TEETH_COMMON", null));
         assertEquals(List.of("TIDAL_RUNE;1", "TIDAL_RUNE;2", "TIDAL_RUNE;3", "RUNE_TIDAL"), NeuItems.candidates("RUNE_TIDAL", null));
         assertEquals("SMITTEN_RUNE;3", NeuItems.candidates("UNIQUE_RUNE_SMITTEN", null).get(0));
+        assertEquals(List.of("FIERY_BURST_RUNE;1", "RUNE_FIERY_BURST_1"), NeuItems.candidates("RUNE_FIERY_BURST_1", null));
 
         Map<String, String> shards = NeuItems.shardIds("""
                 [{"stock":"SHARD_CRETAN_BULL","id":"ATTRIBUTE_SHARD_MYTHOLOGICAL_RESISTANCE;1"},

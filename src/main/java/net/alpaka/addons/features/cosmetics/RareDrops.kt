@@ -33,6 +33,7 @@ object RareDrops {
      */
     private val MAGIC_FIND = Regex("""\s*\(?\+[\d,.]+%?\s*[^\w\s()]?\s*Magic Find\)?\s*$""")
     private val WRAPPED_BOOK = Regex("""^Enchanted Book \((.+)\)$""")
+    private val RUNE = Regex("""^(.+) Rune ([IVX]+)$""")
     private val LEVELLED = Regex("""^(.+) ([IVXL]+)$""")
     private val AMOUNT = Regex("""^(?:\d+x\s+)?(?:◆\s*)?(?:\[Lvl \d+]\s+)?""")
     private val DYE = Regex("""^\s*WOW! (?:\[[A-Z+]+] )?([A-Za-z0-9_]+) found (?:a|an) ([A-Za-z' ]+ Dye)(?: #[\d,]+)?!\s*$""")
@@ -98,6 +99,16 @@ object RareDrops {
         val key = enchant.removePrefix(if (ultimate) "Ultimate " else "")
             .uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]+"), "_").trim('_')
         return "ENCHANTMENT_" + (if (ultimate) "ULTIMATE_" else "") + key + "_" + level
+    }
+
+    /**
+     * A rune's market id, as SkyCofl lists it: RUNE_FIERY_BURST_1 for "Fiery Burst Rune I". Hypixel's
+     * own item list leaves the runes out. Null for a name that is not a rune's.
+     */
+    fun runeId(name: String): String? {
+        val m = RUNE.matchEntire(name) ?: return null
+        val level = roman(m.groupValues[2]).takeIf { it > 0 } ?: return null
+        return "RUNE_" + m.groupValues[1].uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]+"), "_").trim('_') + "_" + level
     }
 
     /**

@@ -2,6 +2,7 @@ package net.alpaka.addons.features.enchantments;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.config.Chroma;
+import net.alpaka.addons.features.itemvalue.ItemPrices;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -59,6 +60,7 @@ public final class MaxEnchantColorFeature {
         ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
             AlpakaConfig config = AlpakaConfig.instance;
             if (!config.maxEnchantColorEnabled) return;
+            followBazaar();
             boolean ultimates = config.maxEnchantColorUltimate;
             // Line 0 is the item's name.
             Chroma chroma = config.maxEnchantChroma;
@@ -76,6 +78,31 @@ public final class MaxEnchantColorFeature {
                 lines.set(i, recolor(lines.get(i), color, ultimates));
             }
         });
+    }
+
+    /** The Bazaar list the tops were last raised from, by {@link ItemPrices#version()}. */
+    private static int bazaarVersion = -1;
+
+    /**
+     * Keeps the tops in step with the Bazaar, so a level Hypixel adds (Smoldering VI) is coloured
+     * once its book is traded. The list is fetched in the background and only looked through again
+     * when a new one has come; the cached lines are dropped when a top moved.
+     */
+    private static synchronized void followBazaar() {
+        ItemPrices.refreshBazaar();
+        int version = ItemPrices.version();
+        if (version == bazaarVersion || !ItemPrices.hasBazaar()) return;
+        bazaarVersion = version;
+        if (Enchants.raise(MaxEnchantColorFeature::traded)) {
+            FOUND.clear();
+            FOUND_ULTIMATES.clear();
+        }
+    }
+
+    /** Whether the Bazaar has orders for the product, on either side. */
+    private static boolean traded(String id) {
+        ItemPrices.Product product = ItemPrices.bazaar(id);
+        return product != null && (!Double.isNaN(product.buy()) || !Double.isNaN(product.sell()));
     }
 
     /** Each line starts this many letters further on, so the rainbow's bands run diagonally. */
@@ -199,8 +226,7 @@ public final class MaxEnchantColorFeature {
         List<int[]> ranges = new ArrayList<>();
         Matcher m = (ultimates ? ALL_PATTERN : NORMAL_PATTERN).matcher(plain);
         while (m.find()) {
-            Integer max = Enchants.NORMAL.get(m.group(1));
-            if (max == null) max = Enchants.ULTIMATE.get(m.group(1));
+            Integer max = Enchants.max(m.group(1));
             if (max != null && level(m.group(2)) >= max) ranges.add(new int[]{m.start(), m.end()});
         }
         return ranges;

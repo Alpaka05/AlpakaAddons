@@ -1,15 +1,22 @@
 package net.alpaka.addons.features.enchantments;
 
+import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.function.Predicate;
 
 /**
  * The highest level of every SkyBlock enchantment, by the name its lore shows.
  *
- * The levels are SkyHanni's (SkyHanni-REPO constants/Enchants.json, September 2026). "Highest"
- * means the best level that exists at all, not the best an enchanting table gives: Sharpness tops
- * out at VII, not at V. Stacking
+ * The levels are SkyHanni's (SkyHanni-REPO constants/Enchants.json, September 2026), with Looting
+ * VII and Smoldering VI added since. "Highest" means the best level that exists at all, not the
+ * best an enchanting table gives: Sharpness tops out at VII, not at V. Stacking
  * enchantments (Expertise, Compact, ...) count by the level they show, so they are maxed at X.
  * An enchantment missing here is simply never coloured.
+ *
+ * The table is only the floor. When Hypixel adds a level, its book turns up on the Bazaar, so
+ * {@link #raise} moves an enchantment's top up to the highest level the Bazaar trades, and a new
+ * level is coloured without a new release.
  */
 final class Enchants {
 
@@ -35,7 +42,7 @@ final class Enchants {
         Map.entry("Hardened Vitality", 10), Map.entry("Ice Cold", 5), Map.entry("Impaling", 5),
         Map.entry("Infinite Quiver", 10), Map.entry("Karma", 6), Map.entry("Knockback", 2),
         Map.entry("Lapidary", 5), Map.entry("Lethality", 6), Map.entry("Life Steal", 5),
-        Map.entry("Looting", 5), Map.entry("Luck", 7), Map.entry("Luck of the Sea", 7),
+        Map.entry("Looting", 7), Map.entry("Luck", 7), Map.entry("Luck of the Sea", 7),
         Map.entry("Lure", 6), Map.entry("Magnet", 6), Map.entry("Mana Steal", 3),
         Map.entry("Vampiric Vitality", 10), Map.entry("Overload", 5),
         Map.entry("Paleontologist", 5), Map.entry("Pesterminator", 6), Map.entry("Petalfall", 5),
@@ -49,7 +56,7 @@ final class Enchants {
         Map.entry("Silk Touch", 1), Map.entry("Small Brain", 5), Map.entry("Smarty Pants", 5),
         Map.entry("Smelting Touch", 1), Map.entry("Smite", 7), Map.entry("Snipe", 4),
         Map.entry("Spiked Hook", 7), Map.entry("Sugar Rush", 3), Map.entry("Sunder", 6),
-        Map.entry("Smoldering", 5), Map.entry("Stealth", 6), Map.entry("Strong Vitality", 10),
+        Map.entry("Smoldering", 6), Map.entry("Stealth", 6), Map.entry("Strong Vitality", 10),
         Map.entry("Tabasco", 3), Map.entry("Thorns", 4), Map.entry("Thunderbolt", 7),
         Map.entry("Thunderlord", 7), Map.entry("Tidal", 3), Map.entry("Titan Killer", 7),
         Map.entry("Transylvanian", 5), Map.entry("Triple-Strike", 5),
@@ -62,6 +69,63 @@ final class Enchants {
         Map.entry("Vicious", 5), Map.entry("Woodsplitter", 6), Map.entry("Absorb", 10),
         Map.entry("Compact", 10), Map.entry("Cultivating", 10), Map.entry("Expertise", 10),
         Map.entry("Hecatomb", 10), Map.entry("Champion", 10), Map.entry("Toxophilite", 10));
+
+    /**
+     * Bazaar ids that don't follow from the lore name: these enchantments were renamed in the lore
+     * and kept their old id ({@code ENCHANTMENT_<id>_<level>}). From SkyHanni's nbtName.
+     */
+    private static final Map<String, String> RENAMED = Map.ofEntries(
+        Map.entry("Dragon Tracer", "AIMING"), Map.entry("Drain", "SYPHON"),
+        Map.entry("Duplex", "ULTIMATE_REITERATE"), Map.entry("Gravity", "DRAGON_HUNTER"),
+        Map.entry("Hardened Vitality", "HARDENED_MANA"), Map.entry("Looting", "LOOTING_NEW"),
+        Map.entry("Prismatic", "PRISTINE"), Map.entry("Pyroclasm", "MAGMARIZER"),
+        Map.entry("Strong Vitality", "STRONG_MANA"), Map.entry("Turbo-Cacti", "TURBO_CACTUS"),
+        Map.entry("Turbo-Cocoa", "TURBO_COCO"), Map.entry("Vampiric Vitality", "MANA_VAMPIRE"),
+        Map.entry("Vivacious Vitality", "FEROCIOUS_MANA"), Map.entry("Woodsplitter", "ARCANE"));
+
+    /** The Bazaar id of the enchantment's book at {@code level}, e.g. ENCHANTMENT_ULTIMATE_WISE_5. */
+    static String bazaarId(String name, int level) {
+        String id = RENAMED.get(name);
+        if (id == null) {
+            id = name.toUpperCase(Locale.ROOT).replace("'", "").replaceAll("[^A-Z0-9]+", "_");
+            if (ULTIMATE.containsKey(name) && !id.startsWith("ULTIMATE_")) id = "ULTIMATE_" + id;
+        }
+        return "ENCHANTMENT_" + id + "_" + level;
+    }
+
+    /** Levels above the table the Bazaar has shown, by name; replaced whole, so it is read safely off-thread. */
+    private static volatile Map<String, Integer> raised = Map.of();
+
+    /** The enchantment's highest level, or null for one not in the tables. */
+    static Integer max(String name) {
+        Integer max = raised.get(name);
+        if (max != null) return max;
+        max = NORMAL.get(name);
+        return max != null ? max : ULTIMATE.get(name);
+    }
+
+    /**
+     * Raises every enchantment whose next levels the Bazaar trades ({@code traded} says whether a
+     * product has orders: Hypixel keeps dead products like Feather Falling XX listed with none).
+     * Never lowers below the table. Returns whether any top changed.
+     */
+    static boolean raise(Predicate<String> traded) {
+        Map<String, Integer> next = new HashMap<>();
+        raiseAll(NORMAL, traded, next);
+        raiseAll(ULTIMATE, traded, next);
+        if (next.equals(raised)) return false;
+        raised = Map.copyOf(next);
+        return true;
+    }
+
+    private static void raiseAll(Map<String, Integer> table, Predicate<String> traded, Map<String, Integer> out) {
+        for (Map.Entry<String, Integer> e : table.entrySet()) {
+            int level = e.getValue();
+            // A few steps at most: a new level comes one at a time.
+            while (level < e.getValue() + 5 && traded.test(bazaarId(e.getKey(), level + 1))) level++;
+            if (level > e.getValue()) out.put(e.getKey(), level);
+        }
+    }
 
     /** Hypixel already marks these with bold pink, so they are only recoloured when asked to. */
     static final Map<String, Integer> ULTIMATE = Map.ofEntries(

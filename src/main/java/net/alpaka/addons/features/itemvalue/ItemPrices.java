@@ -93,6 +93,20 @@ public final class ItemPrices {
         maybeFetch(LOWEST_BINS, now, ItemPrices::parseLowestBins);
     }
 
+    /**
+     * Asks for the Bazaar alone if it is missing or stale, for features that only need to know
+     * which products exist (the max enchantment levels). Never waits.
+     */
+    public static void refreshBazaar() {
+        if (!AlpakaConfig.instance.allowApiCalls) return;
+        maybeFetch(BAZAAR, System.currentTimeMillis(), ItemPrices::parseBazaar);
+    }
+
+    /** Whether the Bazaar's list has arrived. */
+    public static boolean hasBazaar() {
+        return BAZAAR.data != null;
+    }
+
     /** Asks again right away for a list that failed, on the player's click. */
     public static void retry() {
         BAZAAR.retryAt = 0L;

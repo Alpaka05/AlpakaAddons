@@ -408,7 +408,8 @@ public final class ProfileSession {
 
     private void fail(Throwable failure) {
         Throwable cause = failure instanceof CompletionException && failure.getCause() != null ? failure.getCause() : failure;
-        if (cause instanceof ProfileApi.NotFound || cause instanceof AlpakaApi.Refused) {
+        if (cause instanceof ProfileApi.NotFound || cause instanceof AlpakaApi.Refused
+                || cause instanceof AlpakaApi.MojangRefused) {
             error = cause.getMessage();
         } else if (cause instanceof java.net.http.HttpTimeoutException || cause instanceof java.net.ConnectException
                 || cause instanceof java.io.IOException) {

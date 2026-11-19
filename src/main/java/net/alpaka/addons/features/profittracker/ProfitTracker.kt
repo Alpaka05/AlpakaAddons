@@ -6,6 +6,7 @@ import net.alpaka.addons.client.AlpakaKeyCategory
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaStats
 import net.alpaka.addons.features.itemsearch.ItemSearchMenus
+import net.alpaka.addons.features.itemvalue.ItemPrices
 import net.alpaka.addons.features.market.ItemIcons
 import net.alpaka.addons.features.slayer.SkyblockProfileTracker
 import net.alpaka.addons.features.slayer.SlayerQuestDetector
@@ -80,6 +81,8 @@ object ProfitTracker {
 
     private const val INVENTORY_EVERY_TICKS = 2
     private const val PURSE_EVERY_TICKS = 5
+    /** How often the price lists are asked whether they need loading again; they decide themselves. */
+    private const val PRICES_EVERY_TICKS = 100
     private const val DETECT_EVERY_TICKS = 10
 
     @JvmField
@@ -266,6 +269,9 @@ object ProfitTracker {
         }
         if (ticks % INVENTORY_EVERY_TICKS == 0) readInventory(player, now)
         if (ticks % PURSE_EVERY_TICKS == 0) readPurse(now)
+        // The lists used to load only when another feature asked for them (a price tooltip, the
+        // chest value), so a drop could come in with no price and sink to the end of the list.
+        if (ticks % PRICES_EVERY_TICKS == 0) ItemPrices.refresh()
 
         countTime(now)
         ProfitStore.tick(now)
@@ -526,15 +532,23 @@ object ProfitTracker {
      * "[Sacks] +12 items, -3 items." Its hover text lists what went in, one line each:
      * "+12 Revenant Flesh (Combat Sack)". Only what went in counts.
      */
-    private fun onSacks(message: Component, now: Long) {
-        if (sackMenuOpen || now - sackMenuClosedAt < SACK_MENU_GRACE_MS) return
-        val hovers = ArrayList<Component>()
+    /**
+     * The hover texts of a "[Sacks]" line, each once. Hypixel puts the same hover on several pieces
+     * of the line ("+12" and " items"); read per piece, every sack drop counted two times.
+     */
+    internal fun sackHovers(message: Component): Set<String> {
+        val hovers = LinkedHashSet<String>()
         message.visit({ style, _ ->
-            (style.hoverEvent as? HoverEvent.ShowText)?.let { hovers += it.value() }
+            (style.hoverEvent as? HoverEvent.ShowText)?.let { hovers += SkyblockUtils.cleanColor(it.value().string) }
             Optional.empty<Unit>()
         }, Style.EMPTY)
-        for (hover in hovers) {
-            for (line in SkyblockUtils.cleanColor(hover.string).split("\n")) {
+        return hovers
+    }
+
+    private fun onSacks(message: Component, now: Long) {
+        if (sackMenuOpen || now - sackMenuClosedAt < SACK_MENU_GRACE_MS) return
+        for (hover in sackHovers(message)) {
+            for (line in hover.split("\n")) {
                 val change = ItemSearchMenus.parseSackChange(line) ?: continue
                 if (change.delta() <= 0) continue
                 val name = change.item()

@@ -2,6 +2,8 @@ package net.alpaka.addons.features.profittracker
 
 import net.alpaka.addons.features.itemsearch.ItemSearchMenus
 import net.alpaka.addons.features.slayer.SlayerType
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -139,5 +141,17 @@ class ProfitTrackerTest {
         assertEquals(listOf("RUNE_SNAKE"), ProfitSlayerDrops.ownKeys("SNAKE_RUNE;1"))
         assertEquals(listOf("ATTRIBUTE_SHARD"), ProfitSlayerDrops.ownKeys("ATTRIBUTE_SHARD_COMBO;1"))
         assertEquals(listOf("SMITE;6", "ENCHANTMENT_SMITE_6"), ProfitSlayerDrops.ownKeys("SMITE;6"))
+    }
+
+    @Test
+    fun readsEachSackHoverOnce() {
+        val added = Component.literal("Added items:\n  +140 Derelict Ashe (Nether Sack)")
+        val removed = Component.literal("Removed items:\n  -3 Blaze Rod (Nether Sack)")
+        val line = Component.literal("[Sacks] ")
+            .append(Component.literal("+140").withStyle { it.withHoverEvent(HoverEvent.ShowText(added)) })
+            .append(Component.literal(" items").withStyle { it.withHoverEvent(HoverEvent.ShowText(added)) })
+            .append(Component.literal(", "))
+            .append(Component.literal("-3 items").withStyle { it.withHoverEvent(HoverEvent.ShowText(removed)) })
+        assertEquals(listOf(added.string, removed.string), ProfitTracker.sackHovers(line).toList())
     }
 }

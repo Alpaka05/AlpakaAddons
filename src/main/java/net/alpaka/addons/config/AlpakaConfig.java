@@ -1118,8 +1118,6 @@ public class AlpakaConfig {
     public int itemValueBazaarPrice = 0;
     /** Item Search: a window to search everything the player owns; see ItemSearchFeature. */
     public boolean itemSearchEnabled = true;
-    /** Item Search's item list beside every menu, with its search bar; see ItemListOverlay. */
-    public boolean itemListEnabled = true;
     /** The Chest Value panel beside a menu: what everything in it is worth; see ChestValuePanel. Needs allowApiCalls. */
     public boolean chestValueEnabled = false;
     /** Price Tooltip: prices written under SkyBlock items' tooltips; see PriceTooltipFeature. Needs allowApiCalls. */

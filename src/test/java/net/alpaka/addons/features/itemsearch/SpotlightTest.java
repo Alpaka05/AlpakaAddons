@@ -91,6 +91,54 @@ class SpotlightTest {
     }
 
     @Test
+    void indexes_shops_drops_kat_and_uses_across_files() {
+        NeuRepo.Index index = NeuRepo.index(java.util.Map.of(
+                "ADVENTURER_NPC", """
+                        {"displayname":"§fAdventurer","internalname":"ADVENTURER_NPC",
+                         "recipes":[{"type":"npc_shop","cost":["SKYBLOCK_COIN:8.0"],"result":"ROTTEN_FLESH:1"}]}
+                        """,
+                "AGARIMOO_SC", """
+                        {"displayname":"§cAgarimoo","recipes":[{"type":"drops","name":"§cAgarimoo","level":35,
+                          "extra":["§7- §aFishing Skill 15"],
+                          "drops":[{"id":"AGARIMOO_TONGUE:3","chance":"100%"},{"id":"DYE_AQUAMARINE","chance":"0.00002%"}]}]}
+                        """,
+                "ARMADILLO;1", """
+                        {"displayname":"§a[Lvl {LVL}] Armadillo","recipes":[{"type":"katgrade","coins":10000,"time":10800,
+                          "input":"ARMADILLO;0","output":"ARMADILLO;1","items":["ENCHANTED_SAND:64"]}]}
+                        """,
+                "ENCHANTED_ROTTEN_FLESH", """
+                        {"displayname":"§aEnchanted Rotten Flesh","info":["https://wiki.example/ERF"],
+                         "recipe":{"A1":"ROTTEN_FLESH:32","A2":"ROTTEN_FLESH:32","A3":"ROTTEN_FLESH:32","B1":"ROTTEN_FLESH:32",
+                                   "B2":"ROTTEN_FLESH:32","B3":"","C1":"","C2":"","C3":""}}
+                        """));
+
+        ItemRecipes.Recipe shop = index.info("ROTTEN_FLESH").recipes().get(0);
+        assertEquals(ItemRecipes.Kind.NPC_SHOP, shop.kind());
+        assertEquals("Adventurer", shop.source());
+        assertEquals(List.of(new ItemRecipes.Stack("SKYBLOCK_COIN", 8)), shop.inputs());
+
+        ItemRecipes.Recipe drop = index.info("DYE_AQUAMARINE").recipes().get(0);
+        assertEquals(ItemRecipes.Kind.DROP, drop.kind());
+        assertEquals("Agarimoo (Lv 35)", drop.source());
+        assertEquals("0.00002%", drop.note());
+        assertEquals(List.of("- Fishing Skill 15"), drop.extra());
+
+        ItemRecipes.Recipe kat = index.info("ARMADILLO;1").recipes().get(0);
+        assertEquals(ItemRecipes.Kind.KAT, kat.kind());
+        assertEquals(List.of(new ItemRecipes.Stack("ARMADILLO;0", 1), new ItemRecipes.Stack("ENCHANTED_SAND", 64),
+                new ItemRecipes.Stack("SKYBLOCK_COIN", 10000)), kat.inputs());
+        assertEquals(10800, kat.seconds());
+        assertEquals("Armadillo", index.names().get("ARMADILLO;1"));
+
+        // Rotten Flesh goes into the enchanted one, once however many slots it fills; coins are never "used".
+        assertEquals(List.of("ENCHANTED_ROTTEN_FLESH"),
+                index.used().get("ROTTEN_FLESH").stream().map(r -> r.output().id()).toList());
+        assertNull(index.used().get("SKYBLOCK_COIN"));
+        assertEquals(List.of("https://wiki.example/ERF"), index.info("ENCHANTED_ROTTEN_FLESH").wiki());
+        assertEquals("LEGENDARY", ItemRecipes.tierOf("ARMADILLO;4"));
+    }
+
+    @Test
     void ranks_catalog_matches() {
         List<ItemCatalog.Item> all = List.of(
                 new ItemCatalog.Item("ENCHANTED_DIAMOND_BLOCK", "Enchanted Diamond Block", "RARE"),

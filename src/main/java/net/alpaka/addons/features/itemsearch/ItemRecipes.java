@@ -38,7 +38,8 @@ public final class ItemRecipes {
     public record Stack(String id, double count) {}
 
     public enum Kind {
-        CRAFTING("Crafting Table"), FORGE("Forge"), NPC_SHOP("NPC Shop"), OTHER("Recipe");
+        CRAFTING("Crafting Table"), FORGE("Forge"), NPC_SHOP("NPC Shop"), TRADE("Trade"), KAT("Kat Upgrade"),
+        DROP("Mob Drop"), OTHER("Recipe");
 
         public final String label;
 
@@ -49,9 +50,12 @@ public final class ItemRecipes {
 
     /**
      * One way to get the item. A crafting recipe has its nine slots in {@code grid}, top row first,
-     * empty ones null; the others list what goes in. {@code seconds} is how long the Forge takes.
+     * empty ones null; the others list what goes in. {@code seconds} is how long the Forge or Kat
+     * takes. {@code source} names the NPC that sells it or the mob that drops it, {@code note} a
+     * drop's chance, and {@code extra} what the repository adds: requirements, how many drop.
      */
-    public record Recipe(Kind kind, List<Stack> grid, List<Stack> inputs, Stack output, long seconds, String note) {}
+    public record Recipe(Kind kind, List<Stack> grid, List<Stack> inputs, Stack output, long seconds, String note,
+                         String source, List<String> extra) {}
 
     /** What the repository says about an item: its recipes, its wiki pages and what it takes to craft. */
     public record Info(String id, List<Recipe> recipes, List<String> wiki, String craftText) {
@@ -64,9 +68,15 @@ public final class ItemRecipes {
     private static final Map<String, Info> KNOWN = new ConcurrentHashMap<>();
     private static final Map<String, Long> PENDING = new ConcurrentHashMap<>();
 
-    /** The item's info, or null while it is on its way; asking starts fetching it. */
+    /**
+     * The item's info, or null while it is on its way; asking starts fetching it. From the whole
+     * repository once that is read, with the NPCs that sell it and the mobs that drop it; until then
+     * from the item's own file.
+     */
     public static Info get(String id) {
         if (id == null) return Info.NONE;
+        NeuRepo.Index index = NeuRepo.get();
+        if (index != null) return index.info(id);
         Info known = KNOWN.get(id);
         if (known != null) return known;
         if (!AlpakaConfig.instance.allowApiCalls) return null;
@@ -75,6 +85,43 @@ public final class ItemRecipes {
         PENDING.put(id, Long.MAX_VALUE);
         fetch(id);
         return null;
+    }
+
+    /** The recipes the item goes into; null while the repository is read. */
+    public static List<Recipe> usedIn(String id) {
+        NeuRepo.Index index = NeuRepo.get();
+        return index == null ? null : index.used().getOrDefault(id, List.of());
+    }
+
+    /** An item's name: Hypixel's, else the repository's, else made from its id. */
+    public static String displayName(String id) {
+        if (id == null) return "";
+        String name = net.alpaka.addons.features.market.ItemIcons.name(id);
+        if (name != null) return name;
+        NeuRepo.Index index = NeuRepo.get();
+        if (index != null && index.names().containsKey(id)) return index.names().get(id);
+        return prettyId(id);
+    }
+
+    private static final String[] PET_TIERS = {"COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY", "MYTHIC"};
+
+    /** An item's rarity: Hypixel's, or for a pet ("ARMADILLO;3") the one its id ends in. */
+    public static String tierOf(String id) {
+        if (id == null) return null;
+        String tier = net.alpaka.addons.features.market.ItemIcons.tier(id);
+        if (tier != null) return tier;
+        int semi = id.lastIndexOf(';');
+        if (semi > 0 && semi == id.length() - 2 && Character.isDigit(id.charAt(semi + 1))) {
+            int i = id.charAt(semi + 1) - '0';
+            if (i < PET_TIERS.length) return PET_TIERS[i];
+        }
+        return null;
+    }
+
+    /** A repository name without its color codes and a pet's level placeholder: "§6[Lvl {LVL}] Armadillo" as "Armadillo". */
+    static String cleanName(String raw) {
+        if (raw == null) return "";
+        return raw.replaceAll("§.", "").replace("[Lvl {LVL}] ", "").trim();
     }
 
     /** Where the item's file stands, for the item view's message. */
@@ -99,7 +146,7 @@ public final class ItemRecipes {
                             PENDING.put(id, System.currentTimeMillis() + RETRY_MS);
                             return;
                         }
-                        KNOWN.put(id, response.statusCode() == 404 ? Info.NONE : parse(id, response.body()));
+                        KNOWN.put(id, response.statusCode() == 404 ? Info.NONE : own(parse(id, response.body())));
                         PENDING.remove(id);
                     } catch (RuntimeException e) {
                         AlpakaAddons.LOGGER.debug("Could not read the NEU recipe of {}", id, e);
@@ -109,11 +156,27 @@ public final class ItemRecipes {
                 });
     }
 
+    /** Only the recipes of a file that make its own item: an item's file alone knows no more. */
+    private static Info own(Info info) {
+        if (info.id() == null) return info;
+        List<Recipe> mine = new ArrayList<>();
+        for (Recipe r : info.recipes()) if (r.output().id().equals(info.id())) mine.add(r);
+        return new Info(info.id(), mine, info.wiki(), info.craftText());
+    }
+
     /** Reads a repository file: the old single crafting recipe, the newer list of recipes, and the wiki links. */
     static Info parse(String id, String json) {
         JsonElement root = JsonParser.parseString(json);
         if (!root.isJsonObject()) return Info.NONE;
         JsonObject o = root.getAsJsonObject();
+        return read(id, o, cleanName(string(o, "displayname")));
+    }
+
+    /**
+     * Every recipe in a file, whatever it makes: an NPC's file lists what the NPC sells, a mob's
+     * what it drops. {@code name} is the file's own name, the NPC's or the mob's.
+     */
+    static Info read(String id, JsonObject o, String name) {
         List<Recipe> recipes = new ArrayList<>();
         if (o.has("recipe") && o.get("recipe").isJsonObject()) {
             Recipe crafting = crafting(id, o.getAsJsonObject("recipe"));
@@ -122,8 +185,9 @@ public final class ItemRecipes {
         if (o.has("recipes") && o.get("recipes").isJsonArray()) {
             for (JsonElement element : o.getAsJsonArray("recipes")) {
                 if (!element.isJsonObject()) continue;
-                Recipe recipe = recipe(id, element.getAsJsonObject());
-                if (recipe != null) recipes.add(recipe);
+                for (Recipe recipe : recipes(id, element.getAsJsonObject(), name)) {
+                    if (!recipes.contains(recipe)) recipes.add(recipe);
+                }
             }
         }
         List<String> wiki = new ArrayList<>();
@@ -138,27 +202,76 @@ public final class ItemRecipes {
         return new Info(id, recipes, wiki, craftText);
     }
 
-    private static Recipe recipe(String id, JsonObject o) {
+    private static List<Recipe> recipes(String id, JsonObject o, String fileName) {
         String type = string(o, "type");
         Stack output = new Stack(o.has("overrideOutputId") ? string(o, "overrideOutputId") : id,
                 o.has("count") ? number(o.get("count")) : 1);
         switch (type) {
             case "", "crafting" -> {
-                return crafting(id, o);
+                Recipe crafting = crafting(id, o);
+                return crafting == null ? List.of() : List.of(crafting);
             }
             case "forge" -> {
                 long seconds = o.has("duration") ? (long) number(o.get("duration")) : 0;
-                return new Recipe(Kind.FORGE, List.of(), stacks(o, "inputs"), output, seconds, "");
+                return List.of(new Recipe(Kind.FORGE, List.of(), stacks(o, "inputs"), output, seconds, "", null, List.of()));
             }
             case "npc_shop" -> {
                 Stack result = o.has("result") ? stack(string(o, "result")) : output;
-                return new Recipe(Kind.NPC_SHOP, List.of(), stacks(o, "cost"), result == null ? output : result, 0, "");
+                return List.of(new Recipe(Kind.NPC_SHOP, List.of(), stacks(o, "cost"), result == null ? output : result, 0, "",
+                        fileName.isEmpty() ? null : fileName, List.of()));
+            }
+            case "trade" -> {
+                Stack cost = stack(string(o, "cost"));
+                Stack result = o.has("result") ? stack(string(o, "result")) : output;
+                return List.of(new Recipe(Kind.TRADE, List.of(), cost == null ? List.of() : List.of(cost),
+                        result == null ? output : result, 0, "", null, List.of()));
+            }
+            case "katgrade" -> {
+                List<Stack> inputs = new ArrayList<>();
+                Stack pet = stack(string(o, "input"));
+                if (pet != null) inputs.add(pet);
+                inputs.addAll(stacks(o, "items"));
+                double coins = o.has("coins") ? number(o.get("coins")) : 0;
+                if (coins > 0) inputs.add(new Stack("SKYBLOCK_COIN", coins));
+                Stack result = stack(string(o, "output"));
+                long seconds = o.has("time") ? (long) number(o.get("time")) : 0;
+                return List.of(new Recipe(Kind.KAT, List.of(), inputs, result == null ? output : result, seconds, "", null, List.of()));
+            }
+            case "drops" -> {
+                // A mob's file: one way to get each of its drops.
+                String mob = cleanName(string(o, "name"));
+                if (mob.isEmpty()) mob = fileName;
+                if (o.has("level") && o.get("level").isJsonPrimitive()) mob += " (Lv " + (long) number(o.get("level")) + ")";
+                List<String> mobExtra = lines(o, "extra");
+                List<Recipe> out = new ArrayList<>();
+                if (!o.has("drops") || !o.get("drops").isJsonArray()) return out;
+                for (JsonElement element : o.getAsJsonArray("drops")) {
+                    if (!element.isJsonObject()) continue;
+                    JsonObject drop = element.getAsJsonObject();
+                    Stack item = stack(string(drop, "id"));
+                    if (item == null) continue;
+                    List<String> extra = new ArrayList<>(lines(drop, "extra"));
+                    extra.addAll(mobExtra);
+                    out.add(new Recipe(Kind.DROP, List.of(), List.of(), item, 0, string(drop, "chance"), mob, extra));
+                }
+                return out;
             }
             default -> {
-                // Drops, trades, Kat upgrades and the rest are left to the wiki for now.
-                return null;
+                return List.of();
             }
         }
+    }
+
+    /** A list of text lines, color codes taken out. */
+    private static List<String> lines(JsonObject o, String key) {
+        List<String> out = new ArrayList<>();
+        if (!o.has(key) || !o.get(key).isJsonArray()) return out;
+        for (JsonElement element : o.getAsJsonArray(key)) {
+            if (!element.isJsonPrimitive()) continue;
+            String line = cleanName(element.getAsString());
+            if (!line.isEmpty()) out.add(line);
+        }
+        return out;
     }
 
     /** A crafting grid, A1 to C3 with the letter the row. Null when every slot is empty. */
@@ -175,7 +288,7 @@ public final class ItemRecipes {
         if (!any) return null;
         int count = o.has("count") ? (int) number(o.get("count")) : 1;
         String out = o.has("overrideOutputId") ? string(o, "overrideOutputId") : id;
-        return new Recipe(Kind.CRAFTING, grid, List.of(), new Stack(out, Math.max(1, count)), 0, "");
+        return new Recipe(Kind.CRAFTING, grid, List.of(), new Stack(out, Math.max(1, count)), 0, "", null, List.of());
     }
 
     private static List<Stack> stacks(JsonObject o, String key) {

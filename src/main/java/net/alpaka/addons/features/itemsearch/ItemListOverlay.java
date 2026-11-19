@@ -641,6 +641,20 @@ public final class ItemListOverlay {
             y += 10;
         }
         y += 3;
+        // Hypixel's own recipe menu for the item, to craft it right there, as item list mods offer.
+        if (recipe.kind() == ItemRecipes.Kind.CRAFTING && ItemRecipes.hasHypixelRecipe(v.id)) {
+            String label = "Quick Craft";
+            int bw = Math.min(w - 4, GuiFont.width(font, label) + 16);
+            int bx = x + (w - bw) / 2;
+            boolean hover = AlpakaStyle.inside(mx, my, bx, y, bw, 14);
+            AlpakaStyle.button(graphics, font, bx, y, bw, 14, label, hover, AlpakaStyle.ButtonKind.PLAIN);
+            String id = v.id;
+            hits.add(new Hit(bx, y, bw, 14, () -> quickCraft(id), null));
+            if (hover) tooltip = List.of(Component.literal("Quick Craft").withStyle(ChatFormatting.WHITE),
+                    Component.literal("Opens Hypixel's recipe menu for this").withStyle(ChatFormatting.GRAY),
+                    Component.literal("item (/viewrecipe), to craft it there.").withStyle(ChatFormatting.GRAY));
+            y += 18;
+        }
         List<String> extra = new ArrayList<>(recipe.extra());
         if (recipe.kind() == ItemRecipes.Kind.CRAFTING && !info.craftText().isBlank()) extra.add(info.craftText());
         for (String line : extra) {
@@ -867,6 +881,13 @@ public final class ItemListOverlay {
             }
             default -> Outbound.command(place.source().command(place.page()), Outbound.Cause.BUTTON);
         }
+    }
+
+    /** Opens Hypixel's recipe menu for the item: one command for the one click. */
+    private static void quickCraft(String id) {
+        AlpakaStyle.click();
+        focused = false;
+        Outbound.command("viewrecipe " + id, Outbound.Cause.BUTTON);
     }
 
     // ---- Input ----------------------------------------------------------------------------------

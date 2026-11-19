@@ -87,6 +87,20 @@ public final class ItemRecipes {
         return null;
     }
 
+    /**
+     * Whether Hypixel's /viewrecipe opens a recipe menu for the item, from which it can be crafted:
+     * what the repository says once it is read, else whether the item has a crafting recipe.
+     */
+    public static boolean hasHypixelRecipe(String id) {
+        if (id == null || id.contains(";")) return false;
+        NeuRepo.Index index = NeuRepo.get();
+        if (index != null) return index.viewRecipe().contains(id);
+        Info info = get(id);
+        if (info == null) return false;
+        for (Recipe r : info.recipes()) if (r.kind() == Kind.CRAFTING && id.equals(r.output().id())) return true;
+        return false;
+    }
+
     /** The recipes the item goes into; null while the repository is read. */
     public static List<Recipe> usedIn(String id) {
         NeuRepo.Index index = NeuRepo.get();

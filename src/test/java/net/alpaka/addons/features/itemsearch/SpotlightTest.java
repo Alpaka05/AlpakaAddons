@@ -107,7 +107,7 @@ class SpotlightTest {
                           "input":"ARMADILLO;0","output":"ARMADILLO;1","items":["ENCHANTED_SAND:64"]}]}
                         """,
                 "ENCHANTED_ROTTEN_FLESH", """
-                        {"displayname":"§aEnchanted Rotten Flesh","info":["https://wiki.example/ERF"],
+                        {"displayname":"§aEnchanted Rotten Flesh","clickcommand":"viewrecipe","info":["https://wiki.example/ERF"],
                          "recipe":{"A1":"ROTTEN_FLESH:32","A2":"ROTTEN_FLESH:32","A3":"ROTTEN_FLESH:32","B1":"ROTTEN_FLESH:32",
                                    "B2":"ROTTEN_FLESH:32","B3":"","C1":"","C2":"","C3":""}}
                         """));
@@ -136,6 +136,7 @@ class SpotlightTest {
         assertNull(index.used().get("SKYBLOCK_COIN"));
         assertEquals(List.of("https://wiki.example/ERF"), index.info("ENCHANTED_ROTTEN_FLESH").wiki());
         assertEquals("LEGENDARY", ItemRecipes.tierOf("ARMADILLO;4"));
+        assertEquals(java.util.Set.of("ENCHANTED_ROTTEN_FLESH"), index.viewRecipe());
     }
 
     @Test

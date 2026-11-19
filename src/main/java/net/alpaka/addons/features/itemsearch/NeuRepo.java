@@ -50,7 +50,7 @@ public final class NeuRepo {
 
     /** Every recipe of the repository: by what it makes, by what goes into it, and each file's own facts. */
     public record Index(Map<String, List<ItemRecipes.Recipe>> made, Map<String, List<ItemRecipes.Recipe>> used,
-                        Map<String, ItemRecipes.Info> infos, Map<String, String> names) {
+                        Map<String, ItemRecipes.Info> infos, Map<String, String> names, Set<String> viewRecipe) {
         /** The item's recipes, wiki links and requirement, as the item view shows them. */
         ItemRecipes.Info info(String id) {
             ItemRecipes.Info own = infos.get(id);
@@ -183,6 +183,7 @@ public final class NeuRepo {
         Map<String, List<ItemRecipes.Recipe>> used = new HashMap<>();
         Map<String, ItemRecipes.Info> infos = new HashMap<>();
         Map<String, String> names = new HashMap<>();
+        Set<String> viewRecipe = new java.util.HashSet<>();
         for (Map.Entry<String, String> file : files.entrySet()) {
             String id = file.getKey();
             JsonObject o;
@@ -196,6 +197,9 @@ public final class NeuRepo {
             String name = ItemRecipes.cleanName(o.has("displayname") && o.get("displayname").isJsonPrimitive()
                     ? o.get("displayname").getAsString() : "");
             if (!name.isEmpty()) names.put(id, name);
+            // Items Hypixel's /viewrecipe knows, which opens its own recipe menu to craft from.
+            if (o.has("clickcommand") && o.get("clickcommand").isJsonPrimitive()
+                    && "viewrecipe".equals(o.get("clickcommand").getAsString())) viewRecipe.add(id);
             ItemRecipes.Info info = ItemRecipes.read(id, o, name);
             infos.put(id, new ItemRecipes.Info(id, List.of(), info.wiki(), info.craftText()));
             for (ItemRecipes.Recipe recipe : info.recipes()) {
@@ -210,7 +214,7 @@ public final class NeuRepo {
         }
         // Crafting and the Forge first, then shops, trades and Kat, the mob drops last.
         for (List<ItemRecipes.Recipe> list : made.values()) list.sort(java.util.Comparator.comparingInt(r -> r.kind().ordinal()));
-        return new Index(made, used, infos, names);
+        return new Index(made, used, infos, names, viewRecipe);
     }
 
     private static void add(Map<String, List<ItemRecipes.Recipe>> map, String id, ItemRecipes.Recipe recipe) {

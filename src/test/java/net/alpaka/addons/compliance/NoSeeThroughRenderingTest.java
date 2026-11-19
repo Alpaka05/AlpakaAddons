@@ -131,6 +131,8 @@ class NoSeeThroughRenderingTest {
         assertNotNull(check(field("net/minecraft/client/renderer/RenderPipelines", "TEXT_SEE_THROUGH", "Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;")));
         assertNull(check(call(renderTypes, "lines", renderType)));
         assertNull(check(call(renderTypes, "linesTranslucent", renderType)));
+        // Tests depth like the others; it only leaves the depth buffer alone.
+        assertNull(check(call(renderTypes, "linesTranslucentNoDepthWrite", renderType)));
         assertNull(check(call(renderTypes, "debugFilledBox", renderType)));
 
         assertNotNull(check(field(compareOp, "ALWAYS_PASS", "L" + compareOp + ";")));

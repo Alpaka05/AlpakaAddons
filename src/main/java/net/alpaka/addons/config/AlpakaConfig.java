@@ -1237,7 +1237,7 @@ public class AlpakaConfig {
 
     /**
      * One key shortcut: the key by its InputConstants name ("key.keyboard.y"), the modifier keys
-     * held with it (GLFW's MOD_SHIFT, MOD_CONTROL, MOD_ALT, MOD_SUPER bits), and the command
+     * held with it (CommandShortcuts.SHIFT, CONTROL, ALT, SUPER bits), and the command
      * without its slash. An empty key is not bound yet.
      */
     public static class KeyShortcut {

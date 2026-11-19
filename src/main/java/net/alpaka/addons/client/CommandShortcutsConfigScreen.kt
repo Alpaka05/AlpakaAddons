@@ -390,7 +390,7 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
             // A modifier alone is not the key yet: it is held for the key that follows.
             if (CommandShortcuts.isModifierKey(event.key())) return true
             shortcut.key = InputConstants.getKey(event).name
-            shortcut.modifiers = event.modifiers() and CommandShortcuts.MODIFIER_MASK
+            shortcut.modifiers = CommandShortcuts.storedModifiers(event.modifiers())
             capturingKey = -1
             swallowChar = true
             playPloppSound()

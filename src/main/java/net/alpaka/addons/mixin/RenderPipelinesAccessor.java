@@ -27,6 +27,20 @@ public interface RenderPipelinesAccessor {
         throw new AssertionError("replaced by mixin");
     }
 
+    /**
+     * The two snippets again as vanilla's "Improved Transparency" draws them, which is a set of
+     * three pipelines per render type instead of one.
+     */
+    @Accessor("OIT_DEBUG_FILLED_SNIPPET")
+    static RenderPipeline.Snippet alpaka$oitDebugFilledSnippet() {
+        throw new AssertionError("replaced by mixin");
+    }
+
+    @Accessor("OIT_LINES_SNIPPET")
+    static RenderPipeline.Snippet alpaka$oitLinesSnippet() {
+        throw new AssertionError("replaced by mixin");
+    }
+
     /** The snippet vanilla builds its GUI fills from: gui shaders, translucent blend, no texture. */
     @Accessor("GUI_SNIPPET")
     static RenderPipeline.Snippet alpaka$guiSnippet() {

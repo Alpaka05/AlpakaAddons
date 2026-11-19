@@ -58,6 +58,17 @@ class CommandShortcutsTest {
     }
 
     @Test
+    void eventModifiersCountForEitherSide() {
+        // SDL has a bit per side: left Ctrl 64, right Ctrl 128, left Shift 1, right Shift 2.
+        assertEquals(CommandShortcuts.CONTROL, CommandShortcuts.storedModifiers(64));
+        assertEquals(CommandShortcuts.CONTROL, CommandShortcuts.storedModifiers(128));
+        assertEquals(CommandShortcuts.SHIFT, CommandShortcuts.storedModifiers(2));
+        assertEquals(CommandShortcuts.CONTROL | CommandShortcuts.SHIFT, CommandShortcuts.storedModifiers(64 | 1));
+        // Num Lock (4096) and Caps Lock (8192) don't count.
+        assertEquals(0, CommandShortcuts.storedModifiers(4096 | 8192));
+    }
+
+    @Test
     void unboundOrEmptyShortcutsNeverMatch() {
         List<KeyShortcut> list = List.of(new KeyShortcut("", 0, "/sb"), new KeyShortcut("key.keyboard.u", 0, "/"));
         assertNull(CommandShortcuts.find(list, "", 0));

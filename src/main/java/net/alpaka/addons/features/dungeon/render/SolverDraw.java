@@ -24,7 +24,7 @@ import java.util.List;
  * Solvers add boxes, lines and labels in world coordinates from their {@code render} method; then
  * the whole frame is handed to the renderer at once. Every primitive goes through a vanilla render
  * type that tests depth: {@code RenderTypes.debugFilledBox()} for fills, {@code RenderTypes.lines()}
- * (or {@code linesTranslucent()} below full alpha) for edges and lines, and text in
+ * (or {@code linesTranslucentNoDepthWrite()} below full alpha) for edges and lines, and text in
  * {@code Font.DisplayMode.NORMAL}. So a wall in front of a mark hides it like any block - the
  * solvers show nothing through walls, and NoSeeThroughRenderingTest keeps it that way.
  *
@@ -166,7 +166,8 @@ public final class SolverDraw {
             });
         }
         // Opaque lines write depth like terrain; translucent ones must not, or they would hide
-        // each other where they cross.
+        // each other where they cross. Since 26.3 plain linesTranslucent() writes depth, and is
+        // the one line type "Improved Transparency" cannot draw.
         // Both lists are new for this frame and nothing else holds them, so they serve as the copies.
         if (!opaque.isEmpty()) {
             out.submitCustomGeometry(poseStack, RenderTypes.lines(), (pose, buffer) -> {
@@ -174,7 +175,7 @@ public final class SolverDraw {
             });
         }
         if (!translucent.isEmpty()) {
-            out.submitCustomGeometry(poseStack, RenderTypes.linesTranslucent(), (pose, buffer) -> {
+            out.submitCustomGeometry(poseStack, RenderTypes.linesTranslucentNoDepthWrite(), (pose, buffer) -> {
                 for (Line line : translucent) line(buffer, pose, line, camX, camY, camZ);
             });
         }

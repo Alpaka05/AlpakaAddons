@@ -25,6 +25,7 @@
     "EntityRendererMixin",
     "FontTextureMixin",
     "GameRendererMixin",
+    "PreparedRenderTypeMixin",
     "GuiMessageFontMixin",
     "HudScoreboardFontMixin",
     "HudOverlayMessageMixin",

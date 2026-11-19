@@ -4,16 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import org.junit.jupiter.api.Test;
 
 class EditableTextTest {
-    private static final int LEFT = 263;
-    private static final int RIGHT = 262;
-    private static final int HOME = 268;
-    private static final int END = 269;
-    private static final int BACKSPACE = 259;
-    private static final int A = 65;
-    private static final int Z = 90;
+    private static final int LEFT = InputConstants.KEY_LEFT;
+    private static final int RIGHT = InputConstants.KEY_RIGHT;
+    private static final int HOME = InputConstants.KEY_HOME;
+    private static final int END = InputConstants.KEY_END;
+    private static final int BACKSPACE = InputConstants.KEY_BACKSPACE;
+    private static final int A = InputConstants.KEY_A;
+    private static final int Z = InputConstants.KEY_Z;
 
     private static EditableText field(String text) {
         EditableText edit = new EditableText(32);

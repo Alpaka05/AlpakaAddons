@@ -4,6 +4,7 @@ import com.mojang.renderpearl.api.GpuFormat;
 import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.renderpearl.api.pipeline.BindGroupLayout;
+import com.mojang.renderpearl.api.pipeline.ColorTargetState;
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.renderpearl.api.pipeline.UniformType;
@@ -84,6 +85,9 @@ final class DualKawaseBlur {
                                 .withUniform("InSampler", UniformType.COMBINED_IMAGE_SAMPLER)
                                 .withUniform("BlurConfig", UniformType.UNIFORM_BUFFER)
                                 .build())
+                        // Since 26.3 a pipeline draws to no target unless it names one, and the
+                        // target's format has to be the one named: the levels are made in it.
+                        .withColorTargetState(ColorTargetState.DEFAULT)
                         .build());
     }
 
@@ -125,7 +129,8 @@ final class DualKawaseBlur {
      * Makes the targets for a frame of this size. The old ones go to {@code retired}, for the caller
      * to close once nothing can sample them any more.
      */
-    void resize(int frameWidth, int frameHeight, GpuFormat format, List<TextureTarget> retired) {
+    void resize(int frameWidth, int frameHeight, List<TextureTarget> retired) {
+        GpuFormat format = ColorTargetState.DEFAULT.format();
         retired.addAll(levels);
         levels.clear();
         width = frameWidth;

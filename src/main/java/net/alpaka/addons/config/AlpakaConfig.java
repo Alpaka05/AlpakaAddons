@@ -2068,7 +2068,6 @@ public class AlpakaConfig {
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
-        this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
         this.customNameTagEnabled = false;
         this.chromaHatEnabled = false;

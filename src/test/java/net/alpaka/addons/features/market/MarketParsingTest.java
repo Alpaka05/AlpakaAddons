@@ -546,6 +546,15 @@ class MarketParsingTest {
     }
 
     @Test
+    void skyCoflItemNames() throws Exception {
+        String json = "[{\"name\":\"Pestilence Rune I\",\"tag\":\"RUNE_ZOMBIE_SLAYER\",\"flags\":\"AUCTION\"},"
+                + "{\"name\":\"null\",\"tag\":\"LOG_2:2\",\"flags\":\"AUCTION\"},"
+                + "{\"name\":\"Necron Dye\",\"tag\":\"DYE_NECRON\",\"flags\":\"AUCTION\"}]";
+        Map<String, String> names = ItemNames.parse(new java.io.StringReader(json));
+        assertEquals(Map.of("RUNE_ZOMBIE_SLAYER", "Pestilence Rune I", "DYE_NECRON", "Necron Dye"), names);
+    }
+
+    @Test
     void oneWildSaleDoesNotSetTheScale() {
         List<PriceHistory.Point> points = new ArrayList<>();
         for (int i = 0; i < 100; i++) points.add(new PriceHistory.Point(i, 500 + i % 10, 450));

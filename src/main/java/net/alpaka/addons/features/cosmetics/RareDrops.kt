@@ -1,6 +1,5 @@
 package net.alpaka.addons.features.cosmetics
 
-import net.alpaka.addons.features.enchantments.Enchants
 import java.util.Locale
 
 /**
@@ -84,32 +83,121 @@ object RareDrops {
         found.kind == Kind.PET
 
     /**
+     * The enchantments whose market id is not their name: "Turbo-Cacti" is TURBO_CACTUS, "Duplex"
+     * ULTIMATE_REITERATE. Checked against the NEU repository's books, November 2026.
+     */
+    private val ENCHANT_IDS = mapOf(
+        "Duplex" to "ULTIMATE_REITERATE", "Turbo-Cocoa" to "TURBO_COCO", "Turbo-Cacti" to "TURBO_CACTUS",
+        "Drain" to "SYPHON", "Strong Vitality" to "STRONG_MANA", "Prismatic" to "PRISTINE",
+        "Vampiric Vitality" to "MANA_VAMPIRE", "Pyroclasm" to "MAGMARIZER", "Hardened Vitality" to "HARDENED_MANA",
+        "Vivacious Vitality" to "FEROCIOUS_MANA", "Gravity" to "DRAGON_HUNTER", "Woodsplitter" to "ARCANE",
+        "Dragon Tracer" to "AIMING",
+    )
+
+    /**
      * The market id of an enchanted book drop, as the Bazaar lists it: ENCHANTMENT_SMOLDERING_6 for
      * "Smoldering VI", the way a slayer drop names it, or ENCHANTMENT_ULTIMATE_CHIMERA_1 for
-     * "Enchanted Book (Chimera I)". A bare name counts only when it is a known enchantment, so that
-     * "Bite Rune I" stays a rune. Null for anything else.
+     * "Enchanted Book (Chimera I)". Whether a name is an enchantment at all, and whether an ultimate
+     * one, is what the market says: [exists] tells whether it trades an id. A bare name it doesn't
+     * know is no book ("Bite Rune I"); a named book it doesn't know counts as a normal one.
      */
-    fun bookId(name: String): String? {
+    fun bookId(name: String, exists: (String) -> Boolean): String? {
         val wrapped = WRAPPED_BOOK.matchEntire(name)
         val m = LEVELLED.matchEntire(wrapped?.groupValues?.get(1) ?: name) ?: return null
-        val enchant = m.groupValues[1]
-        if (wrapped == null && !Enchants.isKnown(enchant)) return null
         val level = roman(m.groupValues[2]).takeIf { it > 0 } ?: return null
-        val ultimate = Enchants.isUltimate(enchant)
-        val key = enchant.removePrefix(if (ultimate) "Ultimate " else "")
-            .uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]+"), "_").trim('_')
-        return "ENCHANTMENT_" + (if (ultimate) "ULTIMATE_" else "") + key + "_" + level
+        val enchant = m.groupValues[1]
+        val key = ENCHANT_IDS[enchant] ?: idKey(enchant)
+        val candidates = if (key.startsWith("ULTIMATE_")) listOf("ENCHANTMENT_${key}_$level")
+        else listOf("ENCHANTMENT_ULTIMATE_${key}_$level", "ENCHANTMENT_${key}_$level")
+        return candidates.firstOrNull(exists) ?: if (wrapped != null) candidates.last() else null
     }
 
     /**
-     * A rune's market id, as SkyCofl lists it: RUNE_FIERY_BURST_1 for "Fiery Burst Rune I". Hypixel's
-     * own item list leaves the runes out. Null for a name that is not a rune's.
+     * Item ids by the names drops call them, from Hypixel's item list and, for what that leaves out
+     * (runes, dyes, skins), SkyCofl's: both as id to name. Hypixel's wins where both name an item.
+     */
+    class NameIndex(hypixel: Map<String, String>, others: Map<String, String>?) {
+        private val byName = HashMap<String, MutableList<String>>()
+        /** Runes by the name before "Rune": "pestilence" for RUNE_ZOMBIE_SLAYER. */
+        private val runes = HashMap<String, String>()
+        /** Pets by name, as their id without PET_: "t-rex" for TYRANNOSAURUS. */
+        private val pets = HashMap<String, String>()
+
+        init {
+            add(hypixel, byName)
+            if (others != null) {
+                val extra = HashMap<String, MutableList<String>>()
+                for ((id, name) in others) {
+                    // A pet itself needs its rarity, which [pet] and [petId] work out; its skins and
+                    // items are plain items. A book needs its level, which [bookId] works out.
+                    if (id.startsWith("PET_") && !id.startsWith("PET_SKIN_") && !id.startsWith("PET_ITEM_")) {
+                        pets.putIfAbsent(normalize(name), id.removePrefix("PET_"))
+                    }
+                }
+                add(others.filterKeys { !(it.startsWith("PET_") && !it.startsWith("PET_SKIN_") && !it.startsWith("PET_ITEM_")) &&
+                    !it.startsWith("ENCHANTMENT_") }, extra)
+                extra.forEach { (name, ids) -> byName.putIfAbsent(name, ids) }
+            }
+            byName.values.forEach { ids -> ids.sortWith(compareBy({ it.length }, { it })) }
+        }
+
+        private fun add(items: Map<String, String>, into: HashMap<String, MutableList<String>>) {
+            for ((id, itemName) in items) {
+                val name = normalize(itemName)
+                if (id.startsWith("RUNE_") || id.startsWith("UNIQUE_RUNE_")) {
+                    RUNE_NAME.matchEntire(name)?.let { runes.merge(it.groupValues[1], id, ::shorter) }
+                }
+                into.getOrPut(name) { ArrayList(1) }.add(id)
+            }
+        }
+
+        /**
+         * The id of the item a drop names; for a rune, at the level it names. Where several items
+         * share the name, the one of the drop's [rarity] (0 for Common up to 5 for Mythic, as the
+         * pet items are, PET_ITEM_COMBAT_SKILL_BOOST_RARE), else the plain item rather than a
+         * variant of it. Null when unknown.
+         */
+        fun id(name: String, rarity: Int = -1): String? {
+            val n = normalize(name)
+            RUNE_LEVEL.matchEntire(n)?.let { m ->
+                val level = roman(m.groupValues[2].uppercase(Locale.ROOT))
+                val rune = runes[m.groupValues[1]]
+                if (rune != null && level > 0) return if (rune.startsWith("RUNE_")) "${rune}_$level" else rune
+            }
+            val ids = byName[n] ?: return runeId(name) ?: dyeId(name)
+            val tier = RARITIES.getOrNull(rarity)
+            return ids.firstOrNull { tier != null && it.endsWith("_$tier") } ?: ids.first()
+        }
+
+        /** A pet's id without its rarity, by its name: TYRANNOSAURUS for "T-Rex"; null when unknown. */
+        fun pet(name: String): String? = pets[normalize(name)]
+
+        private companion object {
+            val RUNE_NAME = Regex("""^(.+) rune(?: [ivx]+)?$""")
+            val RUNE_LEVEL = Regex("""^(.+) rune ([ivx]+)$""")
+            val RARITIES = listOf("COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY", "MYTHIC")
+
+            /**
+             * Lower case, without a mark in front: "◆ Fiery Burst Rune I" as "fiery burst rune i",
+             * and a gemstone's name without the icon some lists put before it.
+             */
+            fun normalize(name: String) = name.trim().dropWhile { !it.isLetterOrDigit() }.lowercase(Locale.ROOT)
+
+            fun shorter(a: String, b: String) = if (b.length < a.length || (b.length == a.length && b < a)) b else a
+        }
+    }
+
+    /**
+     * A rune's market id, as SkyCofl lists it: RUNE_FIERY_BURST_1 for "Fiery Burst Rune I", for a
+     * rune [NameIndex] has no name for. Null for a name that is not a rune's.
      */
     fun runeId(name: String): String? {
-        val m = RUNE.matchEntire(name) ?: return null
+        val m = RUNE.matchEntire(name.trim().dropWhile { !it.isLetterOrDigit() }) ?: return null
         val level = roman(m.groupValues[2]).takeIf { it > 0 } ?: return null
-        return "RUNE_" + m.groupValues[1].uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]+"), "_").trim('_') + "_" + level
+        return "RUNE_" + idKey(m.groupValues[1]) + "_" + level
     }
+
+    private fun idKey(name: String) = name.uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]+"), "_").trim('_')
 
     /**
      * A dye's market id, as SkyCofl and the NEU repository list it: DYE_PURE_BLACK for "Pure Black
@@ -121,8 +209,8 @@ object RareDrops {
     }
 
     /** A pet's market id, as SkyCofl lists it: ENDER_DRAGON;4 for a legendary Ender Dragon. */
-    fun petId(name: String, rarity: Int): String =
-        name.uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]+"), "_").trim('_') + ";" + rarity
+    fun petId(name: String, rarity: Int, index: NameIndex? = null): String =
+        (index?.pet(name) ?: idKey(name)) + ";" + rarity
 
     private fun roman(text: String): Int {
         var total = 0

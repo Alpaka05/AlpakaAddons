@@ -11,19 +11,9 @@ import java.util.Map;
  * enchantments (Expertise, Compact, ...) count by the level they show, so they are maxed at X.
  * An enchantment missing here is simply never coloured.
  */
-public final class Enchants {
+final class Enchants {
 
     private Enchants() {
-    }
-
-    /** Whether SkyBlock has an enchantment of this name, as its lore shows it ("Ender Slayer"). */
-    public static boolean isKnown(String name) {
-        return NORMAL.containsKey(name) || ULTIMATE.containsKey(name);
-    }
-
-    /** Whether this is an ultimate enchantment ("Chimera"), which the market lists as ULTIMATE_. */
-    public static boolean isUltimate(String name) {
-        return ULTIMATE.containsKey(name);
     }
 
     static final Map<String, Integer> NORMAL = Map.ofEntries(

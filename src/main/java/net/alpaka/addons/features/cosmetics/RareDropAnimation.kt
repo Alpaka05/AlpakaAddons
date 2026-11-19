@@ -9,6 +9,7 @@ import net.alpaka.addons.features.cosmetics.RareDrops.Kind
 import net.alpaka.addons.features.itemvalue.ItemPrices
 import net.alpaka.addons.features.market.Coins
 import net.alpaka.addons.features.market.ItemIcons
+import net.alpaka.addons.features.market.ItemNames
 import net.alpaka.addons.features.slayer.SlayerDropTracker
 import net.alpaka.addons.features.slayer.SlayerQuestDetector
 import net.alpaka.addons.features.slayer.SlayerType
@@ -118,6 +119,9 @@ object RareDropAnimation {
         var price: FormattedCharSequence? = null
         val itemState = ItemStackRenderState()
 
+        /** Whether [stack] only stands in for a look still on its way, to be swapped when it comes. */
+        var standIn = false
+
         /** Whether the item, id and price are all found, so nothing more is looked up. */
         var resolved = false
     }
@@ -145,9 +149,11 @@ object RareDropAnimation {
                 current = null
                 queue.clear()
             } else if (level !== lastLevel && AlpakaConfig.instance.rareDropAnimationEnabled) {
-                // Each world change keeps the item list and prices at hand, so a drop's value is
-                // known the moment it comes; both only ask again once theirs is a few minutes old.
+                // Each world change keeps the item lists and prices at hand, so a drop's value is
+                // known the moment it comes; the prices only ask again once a few minutes old, the
+                // lists not at all once in.
                 ItemIcons.ready()
+                ItemNames.refresh()
                 ItemPrices.refresh()
             }
             lastLevel = level
@@ -161,6 +167,7 @@ object RareDropAnimation {
         if (mc.level == null) return
         val line = SlayerDropTracker.cleanColor(message.string)
         val found = RareDrops.parse(line, mc.user.name) ?: return
+        ItemNames.refresh()
         ItemPrices.refresh()
         val color = colorAt(message, found.nameStart)
 
@@ -215,6 +222,7 @@ object RareDropAnimation {
             return
         }
         ItemIcons.ready()
+        ItemNames.refresh()
         ItemPrices.refresh()
         val sample = SAMPLES[testIndex % SAMPLES.size]
         testIndex++
@@ -232,6 +240,7 @@ object RareDropAnimation {
         Sample(Kind.DUNGEON, "RARE REWARD!", "Necron's Handle", 0xAA00AA, null),
         Sample(Kind.PET, "PET DROP!", "Ender Dragon", 0xFFAA00, null),
         Sample(Kind.DROP, "CRAZY RARE DROP!", "Smoldering VI", 0x5555FF, null),
+        Sample(Kind.DROP, "CRAZY RARE DROP!", "Pestilence Rune II", 0x5555FF, null),
         Sample(Kind.DROP, "INSANE DROP!", "High Class Archfiend Dice", 0xFFAA00, SlayerType.BLAZE),
     )
 
@@ -279,28 +288,29 @@ object RareDropAnimation {
     private fun idFor(kind: Kind, name: String, color: Int?): String? {
         if (kind == Kind.PET) {
             val rarity = RARITY_COLORS.indexOf(color ?: return null)
-            return if (rarity < 0) null else RareDrops.petId(name, rarity)
+            return if (rarity < 0) null else RareDrops.petId(name, rarity, nameIndex())
         }
-        return RareDrops.bookId(name) ?: RareDrops.runeId(name) ?: idByName(name) ?: RareDrops.dyeId(name)
+        // The name's color is its rarity, which tells apart items of one name (the pet items).
+        val rarity = if (color == null) -1 else RARITY_COLORS.indexOf(color)
+        return RareDrops.bookId(name) { ItemPrices.quote(it) != null } ?: nameIndex()?.id(name, rarity)
+            ?: RareDrops.runeId(name) ?: RareDrops.dyeId(name)
     }
 
-    /** Every SkyBlock item's id by its name in lower case, built once Hypixel's item list is in. */
-    private var idsByName: Map<String, String>? = null
+    private var index: RareDrops.NameIndex? = null
+    /** Which lists [index] was built from: 1 for Hypixel's, 2 for SkyCofl's. */
+    private var indexSources = 0
 
-    /**
-     * The id of the item with this name in Hypixel's list, such as NECRON_HANDLE for "Necron's
-     * Handle"; null while the list loads or for a name it lacks. Where several items share a name,
-     * the shortest id wins: the plain item rather than a variant of it.
-     */
-    private fun idByName(name: String): String? {
-        val map = idsByName ?: ItemIcons.skyblockItems()?.let { items ->
-            val byName = HashMap<String, String>()
-            for ((id, itemName) in items) {
-                byName.merge(itemName.lowercase(Locale.ROOT), id) { a, b -> if (b.length < a.length || (b.length == a.length && b < a)) b else a }
-            }
-            byName.also { idsByName = it }
-        } ?: return null
-        return map[name.trim().lowercase(Locale.ROOT)]
+    /** Item ids by name, built again as each of the two item lists comes in; null before either. */
+    private fun nameIndex(): RareDrops.NameIndex? {
+        val hypixel = ItemIcons.skyblockItems()
+        val others = ItemNames.all()
+        val sources = (if (hypixel != null) 1 else 0) or (if (others != null) 2 else 0)
+        if (sources == 0) return null
+        if (sources != indexSources) {
+            index = RareDrops.NameIndex(hypixel ?: emptyMap(), others)
+            indexSources = sources
+        }
+        return index
     }
 
     /**
@@ -310,21 +320,45 @@ object RareDropAnimation {
     private fun resolve(drop: Drop, t: Float) {
         if (drop.resolved) return
         val cfg = AlpakaConfig.instance
-        if (drop.id == null) drop.id = idFor(drop.kind, drop.name, drop.nameColor)
-        if (drop.stack.isEmpty) drop.stack = bundled(drop.name) ?: ItemIcons.forItem(drop.id, drop.name)
+        val listsIn = ItemIcons.skyblockItems() != null && (ItemNames.all() != null || ItemNames.failed()) &&
+            !ItemPrices.loading()
+        // Until the item lists and prices are in, the id is only a guess from the name ("Pestilence
+        // Rune II" is RUNE_ZOMBIE_SLAYER, not RUNE_PESTILENCE): asked again each frame, and what was
+        // found for an earlier guess dropped.
+        if (drop.id == null || !listsIn) {
+            val id = idFor(drop.kind, drop.name, drop.nameColor)
+            if (id != drop.id) {
+                drop.id = id
+                drop.stack = ItemStack.EMPTY
+                drop.standIn = false
+                drop.price = null
+            }
+        }
+        if (drop.stack.isEmpty || drop.standIn) {
+            val found = bundled(drop.name) ?: ItemIcons.forItem(drop.id, drop.name)
+            if (!found.isEmpty) {
+                drop.stack = found
+                drop.standIn = false
+            }
+        }
         if (drop.price == null && cfg.rareDropAnimationPrice) {
             ItemPrices.quote(drop.id)?.let {
                 drop.price = Component.literal(Coins.compact(it.price()) + " coins").visualOrderText
             }
         }
-        val done = drop.id != null && !drop.stack.isEmpty && (drop.price != null || !cfg.rareDropAnimationPrice)
+        val done = listsIn && drop.id != null && !drop.stack.isEmpty && !drop.standIn &&
+            (drop.price != null || !cfg.rareDropAnimationPrice)
         // A name no list knows will not turn up later: show the stand-in now rather than an empty
         // middle for the whole wait.
-        val unknown = drop.id == null && drop.stack.isEmpty && ItemIcons.skyblockItems() != null
+        val unknown = drop.id == null && drop.stack.isEmpty && listsIn
         // Without Network Features nothing more will come: settle on the first look.
-        if (done || unknown || t > RESOLVE_SECONDS || !cfg.allowApiCalls) {
+        if (done || unknown || !cfg.allowApiCalls) {
             if (drop.stack.isEmpty) drop.stack = ItemStack(Items.NETHER_STAR)
             drop.resolved = true
+        } else if (t > RESOLVE_SECONDS && drop.stack.isEmpty) {
+            // Slow lists: something in the middle meanwhile, and the right look once it comes.
+            drop.stack = ItemStack(Items.NETHER_STAR)
+            drop.standIn = true
         }
     }
 

@@ -36,7 +36,7 @@ class RareDropsTest {
             val found = parse("CRAZY RARE DROP!  (Smoldering VI) (+109$star Magic Find)")!!
             assertEquals("Smoldering VI", found.name)
         }
-        assertEquals("ENCHANTMENT_SMOLDERING_6", RareDrops.bookId("Smoldering VI"))
+        assertEquals("ENCHANTMENT_SMOLDERING_6", RareDrops.bookId("Smoldering VI", market::contains))
     }
 
     @Test
@@ -83,18 +83,62 @@ class RareDropsTest {
         assertNull(parse("You found a Necron Dye"))
     }
 
+    /** The book ids the market trades, as far as these tests need them. */
+    private val market = setOf(
+        "ENCHANTMENT_SMOLDERING_6", "ENCHANTMENT_ULTIMATE_CHIMERA_1", "ENCHANTMENT_SMITE_4",
+        "ENCHANTMENT_ULTIMATE_JERRY_5", "ENCHANTMENT_ULTIMATE_SOUL_EATER_1", "ENCHANTMENT_TURBO_CACTUS_1",
+        "ENCHANTMENT_ULTIMATE_REITERATE_2",
+    )
+
     @Test
-    fun bookAndPetIds() {
-        assertEquals("ENCHANTMENT_ULTIMATE_CHIMERA_1", RareDrops.bookId("Enchanted Book (Chimera I)"))
-        assertEquals("ENCHANTMENT_ENDER_SLAYER_6", RareDrops.bookId("Enchanted Book (Ender Slayer VI)"))
-        assertEquals("ENCHANTMENT_SMITE_4", RareDrops.bookId("Smite IV"))
-        assertEquals("ENCHANTMENT_ULTIMATE_JERRY_5", RareDrops.bookId("Ultimate Jerry V"))
-        assertEquals("ENCHANTMENT_ULTIMATE_SOUL_EATER_1", RareDrops.bookId("Soul Eater I"))
-        assertNull(RareDrops.bookId("Bite Rune I"))
+    fun bookIds() {
+        val book = { name: String -> RareDrops.bookId(name, market::contains) }
+        assertEquals("ENCHANTMENT_ULTIMATE_CHIMERA_1", book("Enchanted Book (Chimera I)"))
+        assertEquals("ENCHANTMENT_SMITE_4", book("Smite IV"))
+        assertEquals("ENCHANTMENT_ULTIMATE_JERRY_5", book("Ultimate Jerry V"))
+        assertEquals("ENCHANTMENT_ULTIMATE_SOUL_EATER_1", book("Soul Eater I"))
+        // Named otherwise than their id.
+        assertEquals("ENCHANTMENT_TURBO_CACTUS_1", book("Turbo-Cacti I"))
+        assertEquals("ENCHANTMENT_ULTIMATE_REITERATE_2", book("Duplex II"))
+        // A book the market doesn't trade still counts when the drop calls it one; a bare name doesn't.
+        assertEquals("ENCHANTMENT_ENDER_SLAYER_6", book("Enchanted Book (Ender Slayer VI)"))
+        assertNull(book("Bite Rune I"))
+        assertNull(book("Necron's Handle"))
+    }
+
+    @Test
+    fun namesFromBothLists() {
+        val hypixel = mapOf("NECRON_HANDLE" to "Necron's Handle", "OLD_SHIMMER" to "Shimmer Skin")
+        val skycofl = mapOf(
+            "RUNE_ZOMBIE_SLAYER" to "Pestilence Rune I", "RUNE_FIERY_BURST" to "◆ Fiery Burst Rune I",
+            "UNIQUE_RUNE_SMITTEN" to "◆ Smitten Rune III", "WITHER_GOGGLES_CELESTIAL" to "Celestial Wither Goggles Skin",
+            "WISE_SHIMMER" to "Shimmer Skin", "PET_ENDER_DRAGON" to "Ender Dragon", "PET_TYRANNOSAURUS" to "T-Rex",
+            "PET_SKIN_WOLF_DOGE" to "Doge Wolf Skin", "PET_ITEM_COMBAT_SKILL_BOOST_EPIC" to "Combat Exp Boost",
+            "PET_ITEM_COMBAT_SKILL_BOOST_RARE" to "Combat Exp Boost", "FLAWLESS_RUBY_GEM" to "\uE003 Flawless Ruby Gemstone",
+        )
+        val index = RareDrops.NameIndex(hypixel, skycofl)
+        assertEquals("NECRON_HANDLE", index.id("Necron's Handle"))
+        assertEquals("RUNE_ZOMBIE_SLAYER_2", index.id("Pestilence Rune II"))
+        assertEquals("RUNE_FIERY_BURST_3", index.id("◆ Fiery Burst Rune III"))
+        assertEquals("UNIQUE_RUNE_SMITTEN", index.id("Smitten Rune III"))
+        assertEquals("WITHER_GOGGLES_CELESTIAL", index.id("Celestial Wither Goggles Skin"))
+        // Hypixel's list wins where both name an item, and pets go by their rarity, not by name.
+        assertEquals("OLD_SHIMMER", index.id("Shimmer Skin"))
+        assertNull(index.id("Ender Dragon"))
+        assertEquals("TYRANNOSAURUS;4", RareDrops.petId("T-Rex", 4, index))
+        assertEquals("PET_SKIN_WOLF_DOGE", index.id("Doge Wolf Skin"))
+        assertEquals("PET_ITEM_COMBAT_SKILL_BOOST_RARE", index.id("Combat Exp Boost", rarity = 2))
+        assertEquals("FLAWLESS_RUBY_GEM", index.id("Flawless Ruby Gemstone"))
+        // Not in either list yet: built from the name.
+        assertEquals("RUNE_BITE_3", index.id("Bite Rune III"))
+        assertEquals("DYE_NECRON", index.id("Necron Dye"))
+        assertNull(RareDrops.NameIndex(emptyMap(), null).id("Necron's Handle"))
+    }
+
+    @Test
+    fun petAndDyeIds() {
         assertEquals("RUNE_FIERY_BURST_1", RareDrops.runeId("Fiery Burst Rune I"))
-        assertEquals("RUNE_BITE_3", RareDrops.runeId("Bite Rune III"))
         assertNull(RareDrops.runeId("Necron's Handle"))
-        assertNull(RareDrops.bookId("Necron's Handle"))
         assertEquals("ENDER_DRAGON;4", RareDrops.petId("Ender Dragon", 4))
         assertEquals("DYE_PURE_BLACK", RareDrops.dyeId("Pure Black Dye"))
         assertEquals("DYE_NECRON", RareDrops.dyeId("Necron Dye"))

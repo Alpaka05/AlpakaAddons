@@ -581,8 +581,8 @@ public class AlpakaConfig {
     public float customDamageTagRise = 0.6f;
     /** One of CustomDamageTagFeature.FORMAT_*. */
     public int customDamageTagFormat = 0;
-    /** Index into GuiFont.NAMES; 0 is Minecraft's own font. */
-    public int customDamageTagFont = 0;
+    /** The numbers in the Menu Font, like a HUD's Smooth Font; off keeps Minecraft's pixel font. */
+    public boolean customDamageTagSmoothFont = false;
     public boolean customDamageTagFlowingGradient = true;
     public boolean customDamageTagShadow = true;
     /** No custom tag for a splash next to a slayer boss, any player's, like SkyHanni's option. */

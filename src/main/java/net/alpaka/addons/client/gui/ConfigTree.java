@@ -155,7 +155,8 @@ public final class ConfigTree {
             Map.entry("dungeon_map_blur", "dungeon_map_enabled"),
             Map.entry("dungeon_map_smooth_font", "dungeon_map_enabled"),
             Map.entry("notification_blur", "#Notification Customization"),
-            Map.entry("notification_smooth_font", "#Notification Customization")
+            Map.entry("notification_smooth_font", "#Notification Customization"),
+            Map.entry("custom_damage_tag_smooth_font", "custom_damage_tags")
     );
 
     /**

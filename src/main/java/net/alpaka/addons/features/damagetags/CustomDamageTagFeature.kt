@@ -274,9 +274,9 @@ object CustomDamageTagFeature {
         val now = System.currentTimeMillis()
         val lifetime = cfg.customDamageTagDurationMs.toFloat()
         val time = (now % 3_600_000L) / 1000.0
-        // The chosen font as the base of every character's style; GuiFont hands out one instance per
-        // font, so comparing by identity tells whether a cached gradient or width is still current.
-        val fontStyle = GuiFont.worldStyle(cfg.customDamageTagFont)
+        // The Menu Font with Smooth Font on, as the base of every character's style. GuiFont hands out one
+        // instance per font, so comparing by identity tells whether a cached gradient or width is still current.
+        val fontStyle = if (cfg.smoothOn(cfg.customDamageTagSmoothFont)) GuiFont.worldStyle() else Style.EMPTY
 
         for (tag in tags) {
             val ageMs = (now - tag.bornMs).toFloat()

@@ -114,14 +114,15 @@ public final class GuiFont {
     }
 
     /**
-     * The style for text drawn in the world, in the font at {@code index} of {@link #NAMES}, or the
-     * empty style for Minecraft's own font or an index out of range.
+     * The style for text drawn in the world in the configured font, or the empty style when that is
+     * Minecraft's own.
      *
      * Always the 4x oversampled face: text in the world is scaled with its distance, not with the
      * GUI scale, so the finest raster is the one that stays sharpest up close.
      */
-    public static Style worldStyle(int index) {
-        if (index <= 0 || index >= FONT_IDS.length) return Style.EMPTY;
+    public static Style worldStyle() {
+        int index = selectedIndex();
+        if (index == 0) return Style.EMPTY;
         int slot = SCALE_SUFFIXES.length - 1;
         Style style = TEXT_STYLES[index][slot];
         if (style == null) {

@@ -41,6 +41,12 @@ public interface RenderPipelinesAccessor {
         throw new AssertionError("replaced by mixin");
     }
 
+    /** The snippet vanilla's entity pipelines are built from, for an unshaded twin of the glinted item types. */
+    @Accessor("ENTITY_SNIPPET")
+    static RenderPipeline.Snippet alpaka$entitySnippet() {
+        throw new AssertionError("replaced by mixin");
+    }
+
     /** The snippet vanilla builds its GUI fills from: gui shaders, translucent blend, no texture. */
     @Accessor("GUI_SNIPPET")
     static RenderPipeline.Snippet alpaka$guiSnippet() {

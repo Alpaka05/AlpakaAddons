@@ -1,6 +1,17 @@
 package net.alpaka.addons.features.viewmodel;
 
+import com.mojang.renderpearl.api.pipeline.BlendFunction;
+import com.mojang.renderpearl.api.pipeline.ColorTargetState;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.mixin.RenderPipelinesAccessor;
+import net.alpaka.addons.mixin.RenderTypeInvoker;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.feature.ItemFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.client.renderer.rendertype.TextureTransform;
+import net.minecraft.resources.Identifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.rendertype.RenderType;
@@ -50,6 +61,9 @@ public final class HandItemLightingFeature {
      */
     private static RenderType unlitItemSheet;
     private static RenderType unlitBlockItemSheet;
+    private static RenderType unlitItemGlintSheet;
+    private static RenderType unlitBlockItemGlintSheet;
+    private static RenderPipeline unlitGlintPipeline;
 
     public static boolean isEnabled() {
         return AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemLightingDisabled;
@@ -113,6 +127,59 @@ public final class HandItemLightingFeature {
             }
             return unlitBlockItemSheet;
         }
+        // Since 26.3 an enchanted item is drawn once, with a render type that adds the glint in
+        // the same shader, instead of a second glint pass over the plain one. Those get an unlit
+        // type that draws the glint as well. The special glint of a compass or clock uses another
+        // vertex layout and is left shaded.
+        if (original == Sheets.cutoutItemGlintSheet() || original == Sheets.translucentItemGlintSheet()) {
+            if (unlitItemGlintSheet == null) unlitItemGlintSheet = unlitGlint(Sheets.ITEMS_MAPPER.sheet(), "items");
+            return unlitItemGlintSheet != null ? unlitItemGlintSheet : original;
+        }
+        if (original == Sheets.cutoutBlockItemGlintSheet() || original == Sheets.translucentBlockItemGlintSheet()) {
+            if (unlitBlockItemGlintSheet == null) unlitBlockItemGlintSheet = unlitGlint(Sheets.BLOCKS_MAPPER.sheet(), "blocks");
+            return unlitBlockItemGlintSheet != null ? unlitBlockItemGlintSheet : original;
+        }
         return original;
+    }
+
+    /** Builds the glint pipeline up front, so it is precompiled with vanilla's rather than on first use. */
+    public static void init() {
+        unlitGlintPipeline();
+    }
+
+    /**
+     * The breeze wind pipeline again - entity shader, no cardinal lighting, translucent with an
+     * alpha cutout - with vanilla's glint snippet on top. Without APPLY_TEXTURE_MATRIX: with the
+     * glint the texture matrix moves the glint, not the item's own texture.
+     */
+    private static RenderPipeline unlitGlintPipeline() {
+        if (unlitGlintPipeline == null) {
+            unlitGlintPipeline = RenderPipelinesAccessor.alpaka$register(
+                    RenderPipeline.builder(RenderPipelinesAccessor.alpaka$entitySnippet(), RenderPipelines.GLINT_SNIPPET)
+                            .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/item_unlit_glint"))
+                            .withShaderDefine("ALPHA_CUTOUT", 0.1f)
+                            .withShaderDefine("NO_OVERLAY")
+                            .withShaderDefine("NO_CARDINAL_LIGHTING")
+                            .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+                            .withCull(false)
+                            .build());
+        }
+        return unlitGlintPipeline;
+    }
+
+    private static RenderType unlitGlint(Identifier sheet, String name) {
+        try {
+            return RenderTypeInvoker.alpaka$create("alpaka_item_unlit_glint_" + name,
+                    RenderSetup.builder(unlitGlintPipeline())
+                            .withTexture("Sampler0", sheet)
+                            .withTexture("GlintSampler", ItemFeatureRenderer.ENCHANTED_GLINT_ITEM)
+                            .setTextureTransform(TextureTransform.GLINT_TEXTURING)
+                            .useLightmap()
+                            .sortOnUpload()
+                            .createRenderSetup());
+        } catch (Throwable t) {
+            AlpakaAddons.LOGGER.warn("Could not build the unlit glint render type; enchanted hand items keep their shading", t);
+            return null;
+        }
     }
 }

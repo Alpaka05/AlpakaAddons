@@ -51,7 +51,7 @@ class DisableAllFeaturesTest {
             "etherwarpOverlayEnabled", "etherwarpSoundEnabled",
             // SkyBlock
             "visitorBazaarEnabled",
-            "slayerDropTrackerEnabled", "hideHypixelDropMessage", "slayerRngDropGuildChatEnabled",
+            "slayerDropTrackerEnabled", "slayerRngDropGuildChatEnabled",
             "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
             "slayerHudEnabled", "farmingHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
@@ -89,7 +89,8 @@ class DisableAllFeaturesTest {
             // Better Chat, Chat Peek, Chat Tabs
             "smoothChatEnabled", "chatOpenAnimationEnabled", "chatSmoothScrollEnabled", "chatBlurEnabled",
             "chatScrollbarEnabled", "chatMovable", "chatPeekInMenus", "chatTabsSendToChannel",
-            // Slayer timer and session HUD
+            // Slayer Drop Tracker, slayer timer and session HUD
+            "hideHypixelDropMessage",
             "slayerTimerChatEnabled", "slayerTimerHudEnabled", "slayerHudOnlyInSlayerAreas",
             "slayerHudPauseOutsideArea",
             // Player Model, Clean Blaze, Etherwarp Overlay, Own Name Tag, Player Scale

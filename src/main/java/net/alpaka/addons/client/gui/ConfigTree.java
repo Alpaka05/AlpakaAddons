@@ -112,7 +112,7 @@ public final class ConfigTree {
             "block_overlay_enabled",
             // SkyBlock
             "etherwarp_overlay", "etherwarp_sound", "item_search", "farming_hud_enabled", "pest_finder", "alignment_helper",
-            "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
+            "slayer_drop_tracker", "slayer_rng_drop_guild_chat",
             "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_join_message_enabled", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "exact_skill_xp", "deployable_timer", "cache_resource_pack",
@@ -213,7 +213,7 @@ public final class ConfigTree {
             {{"SkyBlock"},
                     {"Dungeon", "dungeon_map_enabled", "dungeon_door_highlight", "leap_menu_enabled", "starred_mobs_highlight", "teammate_class_glow", "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
-                            "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
+                            "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "clean_blaze", "blaze_fire_pits"},
                     {"Garden", "farming_hud_enabled", "pest_finder", "alignment_helper", "visitor_bazaar"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",

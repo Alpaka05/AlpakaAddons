@@ -130,8 +130,7 @@ public final class ItemListOverlay {
         if (search != null) {
             query.setText(search);
             mode = Mode.MINE;
-            page = 0;
-            views.clear();
+            textChanged();
         }
         query.selectAll();
         focused = true;
@@ -148,6 +147,7 @@ public final class ItemListOverlay {
     /** For the screenshot tour: the list with this search and mode, outside SkyBlock too. */
     public static void devShow(String search, boolean mine, boolean focus) {
         devForce = true;
+        slotMatches.clear();
         query.setText(search == null ? "" : search);
         mode = mine ? Mode.MINE : Mode.ALL;
         page = 0;
@@ -211,6 +211,57 @@ public final class ItemListOverlay {
     private static void textChanged() {
         page = 0;
         views.clear();
+        slotMatches.clear();
+    }
+
+    // ---- The open menu --------------------------------------------------------------------------
+
+    /** Whether each stack in the open menu matches the search, kept until the search or the menu changes. */
+    private static final Map<ItemStack, Boolean> slotMatches = new java.util.IdentityHashMap<>();
+
+    /** The search to light the open menu's items up with, or null when there is none (nothing typed, or a sum). */
+    private static String menuQuery() {
+        Minecraft mc = Minecraft.getInstance();
+        if (drawnOn == null || mc.gui.screen() != drawnOn || regionW <= 0 || !enabled()) return null;
+        String q = query.getText().trim();
+        return q.isEmpty() || sum() != null ? null : q;
+    }
+
+    private static boolean matches(ItemStack stack, String q) {
+        if (slotMatches.size() > 2048) slotMatches.clear();
+        return slotMatches.computeIfAbsent(stack, s -> ItemSearchMenus.matches(q,
+                SkyblockUtils.cleanColor(s.getHoverName().getString()), ItemSearchTracker.loreOf(s)));
+    }
+
+    /**
+     * The open menu searched too: a slot whose item matches is marked as Item Search marks a found
+     * item. Called as the slot is drawn, before its item, so the item stays on top.
+     */
+    static void drawSlotMatch(GuiGraphicsExtractor graphics, net.minecraft.world.inventory.Slot slot) {
+        String q = menuQuery();
+        if (q == null) return;
+        ItemStack stack = slot.getItem();
+        if (stack.isEmpty() || !matches(stack, q)) return;
+        int color = AlpakaStyle.accent();
+        graphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, (color & 0x00FFFFFF) | 0x50000000);
+        graphics.outline(slot.x - 1, slot.y - 1, 18, 18, color);
+    }
+
+    /** The rest of the menu's items dimmed, over them, so the matches stand out. */
+    private static void dimOthers(GuiGraphicsExtractor graphics, AbstractContainerScreen<?> container) {
+        String q = menuQuery();
+        if (q == null) return;
+        AbstractContainerScreenAccessor a = (AbstractContainerScreenAccessor) container;
+        int left = a.alpaka$leftPos();
+        int top = a.alpaka$topPos();
+        for (net.minecraft.world.inventory.Slot slot : container.getMenu().slots) {
+            if (!slot.isActive()) continue;
+            ItemStack stack = slot.getItem();
+            if (stack.isEmpty() || matches(stack, q)) continue;
+            int x = left + slot.x;
+            int y = top + slot.y;
+            graphics.fill(x, y, x + 16, y + 16, 0xB0000000);
+        }
     }
 
     // ---- Drawing --------------------------------------------------------------------------------
@@ -225,6 +276,7 @@ public final class ItemListOverlay {
         if (drawnOn != in) {
             drawnOn = in;
             ownedAt = 0L;
+            slotMatches.clear();
         }
         if (AlpakaConfig.instance.allowApiCalls) ItemPrices.refresh();
         refreshOwned();
@@ -268,6 +320,7 @@ public final class ItemListOverlay {
         regionH = bottom - top;
 
         graphics.nextStratum();
+        dimOthers(graphics, container);
         List<Component> tooltip = views.isEmpty()
                 ? drawList(graphics, font, in, cols, gx, top, bottom, mx, my)
                 : drawView(graphics, font, views.peek(), gx, top, gridW, bottom, mx, my);

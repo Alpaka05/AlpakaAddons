@@ -87,7 +87,7 @@ class RareDropsTest {
     private val market = setOf(
         "ENCHANTMENT_SMOLDERING_6", "ENCHANTMENT_ULTIMATE_CHIMERA_1", "ENCHANTMENT_SMITE_4",
         "ENCHANTMENT_ULTIMATE_JERRY_5", "ENCHANTMENT_ULTIMATE_SOUL_EATER_1", "ENCHANTMENT_TURBO_CACTUS_1",
-        "ENCHANTMENT_ULTIMATE_REITERATE_2",
+        "ENCHANTMENT_ULTIMATE_REITERATE_2", "ENCHANTMENT_LOOTING_NEW_6",
     )
 
     @Test
@@ -100,6 +100,7 @@ class RareDropsTest {
         // Named otherwise than their id.
         assertEquals("ENCHANTMENT_TURBO_CACTUS_1", book("Turbo-Cacti I"))
         assertEquals("ENCHANTMENT_ULTIMATE_REITERATE_2", book("Duplex II"))
+        assertEquals("ENCHANTMENT_LOOTING_NEW_6", book("Looting VI"))
         // A book the market doesn't trade still counts when the drop calls it one; a bare name doesn't.
         assertEquals("ENCHANTMENT_ENDER_SLAYER_6", book("Enchanted Book (Ender Slayer VI)"))
         assertNull(book("Bite Rune I"))

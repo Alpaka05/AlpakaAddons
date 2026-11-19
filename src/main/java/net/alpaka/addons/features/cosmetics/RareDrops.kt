@@ -107,8 +107,9 @@ object RareDrops {
         val level = roman(m.groupValues[2]).takeIf { it > 0 } ?: return null
         val enchant = m.groupValues[1]
         val key = ENCHANT_IDS[enchant] ?: idKey(enchant)
+        // Looting VI and VII, added later, trade as LOOTING_NEW; the old ids are left without offers.
         val candidates = if (key.startsWith("ULTIMATE_")) listOf("ENCHANTMENT_${key}_$level")
-        else listOf("ENCHANTMENT_ULTIMATE_${key}_$level", "ENCHANTMENT_${key}_$level")
+        else listOf("ENCHANTMENT_ULTIMATE_${key}_$level", "ENCHANTMENT_${key}_NEW_$level", "ENCHANTMENT_${key}_$level")
         return candidates.firstOrNull(exists) ?: if (wrapped != null) candidates.last() else null
     }
 

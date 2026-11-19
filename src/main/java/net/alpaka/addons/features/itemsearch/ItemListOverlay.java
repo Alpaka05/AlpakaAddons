@@ -524,7 +524,7 @@ public final class ItemListOverlay {
         AlpakaStyle.chevronButton(graphics, back[0], back[1] + 1, 12, true, hit(back, mx, my), true);
         hits.add(new Hit(back[0], back[1], back[2], back[3], ItemListOverlay::back, null));
         drawIcon(graphics, font, v.id, name, x + 14, y + 1);
-        String wiki = "Wiki ↗";
+        String wiki = "Wiki";
         int wikiW = GuiFont.width(font, wiki);
         int[] wikiBox = {x + w - wikiW - 2, y, wikiW + 4, 12};
         boolean wikiHover = hit(wikiBox, mx, my);
@@ -864,17 +864,18 @@ public final class ItemListOverlay {
     }
 
     /**
-     * Opens the item's wiki page in the browser, after the usual question whether to open a link:
-     * the page the NEU repository names, else a search on the official wiki for its name. The
-     * question comes over the menu and goes back to it.
+     * Opens the item's wiki page in the game, over the menu and back to it: the official wiki's
+     * page the NEU repository names, else the page the wiki's search finds for its name.
      */
     private static void openWiki(String id, Screen back) {
         AlpakaStyle.click();
-        String name = ItemRecipes.displayName(id);
-        String url = ItemRecipes.wikiUrl(ItemRecipes.get(id), name);
-        Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(back, "Open Wiki",
-                "Opens the wiki page of " + name + " in your browser: " + url, "Open", false,
-                () -> net.minecraft.util.Util.getPlatform().openUri(url)));
+        focused = false;
+        Minecraft.getInstance().gui.setScreen(new WikiScreen(WikiPage.titleFor(id), back));
+    }
+
+    /** For the screenshot tour: the item's wiki page, in the game. */
+    public static Screen devWiki(String id) {
+        return new WikiScreen(WikiPage.titleFor(id), Minecraft.getInstance().gui.screen());
     }
 
     /**

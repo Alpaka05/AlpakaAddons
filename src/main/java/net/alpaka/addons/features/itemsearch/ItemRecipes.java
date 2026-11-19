@@ -354,14 +354,6 @@ public final class ItemRecipes {
         return out.toString().trim();
     }
 
-    /** The wiki page to open: the repository's first link, else the official wiki's page by the item's name. */
-    public static String wikiUrl(Info info, String name) {
-        if (info != null && !info.wiki().isEmpty()) return info.wiki().get(0);
-        String page = name == null ? "" : name.trim().replace(' ', '_');
-        return "https://hypixelskyblock.minecraft.wiki/w/Special:Search?search="
-                + URLEncoder.encode(page.replace('_', ' '), StandardCharsets.UTF_8);
-    }
-
     /** An id as words, for an ingredient Hypixel's list does not name: ENCHANTED_DIAMOND as "Enchanted Diamond". */
     public static String prettyId(String id) {
         StringBuilder out = new StringBuilder();

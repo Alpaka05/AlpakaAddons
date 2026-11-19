@@ -105,7 +105,22 @@ public final class DevScreenshotTour {
             new Stop("spotlight-list-drop", () -> net.alpaka.addons.features.itemsearch.ItemListOverlay.devOpenItem("AGARIMOO_TONGUE", false),
                     () -> true, 40),
             new Stop("spotlight-list-kat", () -> net.alpaka.addons.features.itemsearch.ItemListOverlay.devOpenItem("ARMADILLO;1", false),
-                    () -> true, 40)
+                    () -> true, 40),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.itemsearch.ItemListOverlay.devWiki("HYPERION")),
+                    () -> Minecraft.getInstance().gui.screen() instanceof net.alpaka.addons.features.itemsearch.WikiScreen w && w.devReady(), 1),
+            new Stop("spotlight-wiki-hyperion", () -> placeMouse(0.5, 0.97), () -> true, 30),
+            new Stop("spotlight-wiki-scrolled", () -> {
+                for (int i = 0; i < 2; i++) Minecraft.getInstance().gui.screen().keyPressed(
+                        new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_PAGE_DOWN, 0, 0));
+            }, () -> true, 30),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.itemsearch.ItemListOverlay.devWiki("ENCHANTED_DIAMOND")),
+                    () -> Minecraft.getInstance().gui.screen() instanceof net.alpaka.addons.features.itemsearch.WikiScreen w && w.devReady(), 1),
+            new Stop("spotlight-wiki-scrolled-diamond", () -> {
+                for (int i = 0; i < 2; i++) Minecraft.getInstance().gui.screen().keyPressed(
+                        new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_PAGE_DOWN, 0, 0));
+            }, () -> true, 30)
     ) : "leap-menu".equals(System.getenv(ENV)) ? List.of(
             screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
             screen("leap-menu-map", () -> leapMenuPreview(true)),

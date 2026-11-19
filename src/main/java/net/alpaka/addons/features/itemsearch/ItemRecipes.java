@@ -124,6 +124,8 @@ public final class ItemRecipes {
         if (id == null) return null;
         String tier = net.alpaka.addons.features.market.ItemIcons.tier(id);
         if (tier != null) return tier;
+        NeuRepo.Index index = NeuRepo.get();
+        if (index != null && index.tiers().containsKey(id)) return index.tiers().get(id);
         int semi = id.lastIndexOf(';');
         if (semi > 0 && semi == id.length() - 2 && Character.isDigit(id.charAt(semi + 1))) {
             int i = id.charAt(semi + 1) - '0';

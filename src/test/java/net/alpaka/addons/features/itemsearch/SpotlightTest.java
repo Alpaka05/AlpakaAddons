@@ -94,7 +94,7 @@ class SpotlightTest {
     void indexes_shops_drops_kat_and_uses_across_files() {
         NeuRepo.Index index = NeuRepo.index(java.util.Map.of(
                 "ADVENTURER_NPC", """
-                        {"displayname":"§fAdventurer","internalname":"ADVENTURER_NPC",
+                        {"displayname":"§fAdventurer","internalname":"ADVENTURER_NPC","island":"hub","x":0,"y":70,"z":0,
                          "recipes":[{"type":"npc_shop","cost":["SKYBLOCK_COIN:8.0"],"result":"ROTTEN_FLESH:1"}]}
                         """,
                 "AGARIMOO_SC", """
@@ -137,6 +137,15 @@ class SpotlightTest {
         assertEquals(List.of("https://wiki.example/ERF"), index.info("ENCHANTED_ROTTEN_FLESH").wiki());
         assertEquals("LEGENDARY", ItemRecipes.tierOf("ARMADILLO;4"));
         assertEquals(java.util.Set.of("ENCHANTED_ROTTEN_FLESH"), index.viewRecipe());
+        // NPCs and mobs are no items for the list; pets and the rest are, with the rarity from their lore.
+        assertEquals(java.util.Set.of("ARMADILLO;1", "ENCHANTED_ROTTEN_FLESH"), index.items());
+
+        NeuRepo.Index dyes = NeuRepo.index(java.util.Map.of("DYE_AQUAMARINE", """
+                {"displayname":"§bAquamarine Dye","lore":["§7to §b#7FFFD4§7!","","§6§lLEGENDARY DYE"]}
+                """));
+        assertEquals(java.util.Set.of("DYE_AQUAMARINE"), dyes.items());
+        assertEquals("LEGENDARY", dyes.tiers().get("DYE_AQUAMARINE"));
+        assertEquals("Aquamarine Dye", dyes.names().get("DYE_AQUAMARINE"));
     }
 
     @Test

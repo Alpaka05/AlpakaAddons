@@ -88,6 +88,10 @@ public final class DevScreenshotTour {
             new Stop(null, () -> net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("", false, false),
                     () -> net.alpaka.addons.features.itemsearch.NeuRepo.get() != null, 1),
             new Stop("spotlight-list-empty", () -> {}, () -> true, 10),
+            new Stop("spotlight-list-dye", () -> {
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("dye", false, false);
+                placeMouse(0.97, 0.12);
+            }, () -> true, 60),
             new Stop("spotlight-list-recipe", () -> {
                 net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("hyperion", false, false);
                 net.alpaka.addons.features.itemsearch.ItemListOverlay.devOpenItem("HYPERION", false);

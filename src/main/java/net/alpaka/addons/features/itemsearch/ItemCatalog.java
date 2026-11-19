@@ -20,18 +20,30 @@ public final class ItemCatalog {
 
     private static List<Item> items = null;
     private static Map<String, String> builtFrom = null;
+    private static NeuRepo.Index builtWith = null;
 
-    /** Every item, or null while Hypixel's list loads or Network Features is off. */
+    /**
+     * Every item, or null while Hypixel's list loads or Network Features is off. Once the NEU
+     * repository is read, with what Hypixel's list leaves out: dyes, pets, runes, shards and more.
+     */
     public static List<Item> all() {
         Map<String, String> names = ItemIcons.skyblockItems();
         if (names == null) return null;
-        if (items == null || builtFrom == null || builtFrom.size() != names.size()) {
+        NeuRepo.Index neu = NeuRepo.get();
+        if (items == null || builtFrom == null || builtFrom.size() != names.size() || builtWith != neu) {
             List<Item> list = new ArrayList<>(names.size());
             for (Map.Entry<String, String> e : names.entrySet()) {
                 list.add(new Item(e.getKey(), e.getValue(), ItemIcons.tier(e.getKey())));
             }
+            if (neu != null) {
+                for (String id : neu.items()) {
+                    if (names.containsKey(id)) continue;
+                    list.add(new Item(id, neu.names().get(id), ItemRecipes.tierOf(id)));
+                }
+            }
             items = list;
             builtFrom = names;
+            builtWith = neu;
         }
         return items;
     }

@@ -50,7 +50,8 @@ public final class NeuRepo {
 
     /** Every recipe of the repository: by what it makes, by what goes into it, and each file's own facts. */
     public record Index(Map<String, List<ItemRecipes.Recipe>> made, Map<String, List<ItemRecipes.Recipe>> used,
-                        Map<String, ItemRecipes.Info> infos, Map<String, String> names, Set<String> viewRecipe) {
+                        Map<String, ItemRecipes.Info> infos, Map<String, String> names, Set<String> viewRecipe,
+                        Set<String> items, Map<String, String> tiers) {
         /** The item's recipes, wiki links and requirement, as the item view shows them. */
         ItemRecipes.Info info(String id) {
             ItemRecipes.Info own = infos.get(id);
@@ -184,6 +185,8 @@ public final class NeuRepo {
         Map<String, ItemRecipes.Info> infos = new HashMap<>();
         Map<String, String> names = new HashMap<>();
         Set<String> viewRecipe = new java.util.HashSet<>();
+        Set<String> items = new java.util.HashSet<>();
+        Map<String, String> tiers = new HashMap<>();
         for (Map.Entry<String, String> file : files.entrySet()) {
             String id = file.getKey();
             JsonObject o;
@@ -201,6 +204,16 @@ public final class NeuRepo {
             if (o.has("clickcommand") && o.get("clickcommand").isJsonPrimitive()
                     && "viewrecipe".equals(o.get("clickcommand").getAsString())) viewRecipe.add(id);
             ItemRecipes.Info info = ItemRecipes.read(id, o, name);
+            // Items for the list, which Hypixel's item list partly lacks (dyes, pets, runes, shards):
+            // not the NPCs (which stand somewhere), the mobs (which drop things) or plain Minecraft items.
+            boolean mob = false;
+            for (ItemRecipes.Recipe r : info.recipes()) mob |= r.kind() == ItemRecipes.Kind.DROP;
+            boolean vanilla = o.has("vanilla") && o.get("vanilla").isJsonPrimitive() && o.get("vanilla").getAsBoolean();
+            if (!name.isEmpty() && !mob && !vanilla && !o.has("island") && !o.has("x")) {
+                items.add(id);
+                String tier = tierFromLore(o);
+                if (tier != null) tiers.put(id, tier);
+            }
             infos.put(id, new ItemRecipes.Info(id, List.of(), info.wiki(), info.craftText()));
             for (ItemRecipes.Recipe recipe : info.recipes()) {
                 add(made, recipe.output().id(), recipe);
@@ -214,7 +227,26 @@ public final class NeuRepo {
         }
         // Crafting and the Forge first, then shops, trades and Kat, the mob drops last.
         for (List<ItemRecipes.Recipe> list : made.values()) list.sort(java.util.Comparator.comparingInt(r -> r.kind().ordinal()));
-        return new Index(made, used, infos, names, viewRecipe);
+        return new Index(made, used, infos, names, viewRecipe, items, tiers);
+    }
+
+    private static final List<String> TIERS = List.of("VERY SPECIAL", "SPECIAL", "UNCOMMON", "COMMON", "RARE", "EPIC",
+            "LEGENDARY", "MYTHIC", "DIVINE", "ULTIMATE", "ADMIN");
+
+    /** The rarity an item's last lore line starts with, "§6§lLEGENDARY DYE" as "LEGENDARY". */
+    private static String tierFromLore(JsonObject o) {
+        if (!o.has("lore") || !o.get("lore").isJsonArray()) return null;
+        var lore = o.getAsJsonArray("lore");
+        for (int i = lore.size() - 1; i >= 0; i--) {
+            if (!lore.get(i).isJsonPrimitive()) continue;
+            String line = ItemRecipes.cleanName(lore.get(i).getAsString());
+            if (line.isEmpty()) continue;
+            for (String tier : TIERS) {
+                if (line.startsWith(tier + " ") || line.equals(tier)) return tier.replace(' ', '_');
+            }
+            return null;
+        }
+        return null;
     }
 
     private static void add(Map<String, List<ItemRecipes.Recipe>> map, String id, ItemRecipes.Recipe recipe) {

@@ -2978,18 +2978,61 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Rare Drop Animation", ConfigCategory.COSMETICS));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation", "Rare Drop Animation",
-                "A slayer's rarest drop pops up big and spinning in a golden glow where the boss died. Only you can see it.",
+                "A rare drop pops up on your screen, big and spinning in a golden glow, with its name and price. Only you can see it.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.rareDropAnimationEnabled,
                 v -> { AlpakaConfig.instance.rareDropAnimationEnabled = v; AlpakaConfig.save(); },
-                "rare drop animation rng slayer archfiend dice warden heart judgement core overflux primordial eye gold glow spin pop cosmetic"));
+                "rare drop animation rng slayer dye dungeon chest pet archfiend dice warden heart judgement core necron handle gold glow spin pop price value cosmetic"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_test", "Test Animation",
-                "Closes the menu and plays the animation in front of you, with each slayer's drop in turn. Nothing is sent to the server.",
+                "Plays the animation with a sample drop: a slayer drop, a dye, a dungeon reward and a pet in turn. Nothing is sent to the server.",
                 ConfigCategory.COSMETICS,
                 "Test Animation",
                 parent -> net.alpaka.addons.features.cosmetics.RareDropAnimation.test(),
                 "rare drop animation test preview try play"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_slayer", "Slayer Drops",
+                "Plays for a slayer's rarest drop, like Judgement Core or Warden Heart.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationSlayer,
+                v -> { AlpakaConfig.instance.rareDropAnimationSlayer = v; AlpakaConfig.save(); },
+                "rare drop animation slayer rng boss drop"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_dyes", "Dyes",
+                "Plays when you find a dye.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationDyes,
+                v -> { AlpakaConfig.instance.rareDropAnimationDyes = v; AlpakaConfig.save(); },
+                "rare drop animation dye wow found"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_dungeon", "Dungeon Rewards",
+                "Plays for a dungeon chest's rare reward, like Necron's Handle or a master star.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationDungeon,
+                v -> { AlpakaConfig.instance.rareDropAnimationDungeon = v; AlpakaConfig.save(); },
+                "rare drop animation dungeon chest reward bedrock necron handle master star"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_valuable", "Other Valuable Drops",
+                "Plays for any other drop that is crazy rare or better, a pet, or worth at least the minimum value below.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationValuable,
+                v -> { AlpakaConfig.instance.rareDropAnimationValuable = v; AlpakaConfig.save(); },
+                "rare drop animation valuable expensive crazy rare insane pet drop worth"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_min_value", "Minimum Value",
+                "What another drop has to be worth for the animation. Needs Network Features for prices.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationMinValue,
+                v -> { AlpakaConfig.instance.rareDropAnimationMinValue = v; AlpakaConfig.save(); },
+                0.5f, 100.0f, val -> String.format(Locale.ROOT, "%.1fM", val),
+                "rare drop animation minimum value price worth coins threshold"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_price", "Show Price",
+                "Shows what the item sells for under its name: its Bazaar price or lowest BIN. Needs Network Features.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationPrice,
+                v -> { AlpakaConfig.instance.rareDropAnimationPrice = v; AlpakaConfig.save(); },
+                "rare drop animation price value coins bazaar lowest bin worth"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_size", "Size",
                 "How big the item and its glow are.",
@@ -3015,7 +3058,7 @@ public class AlpakaConfigRegistry {
                 "rare drop animation sound chime bell ding audio"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_slayer_colors", "Slayer Colors",
-                "Mixes each slayer's own color into the gold, like purple for Enderman and green for Zombie.",
+                "Mixes each slayer's own color into the gold for its drops, like purple for Enderman and green for Zombie. Other drops glow in their rarity's color.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.rareDropAnimationSlayerColors,
                 v -> { AlpakaConfig.instance.rareDropAnimationSlayerColors = v; AlpakaConfig.save(); },

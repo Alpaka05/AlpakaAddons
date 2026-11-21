@@ -59,6 +59,7 @@ public final class ItemSearchHighlight {
      * the item stays on top and the tooltip, drawn after every slot, covers the mark.
      */
     public static void drawSlot(GuiGraphicsExtractor graphics, Slot slot) {
+        ItemListOverlay.drawSlotMatch(graphics, slot);
         if (target == null) return;
         if (System.currentTimeMillis() > targetUntil) {
             target = null;

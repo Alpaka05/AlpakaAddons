@@ -26,10 +26,12 @@ import net.minecraft.world.inventory.Slot;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Item Search: a window with a search bar over everything the player owns - the inventory, the Ender
- * Chest, backpacks, sacks, the wardrobe, the Accessory Bag, the Personal Vault and the chests on
- * their island. Opened with its key, {@code /alpakasearch [query]}, or the button in its settings;
- * the key pressed over an item in a menu searches for that item.
+ * Item Search: a search bar under every menu with the items that match beside it
+ * ({@link ItemListOverlay}): every SkyBlock item with its recipes, or everything the player owns -
+ * the inventory, the Ender Chest, backpacks, sacks, the wardrobe, the Accessory Bag, the Personal
+ * Vault and the chests on their island. The key puts the caret in the bar (over an item, searching
+ * the player's items for it); outside a menu it, {@code /alpakasearch [query]} and the button in
+ * its settings open the inventory with the bar ready.
  *
  * Hypixel sends a container's items only while it is open, so each place is known from the last
  * time the player opened it ({@link ItemSearchTracker}). Clicking a result opens where it lies with
@@ -63,10 +65,22 @@ public final class ItemSearchFeature {
                 return;
             }
             ItemSearchTracker.onMenuOpened();
-            ScreenEvents.remove(screen).register(s -> ItemSearchTracker.onMenuClosed(s.getTitle(), container.getMenu()));
-            // In a menu the key searches for the item under the mouse.
-            ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> !KEY.matches(event) || !keyPressed(s));
-            ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> !KEY.matchesMouse(event) || !keyPressed(s));
+            ScreenEvents.remove(screen).register(s -> {
+                ItemSearchTracker.onMenuClosed(s.getTitle(), container.getMenu());
+                ItemListOverlay.menuClosed(s);
+            });
+            // While the item list's bar has the keyboard every key types into it; else the key in a
+            // menu puts the bar's caret in, with the item under the mouse searched for.
+            ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> {
+                if (ItemListOverlay.keyPressed(s, event)) return false;
+                return !KEY.matches(event) || !keyPressed(s);
+            });
+            ScreenKeyboardEvents.allowCharType(screen).register((s, event) -> !ItemListOverlay.charTyped(s, event.codepoint()));
+            ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> {
+                if (KEY.matchesMouse(event)) return !keyPressed(s);
+                return !ItemListOverlay.mouseClicked(s, event.x(), event.y(), event.button());
+            });
+            ScreenMouseEvents.allowMouseScroll(screen).register((s, mx, my, h, v) -> !ItemListOverlay.mouseScrolled(s, mx, my, v));
         });
 
         UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
@@ -92,15 +106,11 @@ public final class ItemSearchFeature {
         if (!(screen instanceof AbstractContainerScreen<?> container)) return false;
         Slot slot = ((AbstractContainerScreenAccessor) container).alpaka$hoveredSlot();
         String query = slot == null || !slot.hasItem() ? null : SkyblockUtils.cleanColor(slot.getItem().getHoverName().getString()).trim();
-        open(query, screen);
+        ItemListOverlay.focus(query);
         return true;
     }
 
-    /**
-     * Opens the search window, with the query typed in when there is one. Opened from a menu, it
-     * goes back to that menu when closed: the menu stays open on the server meanwhile, and closing
-     * it is the player's to do.
-     */
+    /** Opens the inventory with the search bar ready, the query typed in when there is one. */
     public static void open(String query, Screen parent) {
         Minecraft mc = Minecraft.getInstance();
         if (!AlpakaConfig.instance.itemSearchEnabled) {
@@ -112,6 +122,11 @@ public final class ItemSearchFeature {
             SlayerDropTracker.sendModMessage("§cItem Search only works on SkyBlock.");
             return;
         }
-        mc.execute(() -> mc.gui.setScreen(new ItemSearchScreen(query, parent)));
+        // The search lives beside the inventory: it opens with the bar ready to type in.
+        mc.execute(() -> {
+            if (mc.player == null) return;
+            mc.gui.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player));
+            ItemListOverlay.focus(query);
+        });
     }
 }

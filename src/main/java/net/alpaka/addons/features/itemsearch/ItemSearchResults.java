@@ -1,6 +1,6 @@
 package net.alpaka.addons.features.itemsearch;
 
-import net.alpaka.addons.features.itemvalue.ItemPrices;
+import net.alpaka.addons.features.itemvalue.ItemValuePopup;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -169,6 +169,25 @@ public final class ItemSearchResults {
         for (String key : broken) ItemSearchStore.remove(key);
     }
 
+    /** What one of each item is worth, by group key, for the prices of {@link #worthsFor}. */
+    private static final Map<String, Double> WORTHS = new java.util.HashMap<>();
+    private static long worthsFor = Long.MIN_VALUE;
+
+    /**
+     * What all of an entry is worth: one of it as Item Value adds it up, with its stars,
+     * enchantments, gemstones and the rest, times how many there are. NaN without a price.
+     * Worked out once per item until the prices change, since a breakdown is not free.
+     */
+    public static double value(Entry entry) {
+        long version = ItemValuePopup.worthVersion();
+        if (version != worthsFor) {
+            WORTHS.clear();
+            worthsFor = version;
+        }
+        double each = WORTHS.computeIfAbsent(entry.key, k -> ItemValuePopup.worthOf(entry.stack));
+        return Double.isNaN(each) ? Double.NaN : each * entry.total;
+    }
+
     /** The entries that match the query, in the chosen order. */
     public static List<Entry> filter(List<Entry> all, String query, Sort sort) {
         List<Entry> out = new ArrayList<>();
@@ -176,10 +195,7 @@ public final class ItemSearchResults {
             if (ItemSearchMenus.matches(query, entry.name, entry.lore)) out.add(entry);
         }
         if (sort == Sort.VALUE) {
-            for (Entry entry : out) {
-                ItemPrices.Quote quote = ItemPrices.quote(entry.id);
-                entry.value = quote == null ? Double.NaN : quote.price() * entry.total;
-            }
+            for (Entry entry : out) entry.value = value(entry);
         }
         Comparator<Entry> byName = Comparator.comparing((Entry e) -> e.name.toLowerCase(Locale.ROOT));
         Comparator<Entry> order = switch (sort) {

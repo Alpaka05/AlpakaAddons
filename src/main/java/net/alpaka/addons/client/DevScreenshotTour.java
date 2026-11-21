@@ -59,7 +59,69 @@ public final class DevScreenshotTour {
         }, () -> open[0] != null && open[0].devReady(), 30);
     }
 
-    private static final List<Stop> STOPS = "leap-menu".equals(System.getenv(ENV)) ? List.of(
+    private static final List<Stop> STOPS = "spotlight".equals(System.getenv(ENV)) ? List.of(
+            // The item list beside the inventory: every item, a search, the player's own items, a sum
+            // and a recipe opened from the list.
+            new Stop(null, DevScreenshotTour::enterWorld,
+                    () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
+            new Stop("spotlight-list-all", () -> {
+                net.alpaka.addons.features.itemsearch.ItemSearchPreview.load();
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("", false, false);
+                Minecraft mc = Minecraft.getInstance();
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player));
+            }, () -> net.alpaka.addons.features.itemsearch.ItemCatalog.all() != null
+                    && net.alpaka.addons.features.itemvalue.ItemPrices.updatedAt() > 0, 60),
+            new Stop("spotlight-list-diamond", () -> {
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("diamond", false, true);
+                placeMouse(0.97, 0.12);
+            }, () -> true, 30),
+            new Stop("spotlight-list-menu", () -> {
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("spruce", false, true);
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devHighlightMenu();
+                placeMouse(0.5, 0.97);
+            }, () -> true, 30),
+            new Stop("spotlight-list-mine", () -> {
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("", true, false);
+                placeMouse(0.5, 0.5);
+            }, () -> true, 30),
+            new Stop("spotlight-list-math", () -> net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("2.5m * 3 + 500k", false, true),
+                    () -> true, 20),
+            new Stop(null, () -> net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("", false, false),
+                    () -> net.alpaka.addons.features.itemsearch.NeuRepo.get() != null, 1),
+            new Stop("spotlight-list-empty", () -> {}, () -> true, 10),
+            new Stop("spotlight-list-dye", () -> {
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("dye", false, false);
+                placeMouse(0.97, 0.12);
+            }, () -> true, 60),
+            new Stop("spotlight-list-recipe", () -> {
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("hyperion", false, false);
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devOpenItem("HYPERION", false);
+                placeMouse(0.5, 0.5);
+            }, () -> true, 60),
+            new Stop("spotlight-list-used", () -> net.alpaka.addons.features.itemsearch.ItemListOverlay.devOpenItem("ENCHANTED_DIAMOND", true),
+                    () -> true, 60),
+            new Stop("spotlight-list-npc", () -> net.alpaka.addons.features.itemsearch.ItemListOverlay.devOpenItem("ROTTEN_FLESH", false),
+                    () -> true, 40),
+            new Stop("spotlight-list-drop", () -> net.alpaka.addons.features.itemsearch.ItemListOverlay.devOpenItem("AGARIMOO_TONGUE", false),
+                    () -> true, 40),
+            new Stop("spotlight-list-kat", () -> net.alpaka.addons.features.itemsearch.ItemListOverlay.devOpenItem("ARMADILLO;1", false),
+                    () -> true, 40),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.itemsearch.ItemListOverlay.devWiki("HYPERION")),
+                    () -> Minecraft.getInstance().gui.screen() instanceof net.alpaka.addons.features.itemsearch.WikiScreen w && w.devReady(), 1),
+            new Stop("spotlight-wiki-hyperion", () -> placeMouse(0.5, 0.97), () -> true, 30),
+            new Stop("spotlight-wiki-scrolled", () -> {
+                for (int i = 0; i < 2; i++) Minecraft.getInstance().gui.screen().keyPressed(
+                        new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_PAGE_DOWN, 0, 0));
+            }, () -> true, 30),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.itemsearch.ItemListOverlay.devWiki("ENCHANTED_DIAMOND")),
+                    () -> Minecraft.getInstance().gui.screen() instanceof net.alpaka.addons.features.itemsearch.WikiScreen w && w.devReady(), 1),
+            new Stop("spotlight-wiki-scrolled-diamond", () -> {
+                for (int i = 0; i < 2; i++) Minecraft.getInstance().gui.screen().keyPressed(
+                        new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_PAGE_DOWN, 0, 0));
+            }, () -> true, 30)
+    ) : "leap-menu".equals(System.getenv(ENV)) ? List.of(
             screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
             screen("leap-menu-map", () -> leapMenuPreview(true)),
             screen("leap-menu-buttons", () -> leapMenuPreview(false))
@@ -72,7 +134,7 @@ public final class DevScreenshotTour {
             new Stop(null, () -> {
                 AlpakaConfig.instance.chestValueEnabled = true;
                 AlpakaConfig.instance.chestValueSackContents = true;
-                net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen(null);
+                net.alpaka.addons.features.itemsearch.ItemSearchPreview.load();
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.sackOfSacks());
                 net.alpaka.addons.features.chestvalue.ChestValueFeature.devShow();
                 placeMouse(0.5, 0.97);
@@ -527,10 +589,12 @@ public final class DevScreenshotTour {
             }, () -> true, 30),
             new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.classic(
                     net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, false), () -> true, 1),
-            // Item Search over made-up containers: everything, one item hovered, then a query.
-            screen("item-search", () -> net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen(null)),
-            new Stop("item-search-hover", () -> placeMouse(0.356, 0.24), () -> true, 15),
-            screen("item-search-query", () -> net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("diamond")),
+            // Item Search over made-up containers: the bar beside the inventory, searching the player's items.
+            screen("item-search-query", () -> {
+                net.alpaka.addons.features.itemsearch.ItemSearchPreview.load();
+                net.alpaka.addons.features.itemsearch.ItemListOverlay.devShow("en", true, true);
+                return new net.minecraft.client.gui.screens.inventory.InventoryScreen(Minecraft.getInstance().player);
+            }),
             screen("item-search-config", () -> AlpakaConfigScreen.openOn("Markets", "Item Search")),
             screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
             screen("market-config-price-history", () -> AlpakaConfigScreen.openOn("Markets", "Price History")),

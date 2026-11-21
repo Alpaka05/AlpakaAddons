@@ -1,11 +1,14 @@
 package net.alpaka.addons.compat.oneconfig;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.client.AlpakaConfigScreen;
+import net.alpaka.addons.client.AlpakaKeyBinds;
 import net.alpaka.addons.client.gui.ConfigOption;
 import net.alpaka.addons.client.gui.ConfigTree;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import org.polyfrost.oneconfig.api.config.v1.ConfigEntrypoint;
@@ -27,9 +30,14 @@ public final class OneConfigEntrypoint implements ConfigEntrypoint, OneConfigTre
     /** How long after the last change from OneConfig the config file is written, in ticks. */
     private static final int SAVE_DELAY_TICKS = 10;
 
+    /** How often the rows that depend on a value set elsewhere are looked at again, in ticks. */
+    private static final int REFRESH_TICKS = 10;
+
     /** Ticks left until the held-back save is let through; 0 while none is held back. */
     private int saveCountdown = 0;
     private boolean tickHooked = false;
+    private Runnable refresh;
+    private int refreshCountdown = REFRESH_TICKS;
 
     @Override
     public void registerConfigs(Context context) {
@@ -45,7 +53,7 @@ public final class OneConfigEntrypoint implements ConfigEntrypoint, OneConfigTre
     }
 
     /**
-     * Every setter saves, and OneConfig calls one for each step of a slider drag and each typed
+     * Most setters save, and OneConfig calls one for each step of a slider drag and each typed
      * letter. The writes are held back while changes keep coming and done once, shortly after the
      * last one, or at once when OneConfig asks for a save.
      */
@@ -54,16 +62,62 @@ public final class OneConfigEntrypoint implements ConfigEntrypoint, OneConfigTre
         onClientThread(() -> {
             AlpakaConfig.beginDeferredSaves();
             saveCountdown = SAVE_DELAY_TICKS;
-            if (!tickHooked) {
-                tickHooked = true;
-                ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
-            }
+            hookTick();
             setter.run();
+            // Some setters leave the saving to the picker they were written for; held back like the rest.
+            AlpakaConfig.save();
         });
+    }
+
+    private void hookTick() {
+        if (tickHooked) return;
+        tickHooked = true;
+        ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
     }
 
     private void tick() {
         if (saveCountdown > 0 && --saveCountdown == 0) AlpakaConfig.endDeferredSaves();
+        if (refresh != null && --refreshCountdown <= 0) {
+            refreshCountdown = REFRESH_TICKS;
+            refresh.run();
+        }
+    }
+
+    @Override
+    public void keepFresh(Runnable task) {
+        refresh = task;
+        onClientThread(this::hookTick);
+    }
+
+    @Override
+    public OneConfigTree.Bound key(ConfigOption option) {
+        KeyMapping mapping = option.getKeyMapping();
+        if (mapping == null || mapping.isUnbound()) return null;
+        return bound(InputConstants.getKey(mapping.saveString()));
+    }
+
+    @Override
+    public OneConfigTree.Bound defaultKey(ConfigOption option) {
+        KeyMapping mapping = option.getKeyMapping();
+        return mapping == null ? null : bound(mapping.getDefaultKey());
+    }
+
+    private static OneConfigTree.Bound bound(InputConstants.Key key) {
+        if (key.equals(InputConstants.UNKNOWN)) return null;
+        return switch (key.getType()) {
+            case KEYSYM -> new OneConfigTree.Bound(key.getValue(), false);
+            case MOUSE -> new OneConfigTree.Bound(key.getValue(), true);
+            // A key known by its position only, which OneConfig's field has no name for.
+            case SCANCODE -> null;
+        };
+    }
+
+    @Override
+    public void bind(ConfigOption option, OneConfigTree.Bound key) {
+        KeyMapping mapping = option.getKeyMapping();
+        if (mapping == null) return;
+        AlpakaKeyBinds.set(mapping, key == null ? InputConstants.UNKNOWN
+                : (key.mouse() ? InputConstants.Type.MOUSE : InputConstants.Type.KEYSYM).getOrCreate(key.code()));
     }
 
     @Override

@@ -88,10 +88,6 @@ configurations {
     oneconfigApi {
         canBeConsumed = false
     }
-    // What those modules need to run, for the tests that build a OneConfig tree outside the game.
-    oneconfigTestRuntime {
-        canBeConsumed = false
-    }
 }
 
 dependencies {
@@ -112,11 +108,13 @@ dependencies {
 
     // OneConfig, the config menu of OneClient: compiled against, never shipped. The mod's settings
     // are put into its menu through the oneconfig:config entrypoint (compat/oneconfig), which only
-    // OneConfig itself ever loads. Just the two config modules, without what they depend on: the
-    // rest of OneConfig is its interface, which nothing here touches.
+    // OneConfig itself ever loads. Just the two config modules and, for the type its key field
+    // holds, the ui module with the utils module that type is built on, without what they depend
+    // on: the rest of OneConfig is its interface, which nothing here touches.
     oneconfigApi("org.polyfrost.oneconfig:config:${project.property("oneconfig_version")}") { transitive = false }
     oneconfigApi("org.polyfrost.oneconfig:config-impl:${project.property("oneconfig_version")}") { transitive = false }
-    oneconfigTestRuntime("org.polyfrost.oneconfig:utils:${project.property("oneconfig_version")}") { transitive = false }
+    oneconfigApi("org.polyfrost.oneconfig:ui:${project.property("oneconfig_version")}") { transitive = false }
+    oneconfigApi("org.polyfrost.oneconfig:utils:${project.property("oneconfig_version")}") { transitive = false }
 
     // Kotlin. Compiled against the stdlib of the Kotlin plugin above; at runtime players get it from
     // Fabric Language Kotlin, which fabric.mod.json requires. The dev client needs that mod too,
@@ -138,7 +136,7 @@ tasks.named("compileJava") { classpath += configurations.oneconfigApi }
 tasks.named("compileTestJava") { classpath += configurations.oneconfigApi }
 
 tasks.named("test") {
-    classpath += configurations.oneconfigApi + configurations.oneconfigTestRuntime
+    classpath += configurations.oneconfigApi
     useJUnitPlatform()
     // The source scan reads src/main; tests run from the project directory.
     workingDir = projectDir

@@ -267,6 +267,66 @@ public class ConfigOption {
         return gradientEndField.applyAsInt(AlpakaConfig.instance);
     }
 
+    /** How a color option colors: with its one color, as a gradient to a second one, or as a rainbow. */
+    public enum ColorMode {
+        SOLID("Solid"), GRADIENT("Gradient"), CHROMA("Chroma");
+
+        public final String label;
+
+        ColorMode(String label) { this.label = label; }
+    }
+
+    /** The modes this color option offers, in the order its picker lists them; Solid is always one. */
+    public List<ColorMode> getColorModes() {
+        List<ColorMode> modes = new java.util.ArrayList<>(3);
+        modes.add(ColorMode.SOLID);
+        if (gradientEndField != null) modes.add(ColorMode.GRADIENT);
+        if (chromaField != null) modes.add(ColorMode.CHROMA);
+        return modes;
+    }
+
+    /** The mode the option is in now. A rainbow that is on wins over a gradient, as it does where the color is drawn. */
+    public ColorMode getColorMode() {
+        net.alpaka.addons.config.Chroma chroma = getChroma();
+        if (chroma != null && chroma.enabled) return ColorMode.CHROMA;
+        return gradientEndField != null && gradientOnField.test(AlpakaConfig.instance) ? ColorMode.GRADIENT : ColorMode.SOLID;
+    }
+
+    /**
+     * Puts the option into a mode it offers, the way its picker's mode buttons do: Chroma leaves
+     * the gradient as it was, so switching the rainbow off again brings back what was there before.
+     * Does not save; like the picker, the caller does once it is done.
+     */
+    public void setColorMode(ColorMode mode) {
+        net.alpaka.addons.config.Chroma chroma = getChroma();
+        if (chroma != null) chroma.enabled = mode == ColorMode.CHROMA;
+        if (mode == ColorMode.CHROMA) return;
+        if (gradientEndField != null) gradientOnSetter.accept(mode == ColorMode.GRADIENT);
+    }
+
+    /** The option's rainbow in the live config, to read and to set; null for an option without one. */
+    public net.alpaka.addons.config.Chroma getChroma() {
+        return chromaField == null ? null : chromaField.apply(AlpakaConfig.instance);
+    }
+
+    /** Whether the rainbow runs along something, such as the letters of a text, and so has a size. */
+    public boolean isChromaSpread() { return chromaSpread; }
+
+    /** The gradient's second color as it is stored, whether or not the gradient is on; 0 without one. */
+    public int getStoredGradientEnd() {
+        return gradientEndField == null ? 0 : gradientEndField.applyAsInt(AlpakaConfig.instance);
+    }
+
+    /** Sets the gradient's second color. Does not save, see {@link #setColorMode}. */
+    public void setGradientEnd(int argb) {
+        if (gradientEndSetter != null) gradientEndSetter.accept(argb);
+    }
+
+    /** The second color a fresh config holds. */
+    public int getDefaultGradientEnd() {
+        return gradientEndField == null ? 0 : gradientEndField.applyAsInt(defaults());
+    }
+
     /** A config as freshly created, for reading defaults from; made once, never saved. */
     private static AlpakaConfig defaults;
 

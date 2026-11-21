@@ -3,6 +3,7 @@ package net.alpaka.addons.compat.oneconfig;
 import net.alpaka.addons.client.gui.ConfigCategory;
 import net.alpaka.addons.client.gui.ConfigOption;
 import net.alpaka.addons.client.gui.ConfigTree;
+import net.alpaka.addons.config.AlpakaConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.polyfrost.oneconfig.api.config.v1.MetaKeys;
@@ -11,9 +12,13 @@ import org.polyfrost.oneconfig.api.config.v1.Property;
 import org.polyfrost.oneconfig.api.config.v1.Tree;
 import org.polyfrost.oneconfig.api.config.v1.ValueFormatter;
 import org.polyfrost.oneconfig.api.config.v1.Visualizer;
+import org.polyfrost.oneconfig.api.ui.v1.keybind.OneConfigKeybind;
 
+import java.awt.Color;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,6 +44,8 @@ class OneConfigTreeTest {
 
     private final List<String> acted = new ArrayList<>();
     private final List<String> openedInOwnMenu = new ArrayList<>();
+    private final Map<String, OneConfigTree.Bound> keys = new HashMap<>();
+    private Runnable keptFresh;
     private int changes = 0;
     private int saves = 0;
 
@@ -47,12 +54,28 @@ class OneConfigTreeTest {
         @Override public void act(ConfigOption option) { acted.add(option.getId()); }
         @Override public void openInOwnMenu(ConfigOption option) { openedInOwnMenu.add(option.getId()); }
         @Override public void save() { saves++; }
+        @Override public OneConfigTree.Bound key(ConfigOption option) { return keys.get(option.getId()); }
+        @Override public OneConfigTree.Bound defaultKey(ConfigOption option) { return new OneConfigTree.Bound(75, false); }
+        @Override public void bind(ConfigOption option, OneConfigTree.Bound key) { keys.put(option.getId(), key); }
+        @Override public void keepFresh(Runnable task) { keptFresh = task; }
     };
 
     private Tree tree;
 
     @BeforeEach
     void build() {
+        AlpakaConfig.instance = new AlpakaConfig();
+        AlpakaConfig config = AlpakaConfig.instance;
+        config.nameTagGradient = false;
+        config.nameTagChroma.enabled = false;
+        // The name tag's fields stand in for any color that can also be a gradient or a rainbow.
+        ConfigOption tagColor = ConfigOption.color("tag_color", "Tag Color", "", CATEGORY,
+                        c -> c.nameTagGradientStart, value -> AlpakaConfig.instance.nameTagGradientStart = value, "")
+                .withGradient(c -> c.nameTagGradientEnd, value -> AlpakaConfig.instance.nameTagGradientEnd = value,
+                        c -> c.nameTagGradient, on -> AlpakaConfig.instance.nameTagGradient = on)
+                .withChroma(c -> c.nameTagChroma, true);
+        ConfigOption plainColor = ConfigOption.color("plain_color", "Plain Color", "", CATEGORY,
+                c -> c.nameTagGradientStart, value -> AlpakaConfig.instance.nameTagGradientStart = value, "");
         ConfigOption chat = new ConfigOption("better_chat", "Better Chat", "A nicer chat.", CATEGORY,
                 () -> chatOn, on -> chatOn = on, "");
         ConfigOption chatScale = new ConfigOption("chat_scale", "Scale", "How big the chat is.", CATEGORY,
@@ -79,7 +102,7 @@ class OneConfigTreeTest {
 
         ConfigTree.Feature chatFeature = new ConfigTree.Feature("Better Chat", "A nicer chat.", chat);
         chatFeature.settings.addAll(List.of(chatBind, chatPreview, chatScale, chatMode, chatLines, chatName,
-                chatKey, chatReset));
+                chatKey, chatReset, tagColor, plainColor));
         ConfigTree.Section section = new ConfigTree.Section("Chat");
         section.features.add(chatFeature);
         section.features.add(new ConfigTree.Feature("Fullbright", "No darkness.", bright));
@@ -166,16 +189,96 @@ class OneConfigTreeTest {
     }
 
     @Test
-    void anActionIsAButtonAndAKeyOpensTheModsMenu() {
+    void anActionIsAButton() {
         Property<Void> reset = property("chat_reset");
         assertEquals(Visualizer.ButtonVisualizer.class, MetaKeysKt.get(reset, MetaKeys.VISUALIZER));
         assertEquals("Reset", reset.getMetadata("text"));
         ((Runnable) reset.getMetadata("runnable")).run();
         assertEquals(List.of("chat_reset"), acted);
+    }
 
-        Property<Void> key = property("chat_key");
-        ((Runnable) key.getMetadata("runnable")).run();
-        assertEquals(List.of("chat_key"), openedInOwnMenu);
+    @Test
+    void aKeyIsSetInOneConfigsKeyFieldAndStaysTheModsOwn() {
+        Property<OneConfigKeybind> key = property("chat_key");
+        assertEquals(Visualizer.KeybindVisualizer.class, MetaKeysKt.get(key, MetaKeys.VISUALIZER));
+        assertEquals("Better Chat Key", key.getTitle(), "on OneConfig's Keybinds page a bare \"Key\" says nothing");
+        assertEquals(true, key.getMetadata("oc_no_mc_mirror"),
+                "OneConfig must not act on the key itself, nor list it in vanilla's Controls");
+        assertEquals(true, key.getMetadata("singleKey"));
+        assertArrayEquals(new int[]{75}, ((OneConfigKeybind) key.getMetadata("default")).getKeyCodes());
+        assertFalse(key.get().isBound());
+
+        key.set(new OneConfigKeybind(new int[]{82}, null, (byte) 0, 0L, down -> true));
+        assertEquals(new OneConfigTree.Bound(82, false), keys.get("chat_key"));
+        assertArrayEquals(new int[]{82}, key.get().getKeyCodes());
+
+        key.set(new OneConfigKeybind(null, new int[]{4}, (byte) 0, 0L, down -> true));
+        assertEquals(new OneConfigTree.Bound(4, true), keys.get("chat_key"));
+        assertArrayEquals(new int[]{4}, key.get().getMouseBtns());
+        assertNull(key.get().getKeyCodes());
+
+        key.set(new OneConfigKeybind(null, null, (byte) 0, 0L, down -> true));
+        assertNull(keys.get("chat_key"), "an emptied field unbinds the key");
+        assertTrue(openedInOwnMenu.isEmpty());
+    }
+
+    @Test
+    void aColorsModeIsADropdownThatShowsOnlyWhatTheModeNeeds() {
+        AlpakaConfig config = AlpakaConfig.instance;
+        Property<Integer> mode = property("tag_color_mode");
+        assertEquals(Visualizer.DropdownVisualizer.class, MetaKeysKt.get(mode, MetaKeys.VISUALIZER));
+        assertEquals(List.of("Solid", "Gradient", "Chroma"), MetaKeysKt.get(mode, MetaKeys.OPTIONS));
+        assertEquals(0, mode.get());
+        assertShown(true, "tag_color");
+        assertShown(false, "tag_color_gradient_end", "tag_color_chroma_speed", "tag_color_chroma_saturation",
+                "tag_color_chroma_size");
+
+        mode.set(1);
+        assertTrue(config.nameTagGradient);
+        assertFalse(config.nameTagChroma.enabled);
+        assertShown(true, "tag_color", "tag_color_gradient_end");
+        assertShown(false, "tag_color_chroma_speed");
+        Property<Color> end = property("tag_color_gradient_end");
+        end.set(new Color(0x80112233, true));
+        assertEquals(0x80112233, config.nameTagGradientEnd);
+
+        mode.set(2);
+        assertTrue(config.nameTagChroma.enabled);
+        assertTrue(config.nameTagGradient, "the gradient is kept for when the rainbow is switched off again");
+        assertShown(true, "tag_color_chroma_speed", "tag_color_chroma_saturation", "tag_color_chroma_size");
+        assertShown(false, "tag_color", "tag_color_gradient_end");
+
+        // Switched back in the mod's own menu, where OneConfig hears nothing of it.
+        config.nameTagChroma.enabled = false;
+        assertNotNull(keptFresh);
+        keptFresh.run();
+        assertEquals(1, mode.get());
+        assertShown(true, "tag_color", "tag_color_gradient_end");
+        assertShown(false, "tag_color_chroma_speed");
+
+        assertNull(tree.get("tag_color_effects"), "no button into the mod's picker is left");
+        assertNull(tree.get("plain_color_mode"), "a color that is only ever one color has no mode");
+    }
+
+    @Test
+    void aRainbowsSlidersKeepThePickersRangeAndWording() {
+        AlpakaConfig config = AlpakaConfig.instance;
+        Property<Float> speed = property("tag_color_chroma_speed");
+        assertEquals(0.1f, MetaKeysKt.get(speed, MetaKeys.MIN).floatValue());
+        assertEquals(3.0f, MetaKeysKt.get(speed, MetaKeys.MAX).floatValue());
+        assertEquals("1.25x", ((ValueFormatter) speed.getMetadata("formatter")).format(1.25f));
+        speed.set(9.0f);
+        assertEquals(3.0f, config.nameTagChroma.speed);
+
+        Property<Float> saturation = property("tag_color_chroma_saturation");
+        assertEquals("40%", ((ValueFormatter) saturation.getMetadata("formatter")).format(40.0f));
+        saturation.set(40.0f);
+        assertEquals(40.0f, config.nameTagChroma.saturation);
+
+        Property<Float> size = property("tag_color_chroma_size");
+        assertEquals("20 letters", ((ValueFormatter) size.getMetadata("formatter")).format(20.4f));
+        size.set(20.4f);
+        assertEquals(20.0f, config.nameTagChroma.size);
     }
 
     @Test
@@ -190,6 +293,10 @@ class OneConfigTreeTest {
         Property<T> property = (Property<T>) tree.getProp(id);
         assertNotNull(property, id);
         return property;
+    }
+
+    private void assertShown(boolean shown, String... ids) {
+        for (String id : ids) assertEquals(shown, tree.getProp(id).canDisplay(), id);
     }
 
     private void assertPlaced(String id, String category, String subcategory) {

@@ -830,20 +830,24 @@ public final class DevScreenshotTour {
             new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
             // Swing Trail on a swing slowed to a second: early in the strike, and on the way back,
-            // when the streak is left hanging. Then at half speed, where the whole strike
-            // fits into the streak, with the sword turned and shrunk, and on a pickaxe - the streak
-            // has to start at the tip every time.
+            // when the particles are left hanging. Then at half speed, with the sword turned and
+            // shrunk, and on a pickaxe - the trail has to start at the tip every time.
             new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, 0.0f, 1.0f), () -> true, 20),
             new Stop("swing-trail-strike", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop("swing-trail-back", () -> {}, () -> true, 5),
+            // Each swing is left to play out before the next setup: changed mid-swing, the item jumps.
+            new Stop(null, () -> {}, () -> true, 15),
             new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.5f, 0.0f, 1.0f), () -> true, 20),
             new Stop("swing-trail-full", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
-            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, -40.0f, 0.6f), () -> true, 20),
+            new Stop(null, () -> {}, () -> true, 10),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, -40.0f, 0.6f), () -> true, 30),
             new Stop("swing-trail-turned", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
-            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_PICKAXE, 0.25f, 0.0f, 1.0f), () -> true, 20),
+            new Stop(null, () -> {}, () -> true, 20),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_PICKAXE, 0.25f, 0.0f, 1.0f), () -> true, 30),
             new Stop("swing-trail-pickaxe", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> {
                 AlpakaConfig.instance.itemSwingSpeed = 1.0f;
+                AlpakaConfig.instance.itemSwingTrailLength = 450.0f;
                 AlpakaConfig.instance.itemRotationZ = 0.0f;
                 AlpakaConfig.instance.itemScale = 1.0f;
             }, () -> true, 25),
@@ -1173,6 +1177,9 @@ public final class DevScreenshotTour {
         AlpakaConfig.instance.itemStarlightEnabled = false;
         AlpakaConfig.instance.itemSwingTrailEnabled = true;
         AlpakaConfig.instance.itemSwingSpeed = swingSpeed;
+        // The particles live as much longer as the swing is slower, so the picture is the one a
+        // swing at full speed gives.
+        AlpakaConfig.instance.itemSwingTrailLength = 450.0f / swingSpeed;
         AlpakaConfig.instance.itemRotationZ = rotationZ;
         AlpakaConfig.instance.itemScale = scale;
         java.util.UUID id = mc.player.getUUID();

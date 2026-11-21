@@ -117,7 +117,7 @@ public final class ConfigTree {
             "world_age_join_message_enabled", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "exact_skill_xp", "deployable_timer", "cache_resource_pack",
             "visitor_bazaar", "ignore_filler_panes", "slot_highlight",
-            "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value", "price_tooltip",
+            "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value", "price_tooltip", "profit_tracker",
             "profile_dashboard",
             // SkyBlock: dungeon
             "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers",
@@ -143,6 +143,8 @@ public final class ConfigTree {
             Map.entry("slayer_hud_smooth_font", "slayer_hud_enabled"),
             Map.entry("farming_hud_blur", "farming_hud_enabled"),
             Map.entry("farming_hud_smooth_font", "farming_hud_enabled"),
+            Map.entry("profit_tracker_blur", "profit_tracker"),
+            Map.entry("profit_tracker_smooth_font", "profit_tracker"),
             Map.entry("slayer_timer_blur", "slayer_timer"),
             Map.entry("slayer_timer_smooth_font", "slayer_timer"),
             Map.entry("deployable_timer_blur", "deployable_timer"),
@@ -221,7 +223,7 @@ public final class ConfigTree {
                             "profile_dashboard"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
                             "item_search",
-                            "chest_value", "price_tooltip"},
+                            "chest_value", "price_tooltip", "profit_tracker"},
                     {"Social", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue", "guild_prefix", "bridge_bot_formatter",
                             "command_wheel_custom_commands", "command_shortcuts", "inventory_buttons"}},
     };

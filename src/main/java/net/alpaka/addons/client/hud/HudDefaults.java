@@ -74,6 +74,10 @@ public final class HudDefaults {
     public static final int FARMING_X = SLAYER_SESSION_X;
     public static final int FARMING_Y = SLAYER_SESSION_Y;
 
+    /** Below the session HUD's tallest layout, on the left where the item lines have room to grow. */
+    public static final int PROFIT_TRACKER_X = SLAYER_SESSION_X;
+    public static final int PROFIT_TRACKER_Y = 150;
+
     /**
      * The avatar's feet; at the default size it stands 72 pixels tall and 48 wide. Right of the
      * session HUD's widest rows, and with its top at 60, below the HUD editor's header (to 59).

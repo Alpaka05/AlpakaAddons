@@ -159,6 +159,7 @@ public class ChatScreenMixin {
     )
     private void onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
         if (SlayerHudElement.INSTANCE.handleChatClick(event.x(), event.y(), event.button())
+                || net.alpaka.addons.features.profittracker.ProfitTrackerHudElement.handleChatClick(event.x(), event.y(), event.button())
                 || ChatCopyFeature.handleClick(event.button(), event.hasShiftDown())) {
             cir.setReturnValue(true);
         }

@@ -455,6 +455,24 @@ public class AlpakaConfig {
     public boolean farmingHudShowContest = true;
     public boolean farmingHudBlur = true;
     public boolean farmingHudSmoothFont = true;
+
+    // Profit Tracker
+    public boolean profitTrackerEnabled = false;
+    /** Flipped by the Profit Tracker key: whether the HUD is on screen. */
+    public boolean profitTrackerHudShown = true;
+    public int profitTrackerX = net.alpaka.addons.client.hud.HudDefaults.PROFIT_TRACKER_X;
+    public int profitTrackerY = net.alpaka.addons.client.hud.HudDefaults.PROFIT_TRACKER_Y;
+    public float profitTrackerScale = 1.0f;
+    /** Whether the HUD shows this game's figures (true) or all-time ones. */
+    public boolean profitTrackerSessionOnly = true;
+    /** The Bazaar side items are priced at: 0 Instant Sell, 1 Sell Offer. */
+    public int profitTrackerPriceSide = 0;
+    public boolean profitTrackerPreferNpc = false;
+    public int profitTrackerMaxLines = 8;
+    /** Shows the tracker only over an open inventory or menu, not while playing. */
+    public boolean profitTrackerOnlyInInventory = false;
+    public boolean profitTrackerBlur = true;
+    public boolean profitTrackerSmoothFont = true;
     /**
      * When the last Pest Repellent runs out (epoch ms), from its chat message; kept so the time left
      * survives a restart. Whether it was a Pest Repellent MAX.
@@ -2112,6 +2130,7 @@ public class AlpakaConfig {
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
         this.farmingHudEnabled = false;
+        this.profitTrackerEnabled = false;
         this.customTabEnabled = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;

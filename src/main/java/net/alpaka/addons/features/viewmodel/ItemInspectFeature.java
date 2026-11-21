@@ -22,7 +22,8 @@ import java.util.Locale;
 
 /**
  * Inspect Animation: on a key press the hand shows off the held item, like the weapon inspects of
- * shooters. Which animation plays depends on the item (see {@link InspectAnimation.Kind}).
+ * shooters. Which animations it can play depends on the item (see {@link InspectAnimation.Kind}),
+ * and each press picks one of them at random.
  *
  * Purely on the player's screen: it only moves the first-person hand (ItemInHandRendererMixin), and
  * nothing is sent to the server. Like an inspect in those games it gives way to anything the player
@@ -38,6 +39,10 @@ public final class ItemInspectFeature {
     private static final long CANCEL_NANOS = 180_000_000L;
 
     private static InspectAnimation.Kind kind;
+    private static InspectAnimation.Variant variant;
+    /** The variant played last, which the next press skips so two in a row differ. */
+    private static InspectAnimation.Variant lastVariant;
+    private static final java.util.Random RANDOM = new java.util.Random();
     private static long startNanos;
     private static float durationNanos;
     /** When the inspect was cut short (0 while it plays out), and the pose it was cut short in. */
@@ -51,6 +56,8 @@ public final class ItemInspectFeature {
 
     /** For the screenshot tour: a fixed point of the animation instead of the clock, or -1. */
     private static float devProgress = -1.0f;
+    /** For the screenshot tour: the variant to play instead of a random one, or -1. */
+    private static int devVariant = -1;
 
     public static void register() {
         INSPECT_KEY = AlpakaKeyBinds.register(new KeyMapping(
@@ -87,11 +94,24 @@ public final class ItemInspectFeature {
         stack = player.getMainHandItem().copy();
         slot = player.getInventory().getSelectedSlot();
         kind = kindOf(stack);
+        variant = pickVariant(kind);
         swingingAtStart = player.swinging;
         startNanos = System.nanoTime();
-        durationNanos = kind.seconds * 1.0e9f / Math.max(0.1f, AlpakaConfig.instance.itemInspectSpeed);
+        durationNanos = variant.seconds() * 1.0e9f / Math.max(0.1f, AlpakaConfig.instance.itemInspectSpeed);
         cancelNanos = 0L;
         cancelPose = null;
+    }
+
+    /** One of the kind's variants at random, but not the one played last. */
+    private static InspectAnimation.Variant pickVariant(InspectAnimation.Kind kind) {
+        InspectAnimation.Variant[] variants = kind.variants;
+        if (devVariant >= 0) return variants[devVariant % variants.length];
+        InspectAnimation.Variant picked = variants[RANDOM.nextInt(variants.length)];
+        if (picked == lastVariant && variants.length > 1) {
+            picked = variants[(java.util.Arrays.asList(variants).indexOf(picked) + 1 + RANDOM.nextInt(variants.length - 1)) % variants.length];
+        }
+        lastVariant = picked;
+        return picked;
     }
 
     private static void cancel() {
@@ -108,7 +128,7 @@ public final class ItemInspectFeature {
      */
     public static InspectAnimation.Pose currentPose() {
         if (kind == null || !AlpakaConfig.instance.itemInspectEnabled) return null;
-        if (devProgress >= 0.0f) return kind.sample(devProgress);
+        if (devProgress >= 0.0f) return variant.sample(devProgress);
         return poseAt(System.nanoTime());
     }
 
@@ -134,7 +154,7 @@ public final class ItemInspectFeature {
             kind = null;
             return null;
         }
-        return kind.sample(t);
+        return variant.sample(t);
     }
 
     /** Which animation an item gets: SkyBlock's own item type where it has one, else the vanilla item. */
@@ -185,10 +205,14 @@ public final class ItemInspectFeature {
         return text == null ? "" : text;
     }
 
-    /** For the screenshot tour: starts an inspect of the held item, frozen at a point (0..1), or -1 to unfreeze. */
-    public static void devShow(float progress) {
+    /**
+     * For the screenshot tour: starts the held item's variant with that index, frozen at a point
+     * (0..1), or with progress -1 stops it.
+     */
+    public static void devShow(int variantIndex, float progress) {
         LocalPlayer player = Minecraft.getInstance().player;
         devProgress = progress;
+        devVariant = progress < 0.0f ? -1 : variantIndex;
         if (progress < 0.0f) {
             kind = null;
         } else if (player != null) {

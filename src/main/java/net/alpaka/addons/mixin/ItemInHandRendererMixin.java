@@ -162,6 +162,9 @@ public class ItemInHandRendererMixin {
         matrices.mulPose(Axis.YP.rotationDegrees(side * pose.yaw()));
         matrices.mulPose(Axis.XP.rotationDegrees(pose.pitch()));
         matrices.mulPose(Axis.ZP.rotationDegrees(side * pose.roll()));
+        // Mirroring the arm flips the axis's x and the turn's direction.
+        matrices.mulPose(new org.joml.Quaternionf().rotationAxis(
+                side * pose.spin() * Mth.DEG_TO_RAD, side * kind.axisX, kind.axisY, kind.axisZ));
         matrices.translate(-pivotX, -pivotY, -pivotZ);
     }
 

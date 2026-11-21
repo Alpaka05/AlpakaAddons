@@ -18,11 +18,21 @@ class InspectAnimationTest {
         assertEquals(0.0f, pose.pitch() % 360.0f, EPS);
         assertEquals(0.0f, pose.yaw() % 360.0f, EPS);
         assertEquals(0.0f, pose.roll() % 360.0f, EPS);
+        assertEquals(0.0f, pose.spin() % 360.0f, EPS);
+    }
+
+    private static java.util.Set<InspectAnimation.Variant> variants() {
+        java.util.Set<InspectAnimation.Variant> all = new java.util.LinkedHashSet<>();
+        for (InspectAnimation.Kind kind : InspectAnimation.Kind.values()) {
+            assertTrue(kind.variants.length >= 2, kind.name() + " has a single variant");
+            all.addAll(java.util.List.of(kind.variants));
+        }
+        return all;
     }
 
     @Test
     void everyAnimationStartsAndEndsAtRest() {
-        for (InspectAnimation.Kind kind : InspectAnimation.Kind.values()) {
+        for (InspectAnimation.Variant kind : variants()) {
             assertLooksAtRest(kind.sample(0.0f));
             assertLooksAtRest(kind.sample(1.0f));
             assertLooksAtRest(kind.sample(1.5f));
@@ -31,8 +41,8 @@ class InspectAnimationTest {
 
     @Test
     void keysAreInOrderFromZeroToOne() {
-        for (InspectAnimation.Kind kind : InspectAnimation.Kind.values()) {
-            InspectAnimation.Key[] keys = kind.keys;
+        for (InspectAnimation.Variant kind : variants()) {
+            InspectAnimation.Key[] keys = kind.keys();
             assertEquals(0.0f, keys[0].time(), kind.name());
             assertEquals(1.0f, keys[keys.length - 1].time(), kind.name());
             for (int i = 1; i < keys.length; i++) {
@@ -43,10 +53,10 @@ class InspectAnimationTest {
 
     @Test
     void curvePassesThroughEveryKey() {
-        for (InspectAnimation.Kind kind : InspectAnimation.Kind.values()) {
-            for (InspectAnimation.Key key : kind.keys) {
+        for (InspectAnimation.Variant kind : variants()) {
+            for (InspectAnimation.Key key : kind.keys()) {
                 InspectAnimation.Pose pose = kind.sample(key.time());
-                for (int c = 0; c < 6; c++) {
+                for (int c = 0; c < InspectAnimation.CHANNELS; c++) {
                     assertEquals(key.pose().get(c), pose.get(c), 1.0e-3f, kind.name() + " at " + key.time());
                 }
             }
@@ -56,13 +66,13 @@ class InspectAnimationTest {
     /** Between two keys no value leaves the range the two keys span, so no pose bulges past what was written. */
     @Test
     void curveNeverOvershootsItsKeys() {
-        for (InspectAnimation.Kind kind : InspectAnimation.Kind.values()) {
-            InspectAnimation.Key[] keys = kind.keys;
+        for (InspectAnimation.Variant kind : variants()) {
+            InspectAnimation.Key[] keys = kind.keys();
             for (int i = 0; i + 1 < keys.length; i++) {
                 for (int step = 0; step <= 50; step++) {
                     float t = keys[i].time() + (keys[i + 1].time() - keys[i].time()) * step / 50.0f;
                     InspectAnimation.Pose pose = kind.sample(t);
-                    for (int c = 0; c < 6; c++) {
+                    for (int c = 0; c < InspectAnimation.CHANNELS; c++) {
                         float lo = Math.min(keys[i].pose().get(c), keys[i + 1].pose().get(c));
                         float hi = Math.max(keys[i].pose().get(c), keys[i + 1].pose().get(c));
                         assertTrue(pose.get(c) >= lo - 1.0e-3f && pose.get(c) <= hi + 1.0e-3f,
@@ -76,15 +86,15 @@ class InspectAnimationTest {
     /** No sudden jump from one frame to the next: at 240 fps, no step bigger than a smooth motion makes. */
     @Test
     void motionIsContinuous() {
-        for (InspectAnimation.Kind kind : InspectAnimation.Kind.values()) {
-            int frames = Math.round(kind.seconds * 240.0f);
+        for (InspectAnimation.Variant kind : variants()) {
+            int frames = Math.round(kind.seconds() * 240.0f);
             InspectAnimation.Pose previous = kind.sample(0.0f);
             for (int f = 1; f <= frames; f++) {
                 InspectAnimation.Pose pose = kind.sample(f / (float) frames);
                 for (int c = 0; c < 3; c++) {
                     assertTrue(Math.abs(pose.get(c) - previous.get(c)) < 0.02f, kind.name() + " moves too fast");
                 }
-                for (int c = 3; c < 6; c++) {
+                for (int c = 3; c < InspectAnimation.CHANNELS; c++) {
                     assertTrue(Math.abs(pose.get(c) - previous.get(c)) < 15.0f, kind.name() + " turns too fast");
                 }
                 previous = pose;
@@ -94,10 +104,11 @@ class InspectAnimationTest {
 
     @Test
     void wrappedTakesTheShortWayBack() {
-        InspectAnimation.Pose pose = new InspectAnimation.Pose(0, 0, 0, -350, 380, 720).wrapped();
+        InspectAnimation.Pose pose = new InspectAnimation.Pose(0, 0, 0, -350, 380, 720, 190).wrapped();
         assertEquals(10.0f, pose.pitch(), EPS);
         assertEquals(20.0f, pose.yaw(), EPS);
         assertEquals(0.0f, pose.roll(), EPS);
+        assertEquals(-170.0f, pose.spin(), EPS);
     }
 
     @Test

@@ -64,7 +64,6 @@ class DisableAllFeaturesTest {
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             "rareDropAnimationEnabled",
             // Utility and sounds
-            "exactSkillXpEnabled",
             "alwaysSprintEnabled", "keepCursorPositionEnabled", "commandShortcutsEnabled", "inventoryButtonsEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
             "customSoundButtonClick", "customSoundHotbarScroll", "customSoundInventoryOpenClose",
             "customSoundInventoryClick", "customSoundRareDrop", "customSoundNotification",
@@ -102,7 +101,7 @@ class DisableAllFeaturesTest {
             "itemSwingTranslationDisabled", "itemSwingAlwaysFinishEnabled",
             // Wide Health Bar, Always Sprint, Price History
             "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
-            "marketPriceHistoryRange", "exactSkillXpRounded",
+            "marketPriceHistoryRange",
             // Chest Value: whether it shows, and how
             "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
             "chestValueX", "chestValueY",

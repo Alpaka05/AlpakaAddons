@@ -27,7 +27,6 @@
     "GameRendererMixin",
     "GuiMessageFontMixin",
     "HudScoreboardFontMixin",
-    "HudOverlayMessageMixin",
     "ItemFeatureRendererMixin",
     "ItemInHandRendererMixin",
     "LeapMenuScreensMixin",

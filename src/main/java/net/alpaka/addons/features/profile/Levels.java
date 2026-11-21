@@ -138,20 +138,6 @@ public final class Levels {
         return new Overflow(level + past, left - (double) past * CATACOMBS_OVERFLOW, CATACOMBS_OVERFLOW);
     }
 
-    /**
-     * The XP {@code skill} ("farming", "runecrafting") takes from {@code level} to the next, or 0
-     * past the end of its table.
-     */
-    public static long skillXpForNext(String skill, int level) {
-        long[] table = tableFor(skill);
-        return level >= 0 && level < table.length ? table[level] : 0;
-    }
-
-    /** XP from zero to the start of {@code level} in {@code skill}'s table ("farming", "social"). */
-    public static long skillXpToReach(String skill, int level) {
-        return total(tableFor(skill), level);
-    }
-
     /** XP from zero to the start of {@code level}. */
     static long total(long[] table, int level) {
         long sum = 0;

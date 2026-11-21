@@ -1336,6 +1336,15 @@ public class AlpakaConfig {
     /** Number of ghost copies spread over the trail length. */
     public float itemMotionBlurSteps = 8.0f;
 
+    // Swing trail: a streak follows the tip of the held item through a strike; see SwingTrailFeature.
+    public boolean itemSwingTrailEnabled = false;
+    public int itemSwingTrailColor = 0xFFFFFFFF;
+    /** How long a part of the trail stays before it has faded out, in milliseconds. */
+    public float itemSwingTrailLength = 220.0f;
+    /** How far the trail reaches from the tip towards the grip, as a share of the item's length. */
+    public float itemSwingTrailWidth = 0.4f;
+    public float itemSwingTrailOpacity = 0.85f;
+
     // Swing Animation Customizations
     public float swingDriftX = 0.0f;
     public float swingDriftY = 0.0f;
@@ -1368,6 +1377,11 @@ public class AlpakaConfig {
         public float motionBlurLength = 80.0f;
         public float motionBlurOpacity = 0.35f;
         public float motionBlurSteps = 8.0f;
+        public boolean swingTrailEnabled = false;
+        public int swingTrailColor = 0xFFFFFFFF;
+        public float swingTrailLength = 220.0f;
+        public float swingTrailWidth = 0.4f;
+        public float swingTrailOpacity = 0.85f;
         /** What the player called it; empty for none, and it shows as "Preset n" then. */
         public String name = "";
 
@@ -1435,6 +1449,11 @@ public class AlpakaConfig {
             this.itemMotionBlurLength = preset.motionBlurLength;
             this.itemMotionBlurOpacity = preset.motionBlurOpacity;
             this.itemMotionBlurSteps = preset.motionBlurSteps;
+            this.itemSwingTrailEnabled = preset.swingTrailEnabled;
+            this.itemSwingTrailColor = preset.swingTrailColor;
+            this.itemSwingTrailLength = preset.swingTrailLength;
+            this.itemSwingTrailWidth = preset.swingTrailWidth;
+            this.itemSwingTrailOpacity = preset.swingTrailOpacity;
             this.activeItemPresetIndex = index;
             save();
         }
@@ -1471,6 +1490,11 @@ public class AlpakaConfig {
         this.itemMotionBlurLength = 80.0f;
         this.itemMotionBlurOpacity = 0.35f;
         this.itemMotionBlurSteps = 8.0f;
+        this.itemSwingTrailEnabled = false;
+        this.itemSwingTrailColor = 0xFFFFFFFF;
+        this.itemSwingTrailLength = 220.0f;
+        this.itemSwingTrailWidth = 0.4f;
+        this.itemSwingTrailOpacity = 0.85f;
 
         this.swingDriftX = 0.0f;
         this.swingDriftY = 0.0f;
@@ -1533,6 +1557,11 @@ public class AlpakaConfig {
         preset.motionBlurLength = this.itemMotionBlurLength;
         preset.motionBlurOpacity = this.itemMotionBlurOpacity;
         preset.motionBlurSteps = this.itemMotionBlurSteps;
+        preset.swingTrailEnabled = this.itemSwingTrailEnabled;
+        preset.swingTrailColor = this.itemSwingTrailColor;
+        preset.swingTrailLength = this.itemSwingTrailLength;
+        preset.swingTrailWidth = this.itemSwingTrailWidth;
+        preset.swingTrailOpacity = this.itemSwingTrailOpacity;
         return preset;
     }
 
@@ -2118,6 +2147,7 @@ public class AlpakaConfig {
         this.experimentSolverEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
+        this.itemSwingTrailEnabled = false;
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;

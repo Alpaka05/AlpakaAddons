@@ -829,6 +829,29 @@ public final class DevScreenshotTour {
             // swing also tells the server, which only Outbound may.
             new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
+            // Swing Trail on a swing slowed to a second: early in the strike, and on the way back,
+            // when the streak is left hanging. Then at half speed, where the whole strike
+            // fits into the streak, with the sword turned and shrunk, and on a pickaxe - the streak
+            // has to start at the tip every time.
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, 0.0f, 1.0f), () -> true, 20),
+            new Stop("swing-trail-strike", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop("swing-trail-back", () -> {}, () -> true, 5),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.5f, 0.0f, 1.0f), () -> true, 20),
+            new Stop("swing-trail-full", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, -40.0f, 0.6f), () -> true, 20),
+            new Stop("swing-trail-turned", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_PICKAXE, 0.25f, 0.0f, 1.0f), () -> true, 20),
+            new Stop("swing-trail-pickaxe", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.itemSwingSpeed = 1.0f;
+                AlpakaConfig.instance.itemRotationZ = 0.0f;
+                AlpakaConfig.instance.itemScale = 1.0f;
+            }, () -> true, 25),
+            screen("swing-trail-menu", () -> AlpakaConfigScreen.openOn("Viewmodel", "Swing Trail")),
+            new Stop(null, () -> {
+                Minecraft.getInstance().gui.setScreen(null);
+                AlpakaConfig.instance.itemSwingTrailEnabled = false;
+            }, () -> true, 5),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
             new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
@@ -1140,6 +1163,25 @@ public final class DevScreenshotTour {
             net.minecraft.world.item.ItemStack sword = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD);
             if (glint) sword.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
             player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, sword);
+        });
+    }
+
+    /** An item in hand with the swing trail on, swinging at the given speed, turned and scaled as given. */
+    private static void swingTrail(net.minecraft.world.item.Item item, float swingSpeed, float rotationZ, float scale) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.itemSizeFeatureEnabled = true;
+        AlpakaConfig.instance.itemStarlightEnabled = false;
+        AlpakaConfig.instance.itemSwingTrailEnabled = true;
+        AlpakaConfig.instance.itemSwingSpeed = swingSpeed;
+        AlpakaConfig.instance.itemRotationZ = rotationZ;
+        AlpakaConfig.instance.itemScale = scale;
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(item));
         });
     }
 

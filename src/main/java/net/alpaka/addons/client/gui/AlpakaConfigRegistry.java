@@ -2,6 +2,7 @@ package net.alpaka.addons.client.gui;
 
 import java.util.Locale;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
+import net.alpaka.addons.features.viewmodel.SwingTrailFeature;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.damagetags.CustomDamageTagFeature;
@@ -1606,14 +1607,56 @@ public class AlpakaConfigRegistry {
                 val -> String.format(Locale.ROOT, "%.0f", val),
                 "motion blur trail steps copies ghosts quality samples number"));
 
+        OPTIONS.add(new ConfigOption("Swing Trail", ConfigCategory.VIEWMODEL));
+
+        OPTIONS.add(new ConfigOption("item_swing_trail", "Swing Trail",
+                "Draws a streak behind the tip of the held item when you strike, like a sword slash in a comic.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemSwingTrailEnabled,
+                v -> { AlpakaConfig.instance.itemSwingTrailEnabled = v; AlpakaConfig.save(); },
+                "swing trail slash streak swoosh arc sword tip comic white line strike attack hit effect"));
+
+        OPTIONS.add(ConfigOption.color("item_swing_trail_color", "Trail Color",
+                "The color of the streak.",
+                ConfigCategory.VIEWMODEL,
+                c -> c.itemSwingTrailColor,
+                v -> { AlpakaConfig.instance.itemSwingTrailColor = v; AlpakaConfig.save(); },
+                "swing trail slash streak color white tint"));
+
+        OPTIONS.add(new ConfigOption("item_swing_trail_length", "Trail Length",
+                "How long the streak hangs in the air before it has faded.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemSwingTrailLength,
+                v -> { AlpakaConfig.instance.itemSwingTrailLength = (float) Math.round(v / 10.0f) * 10.0f; AlpakaConfig.save(); },
+                SwingTrailFeature.MIN_LENGTH_MS, SwingTrailFeature.MAX_LENGTH_MS,
+                val -> String.format(Locale.ROOT, "%.0f ms", val),
+                "swing trail slash streak length duration time long short fade lingers"));
+
+        OPTIONS.add(new ConfigOption("item_swing_trail_width", "Trail Width",
+                "How far the streak reaches from the tip down the item.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemSwingTrailWidth,
+                v -> { AlpakaConfig.instance.itemSwingTrailWidth = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
+                SwingTrailFeature.MIN_WIDTH, SwingTrailFeature.MAX_WIDTH,
+                val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
+                "swing trail slash streak width thickness size wide thin broad"));
+
+        OPTIONS.add(new ConfigOption("item_swing_trail_opacity", "Trail Opacity",
+                "How strongly the streak is drawn.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemSwingTrailOpacity,
+                v -> { AlpakaConfig.instance.itemSwingTrailOpacity = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
+                0.1f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
+                "swing trail slash streak opacity alpha strength transparency intensity"));
+
         OPTIONS.add(new ConfigOption("item_viewmodel_reset", "Reset Viewmodel Settings",
-                "Resets every viewmodel and swing value, Starlight and Swing Motion Blur included. Presets are kept.",
+                "Resets every viewmodel and swing value, Starlight, Swing Motion Blur and Swing Trail included. Presets are kept.",
                 ConfigCategory.VIEWMODEL,
                 "Reset Viewmodel Settings",
                 parent -> AlpakaConfig.instance.resetItemViewmodel(),
-                "reset viewmodel default defaults revert restore clear hand item size offset rotation swing starlight motion blur")
+                "reset viewmodel default defaults revert restore clear hand item size offset rotation swing starlight motion blur trail")
                 .confirm("Reset Viewmodel Settings",
-                        "Puts every viewmodel and swing value back to its default and turns Starlight and Swing Motion Blur off. "
+                        "Puts every viewmodel and swing value back to its default and turns Starlight, Swing Motion Blur and Swing Trail off. "
                                 + "Viewmodel Modifiers stays as it is, and saved presets are kept. This cannot be undone.",
                         "Reset", true));
 

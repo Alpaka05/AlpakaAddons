@@ -328,11 +328,11 @@ public class AlpakaConfigRegistry {
                 "hide mob death smoke poof particles cloud puff"));
 
         OPTIONS.add(new ConfigOption("hide_visual_clutter", "Hide Visual Clutter",
-                "Hides effects that only cost frames: explosions, falling blocks, block particles, hit sparks, fireworks, experience orbs, dying dragons and stuck arrows.",
+                "Hides effects that only cost frames: explosions, falling blocks, block particles, hit sparks, fireworks, experience orbs, dying dragons, stuck arrows and lightning.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideVisualClutter,
                 v -> { AlpakaConfig.instance.hideVisualClutter = v; AlpakaConfig.save(); },
-                "hide visual clutter performance fps lag particles effects explosions falling blocks fireworks orbs dragon arrows"));
+                "hide visual clutter performance fps lag particles effects explosions falling blocks fireworks orbs dragon arrows lightning"));
         OPTIONS.add(new ConfigOption("hide_clutter_explosions", "Explosions",
                 "The flash, smoke and debris of explosions, like Hyperion, Bonzo's Staff, TNT and creepers.",
                 ConfigCategory.VISUALS,
@@ -381,6 +381,12 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.clutterAttachedArrows,
                 v -> { AlpakaConfig.instance.clutterAttachedArrows = v; AlpakaConfig.save(); },
                 "hide attached stuck arrows arrow body player ground wall block bow pincushion"));
+        OPTIONS.add(new ConfigOption("hide_clutter_lightning", "Lightning",
+                "Lightning bolts and the flash of the sky they cause, everywhere. The thunder stays.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterLightning,
+                v -> { AlpakaConfig.instance.clutterLightning = v; AlpakaConfig.save(); },
+                "hide lightning bolt bolts strike thunder flash sky storm blitz"));
 
         OPTIONS.add(new ConfigOption("Hide Fire Overlay", ConfigCategory.VISUALS));
 

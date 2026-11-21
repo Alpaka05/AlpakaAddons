@@ -275,6 +275,8 @@ public class AlpakaConfig {
     public boolean clutterDragonDeath = true;
     /** Arrows stuck in players and in blocks. */
     public boolean clutterAttachedArrows = true;
+    /** Lightning bolts and the sky flash they cause. */
+    public boolean clutterLightning = true;
     /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
     public boolean hideEntityFire = false;
     /** Opacity of the fire covering the screen while you burn in first person, 0..1; 1 is vanilla, 0 hides it. */

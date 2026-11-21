@@ -1366,6 +1366,11 @@ public class AlpakaConfig {
     /** Number of ghost copies spread over the trail length. */
     public float itemMotionBlurSteps = 8.0f;
 
+    // Inspect Animation: the hand shows off the held item on a key press; see ItemInspectFeature.
+    public boolean itemInspectEnabled = false;
+    /** How fast the inspect plays, 1.0 the animation's own length. */
+    public float itemInspectSpeed = 1.0f;
+
     // Swing Animation Customizations
     public float swingDriftX = 0.0f;
     public float swingDriftY = 0.0f;
@@ -1501,6 +1506,7 @@ public class AlpakaConfig {
         this.itemMotionBlurLength = 80.0f;
         this.itemMotionBlurOpacity = 0.35f;
         this.itemMotionBlurSteps = 8.0f;
+        this.itemInspectSpeed = 1.0f;
 
         this.swingDriftX = 0.0f;
         this.swingDriftY = 0.0f;
@@ -2150,6 +2156,7 @@ public class AlpakaConfig {
         this.experimentSolverEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
+        this.itemInspectEnabled = false;
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;

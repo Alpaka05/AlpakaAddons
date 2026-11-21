@@ -74,6 +74,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.market.MarketKeys.register();
         net.alpaka.addons.features.market.Markets.register();
         ZoomFeature.register();
+        net.alpaka.addons.features.viewmodel.ItemInspectFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
         // Before ChatOverHud, which hands the player list over as it stands after this replaced it.
         net.alpaka.addons.features.tablist.CustomTabFeature.register();

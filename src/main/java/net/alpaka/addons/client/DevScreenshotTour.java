@@ -170,6 +170,7 @@ public final class DevScreenshotTour {
             screen("config-dungeon-teammate-glow", () -> AlpakaConfigScreen.openOn("Dungeon", "Teammate Class Glow")),
             screen("config-dungeon-terminals", () -> AlpakaConfigScreen.openOn("Dungeon", "Terminal Solvers")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
+            screen("config-viewmodel-inspect", () -> AlpakaConfigScreen.openOn("Viewmodel", "Inspect Animation")),
             // The wheel turned on over the settings in several goes, well past their end: the column
             // stops at its last setting instead of scrolling on into emptiness.
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
@@ -836,6 +837,63 @@ public final class DevScreenshotTour {
             // swing also tells the server, which only Outbound may.
             new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
+            // Inspect Animation: each kind of item at four points of its animation, frozen there.
+            new Stop(null, () -> {
+                AlpakaConfig.instance.itemInspectEnabled = true;
+                AlpakaConfig.instance.itemStarlightEnabled = false;
+            }, () -> true, 1),
+            new Stop(null, () -> holdItem(net.minecraft.world.item.Items.DIAMOND_SWORD), () -> true, 10),
+            new Stop("inspect-sword-10", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.1f), () -> true, 2),
+            new Stop("inspect-sword-30", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.3f), () -> true, 2),
+            new Stop("inspect-sword-50", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.5f), () -> true, 2),
+            new Stop("inspect-sword-70", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.7f), () -> true, 2),
+            new Stop("inspect-sword-90", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.9f), () -> true, 2),
+            new Stop(null, () -> holdItem(net.minecraft.world.item.Items.DIAMOND_PICKAXE), () -> true, 10),
+            new Stop("inspect-tool-10", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.1f), () -> true, 2),
+            new Stop("inspect-tool-30", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.3f), () -> true, 2),
+            new Stop("inspect-tool-50", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.5f), () -> true, 2),
+            new Stop("inspect-tool-70", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.7f), () -> true, 2),
+            new Stop("inspect-tool-90", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.9f), () -> true, 2),
+            new Stop(null, () -> holdItem(net.minecraft.world.item.Items.BOW), () -> true, 10),
+            new Stop("inspect-bow-10", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.1f), () -> true, 2),
+            new Stop("inspect-bow-30", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.3f), () -> true, 2),
+            new Stop("inspect-bow-50", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.5f), () -> true, 2),
+            new Stop("inspect-bow-70", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.7f), () -> true, 2),
+            new Stop("inspect-bow-90", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.9f), () -> true, 2),
+            new Stop(null, () -> holdItem(net.minecraft.world.item.Items.TRIDENT), () -> true, 10),
+            new Stop("inspect-pole-10", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.1f), () -> true, 2),
+            new Stop("inspect-pole-30", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.3f), () -> true, 2),
+            new Stop("inspect-pole-50", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.5f), () -> true, 2),
+            new Stop("inspect-pole-70", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.7f), () -> true, 2),
+            new Stop("inspect-pole-90", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.9f), () -> true, 2),
+            new Stop(null, () -> holdItem(net.minecraft.world.item.Items.GRASS_BLOCK), () -> true, 10),
+            new Stop("inspect-block-10", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.1f), () -> true, 2),
+            new Stop("inspect-block-30", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.3f), () -> true, 2),
+            new Stop("inspect-block-50", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.5f), () -> true, 2),
+            new Stop("inspect-block-70", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.7f), () -> true, 2),
+            new Stop("inspect-block-90", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.9f), () -> true, 2),
+            new Stop(null, () -> holdItem(net.minecraft.world.item.Items.APPLE), () -> true, 10),
+            new Stop("inspect-food-10", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.1f), () -> true, 2),
+            new Stop("inspect-food-30", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.3f), () -> true, 2),
+            new Stop("inspect-food-50", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.5f), () -> true, 2),
+            new Stop("inspect-food-70", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.7f), () -> true, 2),
+            new Stop("inspect-food-90", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.9f), () -> true, 2),
+            new Stop(null, () -> holdItem(net.minecraft.world.item.Items.EMERALD), () -> true, 10),
+            new Stop("inspect-item-10", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.1f), () -> true, 2),
+            new Stop("inspect-item-30", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.3f), () -> true, 2),
+            new Stop("inspect-item-50", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.5f), () -> true, 2),
+            new Stop("inspect-item-70", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.7f), () -> true, 2),
+            new Stop("inspect-item-90", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.9f), () -> true, 2),
+            new Stop(null, () -> holdItem(net.minecraft.world.item.Items.AIR), () -> true, 10),
+            new Stop("inspect-hand-10", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.1f), () -> true, 2),
+            new Stop("inspect-hand-30", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.3f), () -> true, 2),
+            new Stop("inspect-hand-50", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.5f), () -> true, 2),
+            new Stop("inspect-hand-70", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.7f), () -> true, 2),
+            new Stop("inspect-hand-90", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(0.9f), () -> true, 2),
+            new Stop(null, () -> {
+                net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(-1.0f);
+                AlpakaConfig.instance.itemInspectEnabled = false;
+            }, () -> true, 1),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
             new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
@@ -1135,6 +1193,19 @@ public final class DevScreenshotTour {
     }
 
     /** A burst of lines, as a busy chat delivers them. */
+    /** Puts an item in the player's main hand, through the server as the game would. */
+    private static void holdItem(net.minecraft.world.item.Item item) {
+        Minecraft mc = Minecraft.getInstance();
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(item));
+        });
+    }
+
     private static void starlightGlint(boolean glint) {
         Minecraft mc = Minecraft.getInstance();
         AlpakaConfig.instance.itemStarlightMode = 1;

@@ -3,6 +3,8 @@ package net.alpaka.addons.mixin;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
+import net.alpaka.addons.features.viewmodel.InspectAnimation;
+import net.alpaka.addons.features.viewmodel.ItemInspectFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.alpaka.addons.utils.AlpakaPerf;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -131,6 +133,36 @@ public class ItemInHandRendererMixin {
             // that draw it run inside this method after this point.
             matrices.translate(alpaka$sideOf(player, hand) == HumanoidArm.RIGHT ? xOffset : -xOffset, yOffset, zOffset);
         }
+    }
+
+    /**
+     * Inspect Animation: moves and turns the main hand as the inspect playing now says. Applied
+     * after the viewmodel offset, so the hand is shown off from wherever the player put it, and
+     * before vanilla places the arm, so it covers the bare arm as well as any item. The turn is
+     * about the item's middle, worked out from where vanilla puts the hand (applyItemArmTransform),
+     * so the item turns in place instead of swinging around the camera.
+     */
+    @Inject(
+            method = "submitArmWithItem",
+            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", shift = At.Shift.AFTER)
+    )
+    private void alpaka$inspect(
+            AbstractClientPlayer player, float tickProgress, float pitch, InteractionHand hand,
+            float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            SubmitNodeCollector queue, int light, CallbackInfo ci) {
+        if (hand != InteractionHand.MAIN_HAND || player != Minecraft.getInstance().player) return;
+        InspectAnimation.Pose pose = ItemInspectFeature.currentPose();
+        InspectAnimation.Kind kind = ItemInspectFeature.currentKind();
+        if (pose == null || kind == null) return;
+        float side = alpaka$sideOf(player, hand) == HumanoidArm.RIGHT ? 1.0f : -1.0f;
+        float pivotX = side * (0.56f + kind.pivotX);
+        float pivotY = -0.52f + kind.pivotY;
+        float pivotZ = -0.72f + kind.pivotZ;
+        matrices.translate(side * pose.x() + pivotX, pose.y() + pivotY, pose.z() + pivotZ);
+        matrices.mulPose(Axis.YP.rotationDegrees(side * pose.yaw()));
+        matrices.mulPose(Axis.XP.rotationDegrees(pose.pitch()));
+        matrices.mulPose(Axis.ZP.rotationDegrees(side * pose.roll()));
+        matrices.translate(-pivotX, -pivotY, -pivotZ);
     }
 
     /** Which physical arm holds this hand's item, as vanilla works it out. */

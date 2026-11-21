@@ -5,6 +5,7 @@ import net.alpaka.addons.features.chat.ChatCopyFeature;
 import net.alpaka.addons.features.chat.ChatOpenAnimation;
 import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
+import net.alpaka.addons.features.npc.NpcQuickAnswer;
 import net.alpaka.addons.features.slayer.SlayerHudElement;
 import net.alpaka.addons.utils.UpdateInstaller;
 import net.minecraft.client.Minecraft;
@@ -147,7 +148,7 @@ public class ChatScreenMixin {
     }
 
     /**
-     * The slayer HUD's click and Copy Chat's right-click, once vanilla has offered the click to the
+     * The slayer HUD's click, Copy Chat's right-click and NPC Quick Answer's click, once vanilla has offered the click to the
      * chat's own links and found none: only then does it get handed to the screen, which is where
      * this sits. At the head of the method, as it used to be, the HUD took clicks meant for links
      * drawn under it.
@@ -159,7 +160,8 @@ public class ChatScreenMixin {
     )
     private void onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
         if (SlayerHudElement.INSTANCE.handleChatClick(event.x(), event.y(), event.button())
-                || ChatCopyFeature.handleClick(event.button(), event.hasShiftDown())) {
+                || ChatCopyFeature.handleClick(event.button(), event.hasShiftDown())
+                || NpcQuickAnswer.onChatClick(event.button())) {
             cir.setReturnValue(true);
         }
     }
@@ -188,6 +190,7 @@ public class ChatScreenMixin {
     private void alpaka$drawChatTabs(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         ChatScreen self = (ChatScreen) (Object) this;
         ChatTabsFeature.render(graphics, self.height, mouseX, mouseY);
+        NpcQuickAnswer.render(graphics, self.width, self.height);
     }
 
     /**
@@ -197,6 +200,7 @@ public class ChatScreenMixin {
     @Inject(method = "handleComponentClicked", at = @At("HEAD"), cancellable = true)
     private void alpaka$handleModClickEvents(Style clicked, boolean allowInsertions, CallbackInfoReturnable<Boolean> cir) {
         if (allowInsertions) return;
+        NpcQuickAnswer.onComponentClicked(clicked);
         // Every event in the mod's namespace stays on the client, handled or not: a server can put
         // one into chat, and vanilla would send it back to the server on a click.
         if (clicked.getClickEvent() instanceof ClickEvent.Custom custom

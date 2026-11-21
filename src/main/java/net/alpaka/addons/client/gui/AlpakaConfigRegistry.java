@@ -2278,6 +2278,13 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Party", ConfigCategory.SKYBLOCK));
 
+        OPTIONS.add(new ConfigOption("npc_quick_answer", "NPC Quick Answer",
+                "When an NPC asks a question with [YES] and [NO] in chat, a left click anywhere in the open chat answers YES.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcQuickAnswerEnabled,
+                v -> { AlpakaConfig.instance.npcQuickAnswerEnabled = v; AlpakaConfig.save(); },
+                "npc quick answer yes no click option dialogue trapper trevor accept task chat anywhere"));
+
         OPTIONS.add(new ConfigOption("party_invite_prompt", "Party Invite Prompt",
                 "Shows a Y/N prompt on screen when someone invites you to a party.",
                 ConfigCategory.SKYBLOCK,

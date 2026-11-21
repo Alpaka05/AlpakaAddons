@@ -162,8 +162,8 @@ public final class InspectAnimation {
             rest(1.0f));
 
     /**
-     * Where a held item's middle is and which way its length runs, from where vanilla puts the hand
-     * (applyItemArmTransform), for the right hand. Flat items and tools all use the item/generated
+     * Where a held item's middle is and which way its length runs, in the frame the item is drawn
+     * in (after applyItemArmTransform and the viewmodel's changes), for the right hand. Flat items and tools all use the item/generated
      * first-person transform: moved by (1.13, 3.2, 1.13)/16, turned by (0, -90, 25). The middle is
      * where that move ends, and the length is the texture's diagonal (1, 1, 0) turned the same way.
      */

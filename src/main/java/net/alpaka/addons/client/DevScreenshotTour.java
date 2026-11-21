@@ -890,6 +890,21 @@ public final class DevScreenshotTour {
             new Stop("inspect-hand1-40", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(1, 0.4f), () -> true, 2),
             new Stop("inspect-hand1-60", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(1, 0.6f), () -> true, 2),
             new Stop("inspect-hand1-80", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(1, 0.8f), () -> true, 2),
+            // The Propeller on a smaller sword: it has to turn about the sword's middle all the same.
+            new Stop(null, () -> {
+                holdItem(net.minecraft.world.item.Items.DIAMOND_SWORD);
+                AlpakaConfig.instance.itemSizeFeatureEnabled = true;
+                AlpakaConfig.instance.itemScale = 0.5f;
+            }, () -> true, 10),
+            new Stop("inspect-small-0", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(2, 0.0f), () -> true, 2),
+            new Stop("inspect-small-20", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(2, 0.2f), () -> true, 2),
+            new Stop("inspect-small-40", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(2, 0.4f), () -> true, 2),
+            new Stop("inspect-small-60", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(2, 0.6f), () -> true, 2),
+            new Stop("inspect-small-80", () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(2, 0.8f), () -> true, 2),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.itemSizeFeatureEnabled = false;
+                AlpakaConfig.instance.itemScale = 1.0f;
+            }, () -> true, 1),
             new Stop(null, () -> {
                 net.alpaka.addons.features.viewmodel.ItemInspectFeature.devShow(-1, -1.0f);
                 AlpakaConfig.instance.itemInspectEnabled = false;

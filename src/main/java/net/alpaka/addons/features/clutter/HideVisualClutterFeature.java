@@ -8,6 +8,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
@@ -15,7 +16,7 @@ import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
 /**
  * Hides effects that cost frames and tell the player nothing: explosions, falling blocks, the
  * terrain particles of broken blocks, the sparks of critical hits, firework bursts, experience
- * orbs, the Ender Dragon's death and arrows stuck in players and blocks. Each has its own switch under the feature's master switch.
+ * orbs, the Ender Dragon's death, arrows stuck in players and blocks, and lightning. Each has its own switch under the feature's master switch.
  * It started as Hide Explosions, which is why its master field still reads that name from older
  * files.
  *
@@ -33,7 +34,7 @@ import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
  *       (the attack animation packet, the local attack, crit arrows and the firework rocket's
  *       explosion event).</li>
  *   <li>Flame, smoke, lava, potion swirl, enchant, portal and dust particles, fireballs and
- *       lightning belong to Clean Blaze, and the death puff of mobs to Hide Death Smoke.</li>
+ *       lightning in the Blaze zones belong to Clean Blaze (lightning everywhere is also here), and the death puff of mobs to Hide Death Smoke.</li>
  *   <li>Sounds, knockback and damage are server side and stay.</li>
  * </ul>
  */
@@ -139,6 +140,8 @@ public final class HideVisualClutterFeature {
      * An arrow stuck in a block: it lies there for a minute, and a fight with bows leaves dozens.
      * Only drawing is skipped, the entity stays, and an arrow in flight is always drawn. Tridents
      * are left alone, a stuck one is a weapon waiting to be picked up or to return.
+     *
+     * A lightning bolt: only drawing is skipped, its sky flash goes in {@link #shouldHideLightning}.
      */
     public static boolean shouldHideEntity(Entity entity) {
         AlpakaConfig config = AlpakaConfig.instance;
@@ -147,6 +150,7 @@ public final class HideVisualClutterFeature {
             return config.clutterAttachedArrows && !(arrow instanceof ThrownTrident)
                     && ((AbstractArrowInGroundAccessor) arrow).alpaka$isInGround();
         }
+        if (entity instanceof LightningBolt) return config.clutterLightning;
         return entity instanceof EnderDragon dragon && config.clutterDragonDeath && isDying(dragon);
     }
 
@@ -167,5 +171,15 @@ public final class HideVisualClutterFeature {
 
     private static boolean isDying(EnderDragon dragon) {
         return dragon.dragonDeathTime > 0 || dragon.isDeadOrDying();
+    }
+
+    // Lightning --------------------------------------------------------------------------------
+
+    /**
+     * Lightning anywhere (thunderstorms, item abilities, Hypixel's strikes): the bolt is not drawn
+     * and the sky does not flash. The thunder is a sound and stays, like Clean Blaze's lightning.
+     */
+    public static boolean shouldHideLightning() {
+        return on(AlpakaConfig.instance.clutterLightning);
     }
 }

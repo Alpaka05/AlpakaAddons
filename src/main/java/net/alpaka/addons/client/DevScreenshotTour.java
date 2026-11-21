@@ -59,31 +59,7 @@ public final class DevScreenshotTour {
         }, () -> open[0] != null && open[0].devReady(), 30);
     }
 
-    /**
-     * OneConfig's own menu, on the mod's page (and a category of it): ALPAKA_SCREENSHOT_TOUR=oneconfig.
-     * Only in a dev client that has OneConfig, which is not a dependency: its jar and the Compose
-     * bundle it needs go into run/mods by hand, and without a display server AWT has to stay
-     * headless (JAVA_TOOL_OPTIONS=-Djava.awt.headless=true). The screen's class is OneConfig's
-     * internal one, hence by name.
-     */
-    private static net.minecraft.client.gui.screens.Screen oneConfigScreen(String... args) {
-        try {
-            Class<?> type = Class.forName("org.polyfrost.oneconfig.internal.ui.compose.impls.OneConfigUIScreen");
-            Class<?>[] types = new Class<?>[args.length];
-            java.util.Arrays.fill(types, String.class);
-            return (net.minecraft.client.gui.screens.Screen) type.getConstructor(types).newInstance((Object[]) args);
-        } catch (ReflectiveOperationException e) {
-            AlpakaAddons.LOGGER.error("Screenshot tour: OneConfig's menu could not be opened", e);
-            return null;
-        }
-    }
-
-    private static final List<Stop> STOPS = "oneconfig".equals(System.getenv(ENV)) ? List.of(
-            new Stop("oneconfig-mods", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen()), () -> true, 120),
-            new Stop("oneconfig-alpaka", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen("alpaka")), () -> true, 120),
-            new Stop("oneconfig-alpaka-chat", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen("alpaka", "Chat")), () -> true, 120),
-            new Stop("oneconfig-alpaka-design", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen("alpaka", "Design")), () -> true, 120)
-    ) : "leap-menu".equals(System.getenv(ENV)) ? List.of(
+    private static final List<Stop> STOPS = "leap-menu".equals(System.getenv(ENV)) ? List.of(
             screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
             screen("leap-menu-map", () -> leapMenuPreview(true)),
             screen("leap-menu-buttons", () -> leapMenuPreview(false))
@@ -109,6 +85,11 @@ public final class DevScreenshotTour {
                 AlpakaConfig.instance.chestValueSackContents = false;
             }, () -> true, 10),
             new Stop(null, () -> AlpakaConfig.instance.chestValueSackContents = true, () -> true, 1)
+    ) : "oneconfig".equals(System.getenv(ENV)) ? List.of(
+            new Stop("oneconfig-mods", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen()), () -> true, 120),
+            new Stop("oneconfig-alpaka", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen("alpaka")), () -> true, 120),
+            new Stop("oneconfig-alpaka-chat", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen("alpaka", "Chat")), () -> true, 120),
+            new Stop("oneconfig-alpaka-design", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen("alpaka", "Design")), () -> true, 120)
     ) : "dungeon-map".equals(System.getenv(ENV)) ? List.of(
             screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
             screen("dungeon-map-player-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_icons")),
@@ -947,6 +928,25 @@ public final class DevScreenshotTour {
     /** Typing this text into the open screen, one character at a time. */
     private static void type(String text) {
         text.codePoints().forEach(c -> screen().charTyped(new net.minecraft.client.input.CharacterEvent(c)));
+    }
+
+    /**
+     * OneConfig's own menu, on the mod's page (and a category of it): ALPAKA_SCREENSHOT_TOUR=oneconfig.
+     * Only in a dev client that has OneConfig, which is not a dependency: its jar and the Compose
+     * bundle it needs go into run/mods by hand, and without a display server AWT has to stay
+     * headless (JAVA_TOOL_OPTIONS=-Djava.awt.headless=true). The screen's class is OneConfig's
+     * internal one, hence by name.
+     */
+    private static net.minecraft.client.gui.screens.Screen oneConfigScreen(String... args) {
+        try {
+            Class<?> type = Class.forName("org.polyfrost.oneconfig.internal.ui.compose.impls.OneConfigUIScreen");
+            Class<?>[] types = new Class<?>[args.length];
+            java.util.Arrays.fill(types, String.class);
+            return (net.minecraft.client.gui.screens.Screen) type.getConstructor(types).newInstance((Object[]) args);
+        } catch (ReflectiveOperationException e) {
+            AlpakaAddons.LOGGER.error("Screenshot tour: OneConfig's menu could not be opened", e);
+            return null;
+        }
     }
 
     /** A left click at this point of the open screen, as the player's mouse would deliver it. */

@@ -108,15 +108,6 @@ public final class InspectAnimation {
             key(0.84f, 0, 0, 368, 0),
             key(1.0f, 0, 0, 360, 0));
 
-    /** Laid over to the side and held there with a little wobble, then raised again. */
-    static final Variant SHOWCASE = new Variant("Showcase", 1.7f,
-            rest(0.0f),
-            key(0.20f, 0, 0, -85, 0),
-            key(0.38f, 8, 0, -76, 10),
-            key(0.58f, -4, 0, -88, -6),
-            key(0.72f, 0, 0, -82, 0),
-            rest(1.0f));
-
     /** Turned about its own length to show its edge, held, and turned back past rest. */
     static final Variant EDGE_CHECK = new Variant("Edge Check", 1.3f,
             rest(0.0f),
@@ -184,9 +175,9 @@ public final class InspectAnimation {
 
     /** The kinds of held item, each with its variants. */
     public enum Kind {
-        SWORD(HELD_MIDDLE, HELD_LENGTH, FLIP, BLADE_SPIN, PROPELLER, SHOWCASE, EDGE_CHECK),
-        TOOL(HELD_MIDDLE, HELD_LENGTH, FLIP, BLADE_SPIN, PROPELLER, SHOWCASE),
-        BOW(HELD_MIDDLE, HELD_LENGTH, SHOWCASE, EDGE_CHECK, PROPELLER),
+        SWORD(HELD_MIDDLE, HELD_LENGTH, FLIP, BLADE_SPIN, PROPELLER, EDGE_CHECK),
+        TOOL(HELD_MIDDLE, HELD_LENGTH, FLIP, BLADE_SPIN, PROPELLER),
+        BOW(HELD_MIDDLE, HELD_LENGTH, EDGE_CHECK, PROPELLER),
         POLE(HELD_MIDDLE, HELD_LENGTH, TWIRL, BLADE_SPIN, FLIP),
         BLOCK(BLOCK_MIDDLE, UPRIGHT, TURNTABLE, TUMBLE, PROPELLER),
         FOOD(HELD_MIDDLE, HELD_LENGTH, SNIFF, EDGE_CHECK, BLADE_SPIN),

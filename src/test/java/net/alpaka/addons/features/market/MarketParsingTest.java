@@ -451,6 +451,15 @@ class MarketParsingTest {
         assertEquals("Sharpness VII", ItemTags.enchantmentName("sharpness 7 enchant", "ENCHANTMENT_SHARPNESS_7"));
         assertEquals("Fortune X", ItemTags.enchantmentName("fortune 10 enchant", "ENCHANTMENT_FORTUNE_10"));
         assertEquals("Enchantment Table", ItemTags.enchantmentName("Enchantment Table", "ENCHANTMENT_TABLE"));
+        assertEquals("Counter-Strike V", ItemTags.enchantmentName("counter strike 5 enchant", "ENCHANTMENT_COUNTER_STRIKE_5"));
+        assertEquals("Looting VII", ItemTags.enchantmentName("looting new 7 enchant", "ENCHANTMENT_LOOTING_NEW_7"));
+        assertEquals("One For All I", ItemTags.enchantmentName("one for all 1 enchant", "ENCHANTMENT_ULTIMATE_ONE_FOR_ALL_1"));
+        // Runes without their level, ids and grey-marked copies not at all.
+        assertEquals("Tidal Rune", ItemTags.searchName("Tidal Rune I", "Tidal Rune I", "RUNE_TIDAL"));
+        assertEquals("Turkey Rune", ItemTags.searchName("◆ Turkey Rune III", "◆ Turkey Rune III", "RUNE_TURKEY"));
+        assertNull(ItemTags.searchName("FACTION_RABBIT_SUNSET", "FACTION_RABBIT_SUNSET", "FACTION_RABBIT_SUNSET"));
+        assertNull(ItemTags.searchName("Booster Cookie §8(Untradable)", "Booster Cookie (Untradable)", "BOOSTER_COOKIE"));
+        assertEquals("X", ItemTags.searchName("X", "X", "X"));
         ItemTags.index("""
                 [{"name":"chimera 4 enchant","tag":"ENCHANTMENT_ULTIMATE_CHIMERA_4","flags":"BAZAAR"}]""");
         assertEquals(List.of("Chimera IV"), ItemTags.names(MarketKind.BAZAAR));
@@ -610,6 +619,15 @@ class MarketParsingTest {
         assertArrayEquals(new int[] {0, 4, 10, 13}, match.ranges());
         SearchSuggestions.Match initials = SearchSuggestions.rank("aotd", List.of("Aspect of the Dragons"), 1).get(0);
         assertArrayEquals(new int[] {0, 1, 7, 8, 10, 11, 14, 15}, initials.ranges());
+    }
+
+    @Test
+    void findsRomanLevelsByTheirNumber() {
+        List<String> books = List.of("Chimera I", "Chimera IV", "Chimera V", "Personal Compactor 5000");
+        assertEquals("Chimera IV", SearchSuggestions.rank("chimera 4", books, 5).get(0).name());
+        assertEquals("Chimera I", SearchSuggestions.rank("chimera 1", books, 5).get(0).name());
+        assertEquals("Personal Compactor 5000", SearchSuggestions.rank("compactor 5000", books, 5).get(0).name());
+        assertArrayEquals(new int[] {0, 10}, SearchSuggestions.rank("chimera 4", books, 1).get(0).ranges());
     }
 
     // ---- Market stats ---------------------------------------------------------------------------

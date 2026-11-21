@@ -1606,6 +1606,29 @@ public class AlpakaConfigRegistry {
                 val -> String.format(Locale.ROOT, "%.0f", val),
                 "motion blur trail steps copies ghosts quality samples number"));
 
+        OPTIONS.add(new ConfigOption("Inspect Animation", ConfigCategory.VIEWMODEL));
+
+        OPTIONS.add(new ConfigOption("item_inspect", "Inspect Animation",
+                "Shows off the held item when you press the key, like a weapon inspect in shooters. Swords, tools, bows, blocks and other items each have their own animation. Only on your screen.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemInspectEnabled,
+                v -> { AlpakaConfig.instance.itemInspectEnabled = v; AlpakaConfig.save(); },
+                "inspect animation look item weapon show off twirl spin flip csgo valorant knife hand"));
+
+        OPTIONS.add(ConfigOption.keybind("item_inspect_key", "Key",
+                "The key that starts the inspect. Unbound by default.",
+                ConfigCategory.VIEWMODEL,
+                () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.INSPECT_KEY,
+                "inspect animation key hotkey bind"));
+
+        OPTIONS.add(new ConfigOption("item_inspect_speed", "Speed",
+                "How fast the inspect plays. 1.00x is its normal pace.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemInspectSpeed,
+                v -> { AlpakaConfig.instance.itemInspectSpeed = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
+                0.5f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "inspect animation speed fast slow duration pace multiplier"));
+
         OPTIONS.add(new ConfigOption("item_viewmodel_reset", "Reset Viewmodel Settings",
                 "Resets every viewmodel and swing value, Starlight and Swing Motion Blur included. Presets are kept.",
                 ConfigCategory.VIEWMODEL,

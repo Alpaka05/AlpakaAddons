@@ -3,6 +3,8 @@ package net.alpaka.addons.mixin;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
+import net.alpaka.addons.features.viewmodel.InspectAnimation;
+import net.alpaka.addons.features.viewmodel.ItemInspectFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.alpaka.addons.utils.AlpakaPerf;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -133,6 +135,36 @@ public class ItemInHandRendererMixin {
         }
     }
 
+    /**
+     * Inspect Animation for the empty hand: turns the bare arm about the hand, before vanilla places
+     * it. A held item is turned in {@link #alpaka$inspectItem} instead.
+     */
+    @Inject(
+            method = "submitArmWithItem",
+            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", shift = At.Shift.AFTER)
+    )
+    private void alpaka$inspect(
+            AbstractClientPlayer player, float tickProgress, float pitch, InteractionHand hand,
+            float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            SubmitNodeCollector queue, int light, CallbackInfo ci) {
+        if (hand != InteractionHand.MAIN_HAND || player != Minecraft.getInstance().player) return;
+        InspectAnimation.Pose pose = ItemInspectFeature.currentPose();
+        InspectAnimation.Kind kind = ItemInspectFeature.currentKind();
+        if (pose == null || kind != InspectAnimation.Kind.HAND) return;
+        float side = alpaka$sideOf(player, hand) == HumanoidArm.RIGHT ? 1.0f : -1.0f;
+        float pivotX = side * (0.56f + kind.pivotX);
+        float pivotY = -0.52f + kind.pivotY;
+        float pivotZ = -0.72f + kind.pivotZ;
+        matrices.translate(side * pose.x() + pivotX, pose.y() + pivotY, pose.z() + pivotZ);
+        matrices.mulPose(Axis.YP.rotationDegrees(side * pose.yaw()));
+        matrices.mulPose(Axis.XP.rotationDegrees(pose.pitch()));
+        matrices.mulPose(Axis.ZP.rotationDegrees(side * pose.roll()));
+        // Mirroring the arm flips the axis's x and the turn's direction.
+        matrices.mulPose(new org.joml.Quaternionf().rotationAxis(
+                side * pose.spin() * Mth.DEG_TO_RAD, side * kind.axisX, kind.axisY, kind.axisZ));
+        matrices.translate(-pivotX, -pivotY, -pivotZ);
+    }
+
     /** Which physical arm holds this hand's item, as vanilla works it out. */
     @org.spongepowered.asm.mixin.Unique
     private static HumanoidArm alpaka$sideOf(AbstractClientPlayer player, InteractionHand hand) {
@@ -160,6 +192,47 @@ public class ItemInHandRendererMixin {
             
             matrices.scale(scale, scale, scale);
         }
+    }
+
+    /**
+     * Inspect Animation for a held item: turns it about its own middle as the inspect playing now
+     * says. Hooked just before the item is drawn, after the viewmodel's scale and rotation (above),
+     * so the middle and the item's length are found where the item really is: they are taken from
+     * the item's own first-person transform (see InspectAnimation.Kind) through the pose as it
+     * stands, and the turn is then put in front of everything, in the camera's frame. Found before
+     * the viewmodel changes instead, a smaller or turned item spun about a point off its middle.
+     */
+    @Inject(
+            method = "submitArmWithItem",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemDisplayContext;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V")
+    )
+    private void alpaka$inspectItem(
+            AbstractClientPlayer player, float tickProgress, float pitch, InteractionHand hand,
+            float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            SubmitNodeCollector queue, int light, CallbackInfo ci) {
+        if (hand != InteractionHand.MAIN_HAND || player != Minecraft.getInstance().player) return;
+        InspectAnimation.Pose pose = ItemInspectFeature.currentPose();
+        InspectAnimation.Kind kind = ItemInspectFeature.currentKind();
+        if (pose == null || kind == null || kind == InspectAnimation.Kind.HAND) return;
+        float side = alpaka$sideOf(player, hand) == HumanoidArm.RIGHT ? 1.0f : -1.0f;
+        PoseStack.Pose last = matrices.last();
+        org.joml.Matrix4f matrix = last.pose();
+        // The left hand's item transform is the right one's mirrored in x.
+        org.joml.Vector3f middle = matrix.transformPosition(
+                side * kind.pivotX, kind.pivotY, kind.pivotZ, new org.joml.Vector3f());
+        org.joml.Vector3f length = matrix.transformDirection(
+                side * kind.axisX, kind.axisY, kind.axisZ, new org.joml.Vector3f()).normalize();
+        org.joml.Quaternionf turn = new org.joml.Quaternionf()
+                .rotateY(side * pose.yaw() * Mth.DEG_TO_RAD)
+                .rotateX(pose.pitch() * Mth.DEG_TO_RAD)
+                .rotateZ(side * pose.roll() * Mth.DEG_TO_RAD)
+                .mul(new org.joml.Quaternionf().rotationAxis(side * pose.spin() * Mth.DEG_TO_RAD, length));
+        org.joml.Matrix4f around = new org.joml.Matrix4f()
+                .translation(middle.x + side * pose.x(), middle.y + pose.y(), middle.z + pose.z())
+                .rotate(turn)
+                .translate(-middle.x, -middle.y, -middle.z);
+        matrix.mulLocal(around);
+        last.normal().set(new org.joml.Matrix3f().set(turn).mul(last.normal()));
     }
 
     @Inject(

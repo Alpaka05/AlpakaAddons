@@ -6,7 +6,6 @@
   "client": [
     "AbstractArrowClutterMixin",
     "ArrowLayerClutterMixin",
-    "AbstractContainerMenuSlotSetMixin",
     "AbstractContainerScreenStoragePreviewMixin",
     "AbstractContainerScreenSlotHighlightMixin",
     "AvatarRendererMixin",

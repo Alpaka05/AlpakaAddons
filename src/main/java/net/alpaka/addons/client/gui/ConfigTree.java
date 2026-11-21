@@ -166,8 +166,7 @@ public final class ConfigTree {
             "HUD Style", "HUD Style",
             "Notification Customization", "Notifications",
             "Scoreboard", "Scoreboard Style",
-            "Hide Fire Overlay", "Hide Fire Overlay",
-            "Enchantments", "Enchantments"
+            "Hide Fire Overlay", "Hide Fire Overlay"
     );
 
     /** What a feature built from a header is about; it has no master option to take it from. */
@@ -177,8 +176,7 @@ public final class ConfigTree {
             "HUD Style", "Main switches for the blurred panels and the smooth font of every HUD, and how strongly the world is blurred.",
             "Scoreboard", "The sidebar scoreboard's footer, background and font.",
             "Hide Fire Overlay", "Hides the flames on burning mobs, and fades, lowers or stills the fire on your screen while you burn.",
-            "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result.",
-            "Enchantments", "Maxed enchantments in their own color in tooltips, and the books that combine with the one in the anvil highlighted."
+            "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result."
     );
 
     /**
@@ -213,7 +211,7 @@ public final class ConfigTree {
                             "clean_blaze", "blaze_fire_pits"},
                     {"Garden", "farming_hud_enabled", "pest_finder", "alignment_helper", "visitor_bazaar"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "ignore_filler_panes", "slot_highlight", "#Enchantments", "cache_resource_pack",
+                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "ignore_filler_panes", "slot_highlight", "cache_resource_pack",
                             "profile_dashboard"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
                             "item_search",

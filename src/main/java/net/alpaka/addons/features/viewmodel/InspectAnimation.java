@@ -116,6 +116,26 @@ public final class InspectAnimation {
             key(0.76f, 0, 0, 0, -18),
             rest(1.0f));
 
+    /** A key with the item drawn a little up and closer, for looking at it more closely. */
+    private static Key near(float time, float pitch, float yaw, float roll, float spin) {
+        return new Key(time, new Pose(0, 0.03f, 0.06f, pitch, yaw, roll, spin));
+    }
+
+    /**
+     * A closer look: drawn a little nearer and held at one view after another, slower than the
+     * other variants. First its face, tipped towards you, then its other face, then from above
+     * along its length.
+     */
+    static final Variant CLOSE_LOOK = new Variant("Close Look", 3.4f,
+            rest(0.0f),
+            near(0.12f, 20, 0, 0, 80),
+            near(0.28f, 24, 0, 5, 95),
+            near(0.42f, 10, 0, 0, -80),
+            near(0.56f, 14, 0, -5, -95),
+            near(0.70f, -35, 0, 0, 0),
+            near(0.84f, -30, 0, 10, 10),
+            rest(1.0f));
+
     /** Spun twice in the screen's plane, for long items held like a baton. */
     static final Variant TWIRL = new Variant("Twirl", 1.6f,
             rest(0.0f),
@@ -175,13 +195,13 @@ public final class InspectAnimation {
 
     /** The kinds of held item, each with its variants. */
     public enum Kind {
-        SWORD(HELD_MIDDLE, HELD_LENGTH, FLIP, BLADE_SPIN, PROPELLER, EDGE_CHECK),
-        TOOL(HELD_MIDDLE, HELD_LENGTH, FLIP, BLADE_SPIN, PROPELLER),
-        BOW(HELD_MIDDLE, HELD_LENGTH, EDGE_CHECK, PROPELLER),
-        POLE(HELD_MIDDLE, HELD_LENGTH, TWIRL, BLADE_SPIN, FLIP),
-        BLOCK(BLOCK_MIDDLE, UPRIGHT, TURNTABLE, TUMBLE, PROPELLER),
-        FOOD(HELD_MIDDLE, HELD_LENGTH, SNIFF, EDGE_CHECK, BLADE_SPIN),
-        ITEM(HELD_MIDDLE, HELD_LENGTH, BLADE_SPIN, FLIP, PROPELLER, EDGE_CHECK),
+        SWORD(HELD_MIDDLE, HELD_LENGTH, FLIP, BLADE_SPIN, PROPELLER, EDGE_CHECK, CLOSE_LOOK),
+        TOOL(HELD_MIDDLE, HELD_LENGTH, FLIP, BLADE_SPIN, PROPELLER, CLOSE_LOOK),
+        BOW(HELD_MIDDLE, HELD_LENGTH, EDGE_CHECK, PROPELLER, CLOSE_LOOK),
+        POLE(HELD_MIDDLE, HELD_LENGTH, TWIRL, BLADE_SPIN, FLIP, CLOSE_LOOK),
+        BLOCK(BLOCK_MIDDLE, UPRIGHT, TURNTABLE, TUMBLE, PROPELLER, CLOSE_LOOK),
+        FOOD(HELD_MIDDLE, HELD_LENGTH, SNIFF, EDGE_CHECK, BLADE_SPIN, CLOSE_LOOK),
+        ITEM(HELD_MIDDLE, HELD_LENGTH, BLADE_SPIN, FLIP, PROPELLER, EDGE_CHECK, CLOSE_LOOK),
         HAND(new float[3], UPRIGHT, HAND_CHECK, WRIST_ROLL);
 
         /** The point the item turns about, from where the hand is, in blocks (right hand). */

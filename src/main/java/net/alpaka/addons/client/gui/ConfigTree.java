@@ -32,7 +32,7 @@ public final class ConfigTree {
         /** The sidebar entry it is listed under; set when the layout places it. */
         public Section section;
 
-        Feature(String title, String description, ConfigOption master) {
+        public Feature(String title, String description, ConfigOption master) {
             this.title = title;
             this.description = description;
             this.master = master;
@@ -73,7 +73,7 @@ public final class ConfigTree {
         public final String title;
         public final List<Feature> features = new ArrayList<>();
 
-        Section(String title) {
+        public Section(String title) {
             this.title = title;
         }
     }
@@ -83,7 +83,7 @@ public final class ConfigTree {
         public final String title;
         public final List<Section> sections = new ArrayList<>();
 
-        Group(String title) {
+        public Group(String title) {
             this.title = title;
         }
     }

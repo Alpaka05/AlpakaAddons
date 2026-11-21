@@ -172,8 +172,28 @@ public class ConfigOption {
                 keywords);
         self[0] = option;
         option.colorGetter = getter;
+        option.colorSetter = setter;
+        option.colorDefault = defaultColor;
         return option;
     }
+
+    /** Set for color options only: writes the color, and what a fresh config holds. */
+    private java.util.function.IntConsumer colorSetter;
+    private int colorDefault;
+
+    /** The color as it is stored, without the rainbow {@link #getColor} lays over it. */
+    public int getStoredColor() { return colorGetter.getAsInt(); }
+
+    /** Sets a color option's color, the same way its picker does. */
+    public void setColor(int argb) {
+        if (colorSetter != null) colorSetter.accept(argb);
+    }
+
+    /** The color a fresh config holds for this option. */
+    public int getDefaultColor() { return colorDefault; }
+
+    /** Whether the option's picker offers more than one color: a rainbow or a gradient. */
+    public boolean hasColorEffects() { return chromaField != null || gradientEndField != null; }
 
     /** The color option's rainbow, or null for one without; see {@link #withChroma}. */
     private java.util.function.Function<AlpakaConfig, net.alpaka.addons.config.Chroma> chromaField;
@@ -370,6 +390,11 @@ public class ConfigOption {
     /** The last value {@link #getFormattedValue} formatted without a formatter, and its text. */
     private float defaultFormattedFor = Float.NaN;
     private String defaultFormatted;
+
+    /** How the slider words a value that is not (yet) its own, for a menu that draws the slider itself. */
+    public String format(float value) {
+        return formatter != null ? formatter.apply(value) : String.format(Locale.ROOT, "%.1f", value);
+    }
 
     public String getFormattedValue() {
         float value = getFloat();

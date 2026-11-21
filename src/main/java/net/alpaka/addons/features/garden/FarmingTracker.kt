@@ -2,12 +2,12 @@ package net.alpaka.addons.features.garden
 
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.profile.Levels
+import net.alpaka.addons.features.tablist.TabListParser
 import net.alpaka.addons.mixin.PlayerTabOverlayAccessor
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
-import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.component.DataComponents
@@ -395,7 +395,7 @@ object FarmingTracker {
     private fun tabLines(mc: Minecraft): List<String> {
         val accessor = mc.gui.hud.tabList as PlayerTabOverlayAccessor
         return accessor.`alpaka$getPlayerInfos`().map { info ->
-            ChatFormatting.stripFormatting(mc.gui.hud.tabList.getNameForDisplay(info).string).orEmpty()
+            TabListParser.plain(mc.gui.hud.tabList.getNameForDisplay(info))
         }
     }
 

@@ -4,8 +4,9 @@ package net.alpaka.addons.features.viewmodel;
  * The inspect animations: one per kind of held item, each a list of key poses that the hand moves
  * through on a smooth curve.
  *
- * A pose is an offset and a rotation of the hand in camera space, taken about the point where the
- * hand holds the item, so the item turns in the hand instead of swinging around the camera. The
+ * A pose is an offset and a rotation of the hand in camera space, taken about the item's middle, so
+ * the item is turned where it is held instead of being brought into view; the animations only use
+ * the offset for a small toss. The
  * values are written for the right hand; the left hand gets them mirrored. Turns past 360° are
  * allowed and intended: a key at 360° looks like rest but makes the curve spin through a full turn
  * on the way there, and the last key of a spin stays at 360° so the hand does not unwind.
@@ -60,10 +61,6 @@ public final class InspectAnimation {
         return new Key(time, Pose.REST);
     }
 
-    /** Where an item is held up to be looked at: towards the middle of the screen and fully in view. */
-    private static final float UP_X = -0.30f;
-    private static final float UP_Y = 0.24f;
-
     /** The point an item turns about, from where the hand holds it: about the middle of a held item. */
     private static final float[] ITEM_MIDDLE = {-0.08f, 0.16f, -0.04f};
     private static final float[] GRIP = {0.0f, 0.0f, 0.0f};
@@ -71,66 +68,66 @@ public final class InspectAnimation {
     /** The kinds of held item, each with its own animation and length. */
     public enum Kind {
         /**
-         * Blade check: the sword is held up, turns its flat towards you, flips to the other side,
+         * Blade check: the sword turns its flat towards you, flips to the other side,
          * then is twirled once and settles back.
          */
         SWORD(2.6f, ITEM_MIDDLE,
                 rest(0.0f),
-                key(0.14f, UP_X, UP_Y, 0.0f, -10, -40, 15),
-                key(0.34f, UP_X, UP_Y + 0.01f, 0.0f, -5, 50, 10),
-                key(0.48f, UP_X + 0.02f, UP_Y + 0.03f, 0.0f, 0, 0, 20),
-                key(0.72f, UP_X + 0.02f, UP_Y + 0.02f, 0.0f, 0, 0, 380),
+                key(0.14f, 0.0f, 0.0f, 0.0f, -10, -40, 15),
+                key(0.34f, 0.0f, 0.0f, 0.0f, -5, 50, 10),
+                key(0.48f, 0.0f, 0.0f, 0.0f, 0, 0, 20),
+                key(0.72f, 0.0f, 0.0f, 0.0f, 0, 0, 380),
                 key(1.0f, 0, 0, 0, 0, 0, 360)),
         /**
-         * Toss and catch: the tool is turned to show its head from both sides, then tossed up
-         * flipping end over end and caught.
+         * Toss and catch: the tool is turned to show its head from both sides, then given a little toss
+         * that flips it end over end, and caught.
          */
         TOOL(2.4f, ITEM_MIDDLE,
                 rest(0.0f),
-                key(0.15f, UP_X, UP_Y, 0.0f, -10, -40, 0),
-                key(0.34f, UP_X, UP_Y, 0.0f, -5, 35, 15),
-                key(0.46f, UP_X, UP_Y - 0.06f, 0.0f, 10, 10, 10),
-                key(0.62f, UP_X, UP_Y + 0.22f, 0.0f, -190, 0, 5),
-                key(0.78f, UP_X, UP_Y - 0.02f, 0.0f, -360, 0, 0),
+                key(0.15f, 0.0f, 0.0f, 0.0f, -10, -40, 0),
+                key(0.34f, 0.0f, 0.0f, 0.0f, -5, 35, 15),
+                key(0.46f, 0.0f, -0.03f, 0.0f, 10, 10, 10),
+                key(0.62f, 0.0f, 0.10f, 0.0f, -190, 0, 5),
+                key(0.78f, 0.0f, 0.0f, 0.0f, -360, 0, 0),
                 key(1.0f, 0, 0, 0, -360, 0, 0)),
         /** Sight down: the bow is turned to look along it, held, shown from the back, and lowered. */
         BOW(2.4f, ITEM_MIDDLE,
                 rest(0.0f),
-                key(0.20f, UP_X, UP_Y, 0.0f, 10, 70, 0),
-                key(0.48f, UP_X, UP_Y + 0.01f, 0.0f, 8, 70, -25),
-                key(0.70f, UP_X, UP_Y, 0.0f, 0, -30, 15),
+                key(0.20f, 0.0f, 0.0f, 0.0f, 10, 70, 0),
+                key(0.48f, 0.0f, 0.0f, 0.0f, 8, 70, -25),
+                key(0.70f, 0.0f, 0.0f, 0.0f, 0, -30, 15),
                 rest(1.0f)),
         /** Twirl: the long item is spun twice around its middle like a baton. */
         POLE(2.2f, ITEM_MIDDLE,
                 rest(0.0f),
-                key(0.14f, UP_X, UP_Y, 0.0f, 0, -15, 15),
-                key(0.70f, UP_X, UP_Y + 0.02f, 0.0f, 0, -15, 735),
+                key(0.14f, 0.0f, 0.0f, 0.0f, 0, -15, 15),
+                key(0.70f, 0.0f, 0.0f, 0.0f, 0, -15, 735),
                 key(1.0f, 0, 0, 0, 0, 0, 720)),
-        /** Turntable: the block or head is held up in front and turned once all the way round. */
+        /** Turntable: the block or head is turned once all the way round. */
         BLOCK(2.2f, ITEM_MIDDLE,
                 rest(0.0f),
-                key(0.18f, UP_X, UP_Y, 0.0f, 15, 0, 0),
-                key(0.82f, UP_X, UP_Y, 0.0f, 15, 360, 0),
+                key(0.18f, 0.0f, 0.0f, 0.0f, 15, 0, 0),
+                key(0.82f, 0.0f, 0.0f, 0.0f, 15, 360, 0),
                 key(1.0f, 0, 0, 0, 0, 360, 0)),
-        /** A sniff: the food is brought up close, turned a little each way, and lowered. */
+        /** A sniff: the food is tipped towards you and turned a little each way. */
         FOOD(1.8f, ITEM_MIDDLE,
                 rest(0.0f),
-                key(0.22f, UP_X - 0.04f, UP_Y - 0.02f, 0.06f, 25, -15, 0),
-                key(0.45f, UP_X - 0.04f, UP_Y - 0.01f, 0.07f, 25, 15, 0),
-                key(0.68f, UP_X - 0.04f, UP_Y - 0.02f, 0.06f, 20, -10, 0),
+                key(0.22f, 0.0f, 0.0f, 0.0f, 25, -15, 0),
+                key(0.45f, 0.0f, 0.0f, 0.0f, 25, 15, 0),
+                key(0.68f, 0.0f, 0.0f, 0.0f, 20, -10, 0),
                 rest(1.0f)),
-        /** Look over: anything else is held up and turned once to show its back. */
+        /** Look over: anything else is turned once to show its back. */
         ITEM(2.2f, ITEM_MIDDLE,
                 rest(0.0f),
-                key(0.18f, UP_X, UP_Y, 0.0f, 0, -30, 10),
-                key(0.55f, UP_X, UP_Y + 0.01f, 0.0f, 10, 180, -10),
-                key(0.82f, UP_X + 0.04f, UP_Y - 0.03f, 0.0f, 0, 340, 5),
+                key(0.18f, 0.0f, 0.0f, 0.0f, 0, -30, 10),
+                key(0.55f, 0.0f, 0.0f, 0.0f, 10, 180, -10),
+                key(0.82f, 0.0f, 0.0f, 0.0f, 0, 340, 5),
                 key(1.0f, 0, 0, 0, 0, 360, 0)),
-        /** Hand check: the empty hand is raised and turned to look at the back of it and then the fist. */
+        /** Hand check: the empty hand is turned to look at the back of it and then the fist. */
         HAND(1.8f, GRIP,
                 rest(0.0f),
-                key(0.25f, -0.14f, 0.16f, 0.0f, 0, -25, 30),
-                key(0.60f, -0.14f, 0.16f, 0.0f, -15, 20, -15),
+                key(0.25f, 0.0f, 0.0f, 0.0f, 0, -25, 30),
+                key(0.60f, 0.0f, 0.0f, 0.0f, -15, 20, -15),
                 rest(1.0f));
 
         /** How long the animation runs at speed 1, in seconds. */

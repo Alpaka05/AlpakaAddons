@@ -3,8 +3,8 @@ package net.alpaka.addons.features.skills;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.market.Coins;
 import net.alpaka.addons.features.profile.Levels;
-import net.alpaka.addons.features.tablist.TabListParser;
 import net.alpaka.addons.mixin.PlayerTabOverlayAccessor;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -247,7 +247,7 @@ public final class ExactSkillXp {
         List<String> lines = new ArrayList<>();
         if (mc.player == null || mc.gui == null) return lines;
         for (PlayerInfo info : ((PlayerTabOverlayAccessor) mc.gui.hud.getTabList()).alpaka$getPlayerInfos()) {
-            lines.add(TabListParser.plain(mc.gui.hud.getTabList().getNameForDisplay(info)));
+            lines.add(ChatFormatting.stripFormatting(mc.gui.hud.getTabList().getNameForDisplay(info).getString()));
         }
         return lines;
     }

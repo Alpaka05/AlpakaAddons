@@ -32,9 +32,27 @@ import java.util.Locale;
  */
 public final class CommandShortcuts {
 
+    // The modifier bits a shortcut is stored with. These are the values the config has always
+    // held (they were GLFW's), kept so a config written on 26.2 still means the same. A key event
+    // since 26.3 carries SDL's bits instead, one per side of the keyboard, so it goes through
+    // storedModifiers first.
+    public static final int SHIFT = 1;
+    public static final int CONTROL = 2;
+    public static final int ALT = 4;
+    public static final int SUPER = 8;
+
     /** The modifier bits a key shortcut can ask for; Caps Lock and Num Lock don't count. */
-    public static final int MODIFIER_MASK =
-            InputConstants.MOD_SHIFT | InputConstants.MOD_CONTROL | InputConstants.MOD_ALT | InputConstants.MOD_SUPER;
+    public static final int MODIFIER_MASK = SHIFT | CONTROL | ALT | SUPER;
+
+    /** A key event's modifiers as a shortcut stores them: either side of the keyboard counts. */
+    public static int storedModifiers(int eventModifiers) {
+        int stored = 0;
+        if ((eventModifiers & InputConstants.MOD_SHIFT) != 0) stored |= SHIFT;
+        if ((eventModifiers & InputConstants.MOD_CONTROL) != 0) stored |= CONTROL;
+        if ((eventModifiers & InputConstants.MOD_ALT) != 0) stored |= ALT;
+        if ((eventModifiers & InputConstants.MOD_SUPER) != 0) stored |= SUPER;
+        return stored;
+    }
 
     private CommandShortcuts() {
     }
@@ -125,13 +143,13 @@ public final class CommandShortcuts {
         List<KeyShortcut> shortcuts = AlpakaConfig.instance.commandKeyShortcuts;
         if (shortcuts == null || shortcuts.isEmpty()) return false;
         String key = InputConstants.getKey(event).getName();
-        KeyShortcut hit = find(shortcuts, key, event.modifiers());
+        KeyShortcut hit = find(shortcuts, key, storedModifiers(event.modifiers()));
         if (hit == null) return false;
         if (!repeat) Outbound.command(cleanCommand(hit.command), Outbound.Cause.KEY_PRESS);
         return true;
     }
 
-    /** The shortcut for a key pressed with the given modifiers, or null. */
+    /** The shortcut for a key pressed with the given modifiers (as stored, see SHIFT), or null. */
     public static KeyShortcut find(List<KeyShortcut> shortcuts, String key, int modifiers) {
         int held = modifiers & MODIFIER_MASK;
         for (KeyShortcut shortcut : shortcuts) {
@@ -148,7 +166,7 @@ public final class CommandShortcuts {
         return key == InputConstants.KEY_LSHIFT || key == InputConstants.KEY_RSHIFT
                 || key == InputConstants.KEY_LCONTROL || key == InputConstants.KEY_RCONTROL
                 || key == InputConstants.KEY_LALT || key == InputConstants.KEY_RALT
-                || key == InputConstants.KEY_LSUPER || key == InputConstants.KEY_RSUPER;
+                || key == InputConstants.KEY_LGUI || key == InputConstants.KEY_RGUI;
     }
 
     /** How a shortcut's key reads: "Ctrl + Shift + Y", or "Not Bound". */
@@ -157,10 +175,10 @@ public final class CommandShortcuts {
         StringBuilder sb = new StringBuilder();
         int mods = shortcut.modifiers;
         boolean mac = net.minecraft.util.Util.getPlatform() == net.minecraft.util.Util.OS.OSX;
-        if ((mods & InputConstants.MOD_CONTROL) != 0) sb.append("Ctrl + ");
-        if ((mods & InputConstants.MOD_ALT) != 0) sb.append(mac ? "Option + " : "Alt + ");
-        if ((mods & InputConstants.MOD_SHIFT) != 0) sb.append("Shift + ");
-        if ((mods & InputConstants.MOD_SUPER) != 0) sb.append(mac ? "Cmd + " : "Super + ");
+        if ((mods & CONTROL) != 0) sb.append("Ctrl + ");
+        if ((mods & ALT) != 0) sb.append(mac ? "Option + " : "Alt + ");
+        if ((mods & SHIFT) != 0) sb.append("Shift + ");
+        if ((mods & SUPER) != 0) sb.append(mac ? "Cmd + " : "Super + ");
         String name;
         try {
             name = InputConstants.getKey(shortcut.key).getDisplayName().getString();

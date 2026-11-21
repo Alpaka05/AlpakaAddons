@@ -1,8 +1,11 @@
 package net.alpaka.addons.features.blockoverlay;
 
-import com.mojang.blaze3d.pipeline.DepthStencilState;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.platform.CompareOp;
+import com.mojang.renderpearl.api.pipeline.BlendFunction;
+import net.minecraft.client.renderer.oit.OitPipelineSet;
+import com.mojang.renderpearl.api.pipeline.ColorTargetState;
+import com.mojang.renderpearl.api.pipeline.DepthStencilState;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.CompareOp;
 import net.alpaka.addons.mixin.RenderPipelinesAccessor;
 import net.alpaka.addons.mixin.RenderTypeInvoker;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
@@ -48,7 +51,9 @@ public final class BlockOverlayRenderTypes {
                     .build());
             noDepthQuads = RenderTypeInvoker.alpaka$create(
                 "alpaka_block_overlay_no_depth",
-                RenderSetup.builder(pipeline).sortOnUpload().createRenderSetup());
+                RenderSetup.builder(pipeline)
+                    .setOitPipelines(oit("alpaka_block_overlay_no_depth", RenderPipelinesAccessor.alpaka$oitDebugFilledSnippet()))
+                    .sortOnUpload().createRenderSetup());
         }
         return noDepthQuads;
     }
@@ -59,13 +64,30 @@ public final class BlockOverlayRenderTypes {
             RenderPipeline pipeline = RenderPipelinesAccessor.alpaka$register(
                 RenderPipeline.builder(RenderPipelinesAccessor.alpaka$linesSnippet())
                     .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/lines_no_depth"))
+                    // Since 26.3 the lines snippet names no color target; each pipeline does.
+                    .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
                     .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
                     .build());
             noDepthLines = RenderTypeInvoker.alpaka$create(
                 "alpaka_lines_no_depth",
-                RenderSetup.builder(pipeline).createRenderSetup());
+                RenderSetup.builder(pipeline)
+                    .setOitPipelines(oit("alpaka_lines_no_depth", RenderPipelinesAccessor.alpaka$oitLinesSnippet()))
+                    .createRenderSetup());
         }
         return noDepthLines;
+    }
+
+    /**
+     * The pipelines a see-through render type is drawn with while "Improved Transparency" is on.
+     * 26.3 then draws everything that blends through three pipelines of its own and refuses a
+     * render type that has none; these are vanilla's for the same shader, without the depth test.
+     */
+    private static OitPipelineSet oit(String name, RenderPipeline.Snippet snippet) {
+        OitPipelineSet set = OitPipelineSet.builder(name, RenderPipeline.builder(snippet)).withoutDepthTest().build();
+        RenderPipelinesAccessor.alpaka$register(set.depthBoundsPipeline());
+        RenderPipelinesAccessor.alpaka$register(set.transmittancePipeline());
+        RenderPipelinesAccessor.alpaka$register(set.accumulatePipeline());
+        return set;
     }
 
     /** The render type for the current settings: vanilla's debug quads, or the see-through copy. */

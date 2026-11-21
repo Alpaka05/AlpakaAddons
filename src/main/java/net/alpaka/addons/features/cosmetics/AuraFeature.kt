@@ -1,11 +1,11 @@
 package net.alpaka.addons.features.cosmetics
 
-import com.mojang.blaze3d.PrimitiveTopology
-import com.mojang.blaze3d.pipeline.BlendFunction
-import com.mojang.blaze3d.pipeline.ColorTargetState
-import com.mojang.blaze3d.pipeline.DepthStencilState
-import com.mojang.blaze3d.pipeline.RenderPipeline
-import com.mojang.blaze3d.platform.CompareOp
+import com.mojang.renderpearl.api.pipeline.PrimitiveTopology
+import com.mojang.renderpearl.api.pipeline.BlendFunction
+import com.mojang.renderpearl.api.pipeline.ColorTargetState
+import com.mojang.renderpearl.api.pipeline.DepthStencilState
+import com.mojang.renderpearl.api.pipeline.RenderPipeline
+import com.mojang.renderpearl.api.pipeline.CompareOp
 import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.mixin.RenderPipelinesAccessor
@@ -112,7 +112,8 @@ object AuraFeature {
                 .withVertexShader(Identifier.fromNamespaceAndPath("alpaka", "core/aura"))
                 .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "core/aura"))
                 .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-                .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+                .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+                .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
                 .withCull(false)
                 .withColorTargetState(ColorTargetState(BlendFunction.TRANSLUCENT_PREMULTIPLIED_ALPHA))
                 .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)

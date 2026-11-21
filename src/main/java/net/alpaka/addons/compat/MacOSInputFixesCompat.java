@@ -1,10 +1,10 @@
 package net.alpaka.addons.compat;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import net.fabricmc.loader.api.FabricLoader;
-import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +32,7 @@ public final class MacOSInputFixesCompat {
 
     /** Whether this key press is the copy MacOS Input Fixes is about to cancel, and is to be ignored. */
     public static boolean isDiscardedCopy(int key) {
-        if (key != GLFW.GLFW_KEY_TAB && key != GLFW.GLFW_KEY_ESCAPE) return false;
+        if (key != InputConstants.KEY_TAB && key != InputConstants.KEY_ESCAPE) return false;
         if (!resolve()) return false;
         try {
             return !(boolean) allowInput.invokeExact();

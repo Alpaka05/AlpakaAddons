@@ -42,7 +42,7 @@ import net.minecraft.world.level.block.MushroomBlock;
 import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.NetherWartBlock;
 import net.minecraft.world.level.block.RailBlock;
-import net.minecraft.world.level.block.RedStoneWireBlock;
+import net.minecraft.world.level.block.RedstoneWireBlock;
 import net.minecraft.world.level.block.RedstoneTorchBlock;
 import net.minecraft.world.level.block.RepeaterBlock;
 import net.minecraft.world.level.block.SaplingBlock;
@@ -352,7 +352,7 @@ public final class EtherwarpOverlayFeature {
                 || block instanceof SugarCaneBlock
                 || block instanceof MushroomBlock
                 || block instanceof NetherWartBlock
-                || block instanceof RedStoneWireBlock || block instanceof ComparatorBlock || block instanceof RepeaterBlock
+                || block instanceof RedstoneWireBlock || block instanceof ComparatorBlock || block instanceof RepeaterBlock
                 || block instanceof SmallDripleafBlock || block instanceof BigDripleafStemBlock
                 || block instanceof DoublePlantBlock
                 || block instanceof LeverBlock

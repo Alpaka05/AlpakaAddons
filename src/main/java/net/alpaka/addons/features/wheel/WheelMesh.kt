@@ -1,6 +1,6 @@
 package net.alpaka.addons.features.wheel
 
-import com.mojang.blaze3d.pipeline.RenderPipeline
+import com.mojang.renderpearl.api.pipeline.RenderPipeline
 import com.mojang.blaze3d.vertex.VertexConsumer
 import net.alpaka.addons.client.gui.AlpakaGuiPipelines
 import net.alpaka.addons.features.chat.ChatBlurFeature

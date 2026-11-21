@@ -8,7 +8,6 @@ import net.alpaka.addons.client.AlpakaKeyBinds
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
 import net.minecraft.world.item.Item
-import org.lwjgl.glfw.GLFW
 
 /**
  * Decides when the inventory HUD is on screen, and animates it fading in above the hotbar when it
@@ -102,10 +101,10 @@ object InventoryHudFeature {
         TOGGLE_KEY = AlpakaKeyBinds.register(
             KeyMapping(
                 "key.alpaka.inventory_hud",
-                InputConstants.Type.KEYSYM,
+                InputConstants.Type.KEYBOARD,
                 // Unbound for fresh installs: H is Skyblocker's slot lock. A key the player bound
                 // stays as it is.
-                GLFW.GLFW_KEY_UNKNOWN,
+                InputConstants.UNKNOWN.value,
                 AlpakaKeyCategory.CATEGORY
             )
         )

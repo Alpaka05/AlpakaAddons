@@ -2,7 +2,7 @@ package net.alpaka.addons.features.mainmenu
 
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem
-import com.mojang.blaze3d.textures.FilterMode
+import com.mojang.renderpearl.api.textures.FilterMode
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.texture.DynamicTexture

@@ -3,7 +3,7 @@ package net.alpaka.addons.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
-import com.mojang.blaze3d.systems.RenderPass;
+import com.mojang.renderpearl.api.commands.RenderPass;
 import net.alpaka.addons.client.gui.GuiItemFade;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.minecraft.client.gui.render.GuiRenderer;
@@ -58,8 +58,8 @@ public class GuiRendererMixin {
     }
 
     @WrapOperation(
-        method = "enableScissor(Lnet/minecraft/client/gui/navigation/ScreenRectangle;Lcom/mojang/blaze3d/systems/RenderPass;)V",
-        at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/RenderPass;enableScissor(IIII)V")
+        method = "enableScissor(Lnet/minecraft/client/gui/navigation/ScreenRectangle;Lcom/mojang/renderpearl/api/commands/RenderPass;)V",
+        at = @At(value = "INVOKE", target = "Lcom/mojang/renderpearl/api/commands/RenderPass;enableScissor(IIII)V")
     )
     private void alpaka$clampScissorToWindow(RenderPass pass, int x, int y, int width, int height, Operation<Void> original) {
         if (x < 0) {
@@ -83,7 +83,7 @@ public class GuiRendererMixin {
 
     @ModifyArg(
         method = "submitBlitFromItemAtlas",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/state/gui/BlitRenderState;<init>(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/client/gui/render/TextureSetup;Lorg/joml/Matrix3x2fc;IIIIFFFFILnet/minecraft/client/gui/navigation/ScreenRectangle;Lnet/minecraft/client/gui/navigation/ScreenRectangle;)V"),
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/state/gui/BlitRenderState;<init>(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/client/gui/render/TextureSetup;Lorg/joml/Matrix3x2fc;IIIIFFFFILnet/minecraft/client/gui/navigation/ScreenRectangle;Lnet/minecraft/client/gui/navigation/ScreenRectangle;)V"),
         index = 11
     )
     private int alpaka$fadeAtlasItem(int color, @Local(argsOnly = true) GuiItemRenderState item) {

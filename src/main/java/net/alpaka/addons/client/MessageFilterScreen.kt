@@ -1,5 +1,7 @@
 package net.alpaka.addons.client
 
+import net.alpaka.addons.utils.MouseButtons
+import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.EditableText
@@ -12,7 +14,6 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import org.lwjgl.glfw.GLFW
 import kotlin.math.max
 import kotlin.math.min
 
@@ -255,7 +256,7 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
     // ------------------------------------------------------------------ input
 
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
-        if (event.button() != 0) return super.mouseClicked(event, isDoubleClick)
+        if (event.button() != MouseButtons.LEFT) return super.mouseClicked(event, isDoubleClick)
         val mouseX = event.x().toInt()
         val mouseY = event.y().toInt()
         val f = frame()
@@ -361,11 +362,11 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
     override fun keyPressed(event: KeyEvent): Boolean {
         if (inputFocused) {
             when (event.key()) {
-                GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
+                InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
                     submit()
                     return true
                 }
-                GLFW.GLFW_KEY_ESCAPE -> {
+                InputConstants.KEY_ESCAPE -> {
                     // Esc first drops the edit, then the focus, and only then closes the screen.
                     if (editing >= 0) stopEditing() else inputFocused = false
                     return true

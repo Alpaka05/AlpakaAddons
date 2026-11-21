@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.slayer
 
+import net.alpaka.addons.utils.MouseButtons
 import java.util.Locale
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.client.hud.HudElement
@@ -103,7 +104,7 @@ object SlayerHudElement : HudElement {
      * is no session to hold, would be a no-op that silently ate the click.
      */
     fun handleChatClick(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        if (button != 0) return false
+        if (button != MouseButtons.LEFT) return false
         val drawn = SlayerHudRenderer.lastDrawnBounds ?: return false
         if (!drawn.contains(mouseX, mouseY)) return false
 

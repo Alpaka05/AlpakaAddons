@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.chat;
 
+import net.alpaka.addons.utils.MouseButtons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.minecraft.ChatFormatting;
@@ -36,7 +37,7 @@ public final class ChatCopyFeature {
 
     /** A click in the chat screen; true when it copied a message and is used up. */
     public static boolean handleClick(int button, boolean withCodes) {
-        if (button != 1 || !isEnabled() || hovered == null) return false;
+        if (button != MouseButtons.RIGHT || !isEnabled() || hovered == null) return false;
         String plain = plainText(hovered.content());
         if (plain.isEmpty()) return false;
         Minecraft.getInstance().keyboardHandler.setClipboard(withCodes ? codedText(hovered.content()) : plain);

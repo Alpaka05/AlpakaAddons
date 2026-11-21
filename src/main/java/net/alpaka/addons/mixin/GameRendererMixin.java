@@ -19,7 +19,7 @@ public class GameRendererMixin {
      * check still gets its say.
      */
     @WrapOperation(
-        method = "renderItemInHand(Lnet/minecraft/client/renderer/state/level/CameraRenderState;FLorg/joml/Matrix4fc;)V",
+        method = "renderItemInHand(Lnet/minecraft/client/renderer/state/level/CameraRenderState;Lnet/minecraft/client/renderer/state/level/PlayerRenderState;Lcom/mojang/renderpearl/api/textures/GpuTextureView;)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/CameraType;isFirstPerson()Z",

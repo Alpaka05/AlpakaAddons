@@ -11,10 +11,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.ItemInHandRenderer;
+import net.minecraft.client.renderer.FirstPersonHandsAndItemsRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState;
+import net.minecraft.client.renderer.state.level.PlayerRenderState;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
@@ -28,31 +29,32 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.sugar.Local;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(ItemInHandRenderer.class)
-public class ItemInHandRendererMixin {
+/**
+ * The first-person hands: item size, position and rotation, the swing settings and the hooks the
+ * hand item features need. 26.3 draws them from a render state of the local player only, so there
+ * is no other player to filter out here; the held items' state lives in
+ * {@link FirstPersonHandsAndItemsMixin}.
+ */
+@Mixin(FirstPersonHandsAndItemsRenderer.class)
+public class FirstPersonHandsAndItemsRendererMixin {
     @Unique
     private static long swingStartTime = 0;
     @Unique
     private static boolean wasSwinging = false;
+    /**
+     * The player's swing last seen. Vanilla makes a new one for every swing it starts, even one that
+     * restarts an identical swing, so a different object is exactly a new swing.
+     */
     @Unique
-    private static int lastSwingTime = 0;
+    private static LivingEntity.SwingDescription lastSeenSwing = null;
+    /** The swing the custom animation is playing: its hand and kind (whack, stab). */
     @Unique
-    private static boolean lastSwinging = false;
-
-    @Shadow
-    private float mainHandHeight;
-
-    @Shadow
-    private float offHandHeight;
-
-    @Shadow
-    private float oMainHandHeight;
-
-    @Shadow
-    private float oOffHandHeight;
+    private static LivingEntity.SwingDescription activeSwing = null;
 
     @Shadow
     private void applyItemArmAttackTransform(PoseStack poseStack, HumanoidArm arm, float swingProgress) {
@@ -61,9 +63,9 @@ public class ItemInHandRendererMixin {
     /** No sway: the camera-lag rotations are left out. A condition rather than a redirect, so a viewmodel mod's hook on the same call still runs. */
     @WrapWithCondition(
             method = "submitHandsWithItems",
-            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;mulPose(Lorg/joml/Quaternionfc;)V")
+            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;rotateDegrees(Lcom/mojang/math/Axis;F)V")
     )
-    private boolean alpaka$keepSway(PoseStack poseStack, org.joml.Quaternionfc quaternion) {
+    private boolean alpaka$keepSway(PoseStack poseStack, Axis axis, float degrees) {
         return !(AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemSwayDisabled);
     }
 
@@ -104,10 +106,10 @@ public class ItemInHandRendererMixin {
         float midSwingCurve = Mth.sin(Mth.sqrt(attackProgress) * (float)Math.PI);
         
         float preY = 45.0f; // Standard Minecraft pre-Y rotation
-        poseStack.mulPose(Axis.YP.rotationDegrees((float)armSideSign * (preY + lateSwingCurve * AlpakaConfig.instance.swingArcY)));
-        poseStack.mulPose(Axis.ZP.rotationDegrees((float)armSideSign * midSwingCurve * AlpakaConfig.instance.swingArcZ));
-        poseStack.mulPose(Axis.XP.rotationDegrees(midSwingCurve * AlpakaConfig.instance.swingArcX));
-        poseStack.mulPose(Axis.YP.rotationDegrees((float)armSideSign * -preY));
+        poseStack.rotate(Axis.YP.rotationDegrees((float)armSideSign * (preY + lateSwingCurve * AlpakaConfig.instance.swingArcY)));
+        poseStack.rotate(Axis.ZP.rotationDegrees((float)armSideSign * midSwingCurve * AlpakaConfig.instance.swingArcZ));
+        poseStack.rotate(Axis.XP.rotationDegrees(midSwingCurve * AlpakaConfig.instance.swingArcX));
+        poseStack.rotate(Axis.YP.rotationDegrees((float)armSideSign * -preY));
     }
 
     @Inject(
@@ -115,10 +117,10 @@ public class ItemInHandRendererMixin {
             at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", shift = At.Shift.AFTER)
     )
     private void onBeforeRenderItem(
-            AbstractClientPlayer player, float tickProgress, float pitch, InteractionHand hand,
-            float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            PlayerRenderState player, FirstPersonHandsAndItemsRenderState hands, float tickProgress, float pitch,
+            InteractionHand hand, float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
             SubmitNodeCollector queue, int light, CallbackInfo ci) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && player == Minecraft.getInstance().player) {
+        if (AlpakaConfig.instance.itemSizeFeatureEnabled) {
             if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled && item.isEmpty()) {
                 return;
             }
@@ -135,28 +137,29 @@ public class ItemInHandRendererMixin {
 
     /** Which physical arm holds this hand's item, as vanilla works it out. */
     @org.spongepowered.asm.mixin.Unique
-    private static HumanoidArm alpaka$sideOf(AbstractClientPlayer player, InteractionHand hand) {
-        return hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
+    private static HumanoidArm alpaka$sideOf(PlayerRenderState player, InteractionHand hand) {
+        HumanoidArm main = player.avatarRenderState.mainArm;
+        return hand == InteractionHand.MAIN_HAND ? main : main.getOpposite();
     }
 
     @Inject(
             method = "submitArmWithItem",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemDisplayContext;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V")
+            at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT)
     )
     private void onRenderItem(
-            AbstractClientPlayer player, float tickProgress, float pitch, InteractionHand hand,
-            float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            PlayerRenderState player, FirstPersonHandsAndItemsRenderState hands, float tickProgress, float pitch,
+            InteractionHand hand, float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
             SubmitNodeCollector queue, int light, CallbackInfo ci) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && player == Minecraft.getInstance().player) {
+        if (AlpakaConfig.instance.itemSizeFeatureEnabled) {
             if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled && item.isEmpty()) {
                 return;
             }
             float scale = AlpakaConfig.instance.itemScale;
-            matrices.mulPose(Axis.XP.rotationDegrees(AlpakaConfig.instance.itemRotationX));
+            matrices.rotate(Axis.XP.rotationDegrees(AlpakaConfig.instance.itemRotationX));
             
             boolean isLeftHand = alpaka$sideOf(player, hand) == HumanoidArm.LEFT;
-            matrices.mulPose(Axis.YP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationY : AlpakaConfig.instance.itemRotationY));
-            matrices.mulPose(Axis.ZP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationZ : AlpakaConfig.instance.itemRotationZ));
+            matrices.rotate(Axis.YP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationY : AlpakaConfig.instance.itemRotationY));
+            matrices.rotate(Axis.ZP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationZ : AlpakaConfig.instance.itemRotationZ));
             
             matrices.scale(scale, scale, scale);
         }
@@ -164,69 +167,65 @@ public class ItemInHandRendererMixin {
 
     @Inject(
             method = "renderPlayerArm",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/EntityRenderDispatcher;getPlayerRenderer(Lnet/minecraft/client/player/AbstractClientPlayer;)Lnet/minecraft/client/renderer/entity/player/AvatarRenderer;")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/FirstPersonHandsAndItemsRenderer;renderPlayerHand(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;ILnet/minecraft/world/entity/HumanoidArm;Lnet/minecraft/client/renderer/state/level/PlayerRenderState;)V")
     )
     private void onRenderHand(
             PoseStack matrices, SubmitNodeCollector queue, int light, float equipProgress,
-            float swingProgress, HumanoidArm arm, CallbackInfo ci) {
+            float swingProgress, HumanoidArm arm, PlayerRenderState player, CallbackInfo ci) {
         if (AlpakaConfig.instance.itemSizeFeatureEnabled) {
             if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled) {
                 return;
             }
             float scale = AlpakaConfig.instance.itemScale;
-            matrices.mulPose(Axis.XP.rotationDegrees(AlpakaConfig.instance.itemRotationX));
+            matrices.rotate(Axis.XP.rotationDegrees(AlpakaConfig.instance.itemRotationX));
             boolean isLeftHand = (arm == HumanoidArm.LEFT);
-            matrices.mulPose(Axis.YP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationY : AlpakaConfig.instance.itemRotationY));
-            matrices.mulPose(Axis.ZP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationZ : AlpakaConfig.instance.itemRotationZ));
+            matrices.rotate(Axis.YP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationY : AlpakaConfig.instance.itemRotationY));
+            matrices.rotate(Axis.ZP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationZ : AlpakaConfig.instance.itemRotationZ));
             matrices.scale(scale, scale, scale);
         }
     }
 
     @ModifyVariable(method = "submitArmWithItem", at = @At("HEAD"), ordinal = 2, argsOnly = true)
     private float modifySwingProgress(
-            float swingProgress, AbstractClientPlayer player, float tickProgress, float pitch,
-            InteractionHand hand, float swingProgressArg, ItemStack item) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && player == Minecraft.getInstance().player) {
+            float swingProgress, PlayerRenderState playerState, FirstPersonHandsAndItemsRenderState hands,
+            float tickProgress, float pitch, InteractionHand hand, float swingProgressArg, ItemStack item) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (AlpakaConfig.instance.itemSizeFeatureEnabled && player != null) {
             if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled && item.isEmpty()) {
                 return swingProgress;
             }
-            // Only the hand that is swinging, as vanilla does; the other gets its 0 unchanged.
-            InteractionHand swinging = player.swingingArm != null ? player.swingingArm : InteractionHand.MAIN_HAND;
+            float progress = getCustomSwingProgress(player);
+            // Only the hand that is swinging, as vanilla does; the other gets its 0 unchanged. The
+            // custom swing can outlast vanilla's, so its hand is the one it remembered, not
+            // vanilla's attack hand, which is gone by then.
+            InteractionHand swinging = activeSwing != null ? activeSwing.hand()
+                    : hands.attackHand != null ? hands.attackHand : InteractionHand.MAIN_HAND;
             if (hand != swinging) return swingProgress;
-            return getCustomSwingProgress(player, swingProgress);
+            return progress;
         }
         return swingProgress;
     }
 
-    @ModifyVariable(method = "renderPlayerArm", at = @At("HEAD"), ordinal = 1, argsOnly = true)
-    private float modifySwingProgressHand(float swingProgress) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled) {
-            if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled) {
-                return swingProgress;
-            }
-            LocalPlayer player = Minecraft.getInstance().player;
-            if (player != null) {
-                return getCustomSwingProgress(player, swingProgress);
-            }
-        }
-        return swingProgress;
-    }
-
-    @Inject(method = "shouldInstantlyReplaceVisibleItem", at = @At("HEAD"), cancellable = true)
-    private void onShouldSkipAnimation(ItemStack from, ItemStack to, CallbackInfoReturnable<Boolean> cir) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) {
-            cir.setReturnValue(true);
-        }
-    }
-
-    @Inject(method = "tick", at = @At("TAIL"))
-    private void onUpdateHeldItems(CallbackInfo ci) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) {
-            this.mainHandHeight = 1.0f;
-            this.offHandHeight = 1.0f;
-            this.oMainHandHeight = 1.0f;
-            this.oOffHandHeight = 1.0f;
-        }
+    /**
+     * Since 26.3 vanilla only animates a hand while the player's own swing is running, and stops the
+     * moment it ends. A slower swing speed, or "Always Finish Swing", plays on past that point, so
+     * without this the item snapped back to rest mid-swing. While the custom swing is playing on
+     * this hand, the renderer sees the swing it belongs to. The bare arm needs nothing: vanilla
+     * draws its swing from the progress alone. The swing progress here is the one adjusted above,
+     * since the argument is read after the ModifyVariable at HEAD has run.
+     */
+    @ModifyExpressionValue(
+            method = "submitArmWithItem",
+            at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;currentSwing:Lnet/minecraft/world/entity/LivingEntity$SwingDescription;", opcode = Opcodes.GETFIELD)
+    )
+    private LivingEntity.SwingDescription alpaka$keepCustomSwing(
+            LivingEntity.SwingDescription original,
+            @Local(argsOnly = true) InteractionHand hand,
+            @Local(argsOnly = true, ordinal = 2) float swingProgress) {
+        if (!AlpakaConfig.instance.itemSizeFeatureEnabled) return original;
+        LivingEntity.SwingDescription active = activeSwing;
+        if (active == null || active.hand() != hand || swingProgress <= 0.0f) return original;
+        return active;
     }
 
     @Unique
@@ -240,15 +239,13 @@ public class ItemInHandRendererMixin {
      */
     @Inject(
             method = "submitArmWithItem",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemDisplayContext;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V")
+            at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT)
     )
     private void alpaka$noteSwing(
-            AbstractClientPlayer player, float tickProgress, float pitch, InteractionHand hand,
-            float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            PlayerRenderState player, FirstPersonHandsAndItemsRenderState hands, float tickProgress, float pitch,
+            InteractionHand hand, float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
             SubmitNodeCollector queue, int light, CallbackInfo ci) {
-        if (player == Minecraft.getInstance().player) {
-            ItemMotionBlurFeature.noteArmItem(hand, swingProgress);
-        }
+        ItemMotionBlurFeature.noteArmItem(hand, swingProgress);
     }
 
     /**
@@ -256,11 +253,11 @@ public class ItemInHandRendererMixin {
      * measurement, so the game starts without it if it cannot apply.
      */
     @WrapMethod(method = "submitHandsWithItems", require = 0)
-    private void alpaka$timeHands(float frameInterp, PoseStack poseStack, SubmitNodeCollector collector, LocalPlayer player,
-                                  int packedLight, Operation<Void> original) {
+    private void alpaka$timeHands(float frameInterp, PoseStack poseStack, SubmitNodeCollector collector, PlayerRenderState player,
+                                  FirstPersonHandsAndItemsRenderState hands, Operation<Void> original) {
         long t = AlpakaPerf.begin(AlpakaPerf.Section.HAND_ITEMS);
         try {
-            original.call(frameInterp, poseStack, collector, player, packedLight);
+            original.call(frameInterp, poseStack, collector, player, hands);
         } finally {
             AlpakaPerf.end(AlpakaPerf.Section.HAND_ITEMS, t);
         }
@@ -268,8 +265,7 @@ public class ItemInHandRendererMixin {
 
     // Everything the item state submits between these two points is one first-person hand item,
     // which is how the hand item lighting and motion blur features tell those submits apart from
-    // every other item in the world (this method also serves third-person held items, filtered out
-    // by context).
+    // every other item in the world.
     @Inject(method = "submitHandsWithItems", at = @At("HEAD"))
     private void alpaka$forgetLastFrameHandItems(CallbackInfo ci) {
         // 26.2 builds the item groups per render phase, so there is no single "all items drawn"
@@ -279,17 +275,24 @@ public class ItemInHandRendererMixin {
         ItemMotionBlurFeature.endFrame();
     }
 
-    @Inject(method = "renderItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT))
-    private void alpaka$beforeHandItemSubmit(LivingEntity entity, ItemStack stack, ItemDisplayContext context,
-                                             PoseStack poseStack, SubmitNodeCollector collector, int light, CallbackInfo ci) {
+    @Inject(method = "submitArmWithItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT))
+    private void alpaka$beforeHandItemSubmit(
+            PlayerRenderState player, FirstPersonHandsAndItemsRenderState hands, float tickProgress, float pitch,
+            InteractionHand hand, float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            SubmitNodeCollector collector, int light, CallbackInfo ci) {
+        LivingEntity entity = Minecraft.getInstance().player;
+        ItemDisplayContext context = alpaka$sideOf(player, hand) == HumanoidArm.RIGHT
+                ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND : ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
         HandItemLightingFeature.beginHandItem(entity, context);
         HandItemStarlightFeature.beginHandItem(entity, context);
         ItemMotionBlurFeature.beginHandItem(entity, context);
     }
 
-    @Inject(method = "renderItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT, shift = At.Shift.AFTER))
-    private void alpaka$afterHandItemSubmit(LivingEntity entity, ItemStack stack, ItemDisplayContext context,
-                                            PoseStack poseStack, SubmitNodeCollector collector, int light, CallbackInfo ci) {
+    @Inject(method = "submitArmWithItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT, shift = At.Shift.AFTER))
+    private void alpaka$afterHandItemSubmit(
+            PlayerRenderState player, FirstPersonHandsAndItemsRenderState hands, float tickProgress, float pitch,
+            InteractionHand hand, float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            SubmitNodeCollector collector, int light, CallbackInfo ci) {
         // The ghosts are submitted while the lighting feature is still capturing, so they lose their
         // shading along with the item they trail; starlight stops first, so they trail plain.
         HandItemStarlightFeature.endHandItem();
@@ -297,9 +300,9 @@ public class ItemInHandRendererMixin {
         HandItemLightingFeature.endHandItem();
     }
 
-    /** Set when a vanilla swing began while a custom swing was still playing under "Always Finish Swing". */
+    /** A vanilla swing that began while a custom swing was still playing under "Always Finish Swing". */
     @Unique
-    private static boolean pendingSwing = false;
+    private static LivingEntity.SwingDescription pendingSwing = null;
 
     /**
      * The swing progress the hand is drawn at, on the mod's own clock rather than vanilla's tick
@@ -315,45 +318,48 @@ public class ItemInHandRendererMixin {
      * the motion read as swing, pause, swing. Once the button is released the queued swing is
      * dropped, so the hand comes to rest with the current stroke instead of throwing one more.
      */
-    private float getCustomSwingProgress(AbstractClientPlayer player, float originalProgress) {
-        int currentSwingTime = player.swingTime;
-        boolean isSwingingNow = player.swinging;
+    private float getCustomSwingProgress(LocalPlayer player) {
+        // Seen at once, unlike a drop in the swing's progress, which vanilla only shows a tick or
+        // two after the restart. Called for both hands each frame; the second call sees no new
+        // swing, so it changes nothing.
+        LivingEntity.SwingDescription current = player.getCurrentSwing();
+        boolean newSwing = current != null && current != lastSeenSwing;
+        lastSeenSwing = current;
         long now = System.currentTimeMillis();
         boolean alwaysFinish = AlpakaConfig.instance.itemSwingAlwaysFinishEnabled;
 
-        if (isSwingingNow) {
-            boolean freshStart = !lastSwinging;
-            boolean newSwingReset = lastSwinging && (currentSwingTime < lastSwingTime);
-            if (freshStart || newSwingReset) {
-                if (!wasSwinging) {
-                    swingStartTime = now;
-                    wasSwinging = true;
-                } else if (alwaysFinish) {
-                    pendingSwing = true;
-                } else if (now - swingStartTime > 100) {
-                    swingStartTime = now;
-                }
+        if (newSwing) {
+            if (!wasSwinging) {
+                swingStartTime = now;
+                wasSwinging = true;
+                activeSwing = current;
+            } else if (alwaysFinish) {
+                pendingSwing = current;
+            } else if (now - swingStartTime > 100) {
+                swingStartTime = now;
+                activeSwing = current;
             }
         }
-        lastSwingTime = currentSwingTime;
-        lastSwinging = isSwingingNow;
 
         if (!wasSwinging) {
-            pendingSwing = false;
+            pendingSwing = null;
+            activeSwing = null;
             return 0.0f;
         }
         float duration = 250.0f / AlpakaConfig.instance.itemSwingSpeed;
         long elapsed = now - swingStartTime;
         if (elapsed >= duration) {
-            if (!pendingSwing || !alpaka$attackHeld()) {
+            if (pendingSwing == null || !alpaka$attackHeld()) {
                 wasSwinging = false;
-                pendingSwing = false;
+                pendingSwing = null;
+                activeSwing = null;
                 return 0.0f;
             }
             // Chain the queued swing onto the end of this one, keeping the time already spent past
             // the boundary so the motion does not hitch by a frame. After a stall long enough to
             // miss a whole swing, resync to now instead of racing to catch up.
-            pendingSwing = false;
+            activeSwing = pendingSwing;
+            pendingSwing = null;
             swingStartTime += (long) duration;
             elapsed -= (long) duration;
             if (elapsed >= duration) {

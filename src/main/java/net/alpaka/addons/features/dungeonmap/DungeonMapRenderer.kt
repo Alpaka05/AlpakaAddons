@@ -4,7 +4,7 @@ import net.alpaka.addons.client.gui.TextWidths
 import net.alpaka.addons.client.gui.AlpakaStyle
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem
-import com.mojang.blaze3d.textures.FilterMode
+import com.mojang.renderpearl.api.textures.FilterMode
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink
 import net.alpaka.addons.client.gui.BlurRectRenderState
 import net.alpaka.addons.client.gui.GradientRoundedRectRenderState

@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.itemsearch;
 
+import net.alpaka.addons.utils.MouseButtons;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
@@ -19,7 +21,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -393,7 +394,7 @@ public class ItemSearchScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() != 0) return super.mouseClicked(event, doubleClick);
+        if (event.button() != MouseButtons.LEFT) return super.mouseClicked(event, doubleClick);
         int mx = (int) event.x();
         int my = (int) event.y();
         Frame f = frame();
@@ -505,11 +506,11 @@ public class ItemSearchScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
-        if (key == GLFW.GLFW_KEY_ESCAPE) {
+        if (key == InputConstants.KEY_ESCAPE) {
             onClose();
             return true;
         }
-        if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+        if (key == InputConstants.KEY_RETURN || key == InputConstants.KEY_NUMPADENTER) {
             // Enter goes to the first result, as clicking it would.
             List<ItemSearchResults.Entry> list = shown();
             if (!list.isEmpty()) go(list.get(0));

@@ -13,7 +13,6 @@ import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.util.Mth;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * Holds the chat open for reading while the player keeps moving - or keeps a menu open.
@@ -36,7 +35,7 @@ import org.lwjgl.glfw.GLFW;
  *
  * A key mapping only ever reports down while no screen is open: opening a screen releases every
  * mapping, and presses that arrive while a screen is up are handed to the screen and never reach
- * the mapping. So the physical state of the bound key is read straight from GLFW. That read is used
+ * the mapping. So the physical state of the bound key is read straight from SDL. That read is used
  * in the world too, which is what lets the chat stay open across opening or closing a menu with the
  * key still held - closing a screen does not read the keyboard back into the mappings, so the
  * mapping would report the key up until it was pressed again.
@@ -142,19 +141,12 @@ public final class ChatPeekFeature {
      */
     public static final class PeekKeyMapping extends KeyMapping {
         PeekKeyMapping() {
-            super("key.alpaka.chat_peek", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY);
+            super("key.alpaka.chat_peek", InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), AlpakaKeyCategory.CATEGORY);
         }
 
         /** Whether the bound key is physically down right now, whatever screen is open. */
         boolean isHeld(Window window) {
-            InputConstants.Key bound = this.key;
-            return switch (bound.getType()) {
-                case KEYSYM -> bound.getValue() != GLFW.GLFW_KEY_UNKNOWN
-                        && InputConstants.isKeyDown(window, bound.getValue());
-                case MOUSE -> GLFW.glfwGetMouseButton(window.handle(), bound.getValue()) == GLFW.GLFW_PRESS;
-                // GLFW cannot be asked about a raw scan code; the mapping's own state is all there is.
-                case SCANCODE -> this.isDown();
-            };
+            return net.alpaka.addons.utils.PhysicalInput.isDown(this.key);
         }
     }
 }

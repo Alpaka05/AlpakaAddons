@@ -5,7 +5,6 @@ import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.minecraft.client.renderer.SubmitNodeCollection;
 import net.minecraft.client.renderer.feature.submit.SubmitNode;
-import net.minecraft.client.renderer.feature.submit.TranslucentSubmit;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -14,17 +13,17 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 public class SubmitNodeCollectionMixin {
 
     /*
-     * Sees every item Submit the moment it is handed to a render phase. In 26.2 submitItem routes a
-     * translucent item to the translucent phase and everything else to the solid phase (plus a
-     * second Submit for the outline phase), so both call sites are covered. The object passes
+     * Sees every item Submit the moment it is handed to a render phase. In 26.3 submitItem splits an
+     * item into a Submit of its translucent quads for the translucent phase and one of its solid
+     * quads for the solid phase (plus a third for the outline phase), so all call sites are covered. The object passes
      * through unchanged; the hand item features only note its identity while the hand renderer is
      * submitting.
      */
     @ModifyArg(
             method = "submitItem",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/feature/phase/TranslucentFeatureRenderPhase;submit(Lnet/minecraft/client/renderer/feature/submit/TranslucentSubmit;)V")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/feature/phase/FeatureRenderPhase;submit(Lnet/minecraft/client/renderer/feature/submit/SubmitNode;)V")
     )
-    private TranslucentSubmit alpaka$rememberTranslucentHandItem(TranslucentSubmit submit) {
+    private SubmitNode alpaka$rememberTranslucentHandItem(SubmitNode submit) {
         HandItemLightingFeature.onItemSubmitted(submit);
         HandItemStarlightFeature.onItemSubmitted(submit);
         ItemMotionBlurFeature.onItemSubmitted(submit);

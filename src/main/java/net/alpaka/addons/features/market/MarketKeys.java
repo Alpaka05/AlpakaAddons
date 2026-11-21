@@ -4,7 +4,6 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.client.AlpakaKeyBinds;
 import net.alpaka.addons.client.AlpakaKeyCategory;
 import net.minecraft.client.KeyMapping;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * The keys that move around a market screen, one set for each market, bound in the settings under
@@ -24,17 +23,17 @@ public final class MarketKeys {
 
     public static void register() {
         AUCTION_HOUSE = new Set(
-                key("auction_house", "key.alpaka.ah_previous_page", GLFW.GLFW_KEY_UNKNOWN),
-                key("auction_house", "key.alpaka.ah_next_page", GLFW.GLFW_KEY_UNKNOWN),
-                key("auction_house", "key.alpaka.ah_back", GLFW.GLFW_KEY_UNKNOWN),
-                key("auction_house", "key.alpaka.ah_search", GLFW.GLFW_KEY_UNKNOWN),
-                key("auction_house", "key.alpaka.ah_create_auction", GLFW.GLFW_KEY_UNKNOWN),
-                key("auction_house", "key.alpaka.ah_reset_settings", GLFW.GLFW_KEY_UNKNOWN));
+                key("auction_house", "key.alpaka.ah_previous_page", InputConstants.UNKNOWN.getValue()),
+                key("auction_house", "key.alpaka.ah_next_page", InputConstants.UNKNOWN.getValue()),
+                key("auction_house", "key.alpaka.ah_back", InputConstants.UNKNOWN.getValue()),
+                key("auction_house", "key.alpaka.ah_search", InputConstants.UNKNOWN.getValue()),
+                key("auction_house", "key.alpaka.ah_create_auction", InputConstants.UNKNOWN.getValue()),
+                key("auction_house", "key.alpaka.ah_reset_settings", InputConstants.UNKNOWN.getValue()));
         BAZAAR = new Set(
-                key("bazaar", "key.alpaka.bz_previous_page", GLFW.GLFW_KEY_UNKNOWN),
-                key("bazaar", "key.alpaka.bz_next_page", GLFW.GLFW_KEY_UNKNOWN),
-                key("bazaar", "key.alpaka.bz_back", GLFW.GLFW_KEY_UNKNOWN),
-                key("bazaar", "key.alpaka.bz_search", GLFW.GLFW_KEY_UNKNOWN),
+                key("bazaar", "key.alpaka.bz_previous_page", InputConstants.UNKNOWN.getValue()),
+                key("bazaar", "key.alpaka.bz_next_page", InputConstants.UNKNOWN.getValue()),
+                key("bazaar", "key.alpaka.bz_back", InputConstants.UNKNOWN.getValue()),
+                key("bazaar", "key.alpaka.bz_search", InputConstants.UNKNOWN.getValue()),
                 null, null);
     }
 
@@ -45,6 +44,6 @@ public final class MarketKeys {
     // The two markets are never open at once, so each set only clashes within itself.
     private static KeyMapping key(String market, String name, int key) {
         return AlpakaKeyBinds.registerMenuKey(
-                new KeyMapping(name, InputConstants.Type.KEYSYM, key, AlpakaKeyCategory.CATEGORY), market);
+                new KeyMapping(name, InputConstants.Type.KEYBOARD, key, AlpakaKeyCategory.CATEGORY), market);
     }
 }

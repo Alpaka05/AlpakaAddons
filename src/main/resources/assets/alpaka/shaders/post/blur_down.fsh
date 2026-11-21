@@ -1,4 +1,5 @@
 #version 330
+#extension GL_ARB_separate_shader_objects : require
 
 // One d down the dual Kawase blur: renders a target half the input's size, each pixel the
 // input's centre sample weighted 4 against four diagonal samples Offset input texels away. The
@@ -10,9 +11,9 @@ layout(std140) uniform BlurConfig {
     float Offset;
 };
 
-in vec2 texCoord;
+layout(location = 0) in vec2 texCoord;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 void main() {
     vec2 d = Offset / vec2(textureSize(InSampler, 0));

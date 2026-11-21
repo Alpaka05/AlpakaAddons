@@ -1,8 +1,10 @@
 package net.alpaka.addons.client;
 
+import net.alpaka.addons.utils.MouseButtons;
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.renderpearl.api.textures.FilterMode;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind;
@@ -24,7 +26,6 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import org.joml.Matrix3x2f;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;
 import java.util.Locale;
@@ -886,7 +887,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         double mouseX = event.x();
         double mouseY = event.y();
         Layout l = layout();
-        if (event.button() == 1) {
+        if (event.button() == MouseButtons.RIGHT) {
             for (int i = builtInCount(); i < slotCount(); i++) {
                 if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
                     AlpakaStyle.click();
@@ -895,7 +896,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
                 }
             }
         }
-        if (event.button() != 0) return super.mouseClicked(event, doubleClick);
+        if (event.button() != MouseButtons.LEFT) return super.mouseClicked(event, doubleClick);
 
         boolean wasHex = hexFocused;
         hexFocused = false;
@@ -1004,7 +1005,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        if (event.button() == 0) this.drag = Drag.NONE;
+        if (event.button() == MouseButtons.LEFT) this.drag = Drag.NONE;
         return super.mouseReleased(event);
     }
 
@@ -1065,14 +1066,14 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
                 caretFrom = System.currentTimeMillis();
                 return true;
             }
-            if (key == GLFW.GLFW_KEY_ESCAPE || key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+            if (key == InputConstants.KEY_ESCAPE || key == InputConstants.KEY_RETURN || key == InputConstants.KEY_NUMPADENTER) {
                 hexFocused = false;
                 syncHexFromColor();
                 return true;
             }
         }
         // Enter saves, as Save does; Escape leaves without saving, as Cancel does.
-        if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
+        if (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER) {
             save();
             return true;
         }

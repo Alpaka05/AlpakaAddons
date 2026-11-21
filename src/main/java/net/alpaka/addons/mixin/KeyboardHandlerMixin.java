@@ -41,11 +41,11 @@ public class KeyboardHandlerMixin {
             ci.cancel();
             return;
         }
-        if (PartyInviteFeature.onKey(event.key(), event.scancode(), repeat)) {
+        if (PartyInviteFeature.onKey(event.key(), event.keycode(), repeat)) {
             ci.cancel();
             return;
         }
-        if (net.alpaka.addons.features.party.PartyCommandsFeature.onKey(event.key(), event.scancode(), repeat)) {
+        if (net.alpaka.addons.features.party.PartyCommandsFeature.onKey(event.key(), event.keycode(), repeat)) {
             ci.cancel();
             return;
         }

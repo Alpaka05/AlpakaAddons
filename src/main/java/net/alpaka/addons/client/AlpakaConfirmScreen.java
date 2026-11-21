@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import net.alpaka.addons.utils.MouseButtons;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind;
@@ -13,7 +14,6 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
@@ -75,8 +75,8 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
         if (openTimeMs == 0L) {
             openTimeMs = System.currentTimeMillis();
             enterArmed = this.minecraft == null
-                    || !(InputConstants.isKeyDown(this.minecraft.getWindow(), GLFW.GLFW_KEY_ENTER)
-                    || InputConstants.isKeyDown(this.minecraft.getWindow(), GLFW.GLFW_KEY_KP_ENTER));
+                    || !(InputConstants.isKeyDown(InputConstants.KEY_RETURN)
+                    || InputConstants.isKeyDown(InputConstants.KEY_NUMPADENTER));
         }
         layout = computeLayout();
     }
@@ -159,7 +159,7 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() != 0) return super.mouseClicked(event, doubleClick);
+        if (event.button() != MouseButtons.LEFT) return super.mouseClicked(event, doubleClick);
         if (System.currentTimeMillis() - openTimeMs < CLICK_GUARD_MS) return true;
         Layout l = layout;
         if (inside(event.x(), event.y(), l.confirmX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H)) {
@@ -176,11 +176,11 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (event.key() == InputConstants.KEY_ESCAPE) {
             onClose();
             return true;
         }
-        if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
+        if (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER) {
             if (enterArmed) confirm();
             return true;
         }
@@ -189,7 +189,7 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
 
     @Override
     public boolean keyReleased(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) enterArmed = true;
+        if (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER) enterArmed = true;
         return super.keyReleased(event);
     }
 

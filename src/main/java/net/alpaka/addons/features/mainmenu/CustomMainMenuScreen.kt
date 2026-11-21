@@ -1,5 +1,8 @@
 package net.alpaka.addons.features.mainmenu
 
+import net.alpaka.addons.utils.MouseButtons
+import com.mojang.blaze3d.platform.InputConstants
+
 import net.alpaka.addons.client.AlpakaConfigScreen
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink
 import net.alpaka.addons.client.gui.BlurRectRenderState
@@ -292,12 +295,12 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
                 net.alpaka.addons.compat.ModMenuCompat.openModsScreen(this)
             } else {
-                mc.gui.setScreen(OptionsScreen(this, mc.options, false))
+                mc.gui.setScreen(OptionsScreen(this, mc.options))
             }
         }
         row(layout.columnX + layout.columnW - layout.halfW, layout.pairY, layout.halfW, ICON_SLIDERS, "Options") {
             val mc = this.minecraft ?: return@row
-            mc.gui.setScreen(OptionsScreen(this, mc.options, false))
+            mc.gui.setScreen(OptionsScreen(this, mc.options))
         }
         row(layout.columnX, layout.quitY, layout.columnW, MenuStyle.ICON_POWER, "Quit", quit = true) {
             this.minecraft?.stop()
@@ -566,26 +569,26 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         if (open != null) {
             val mc = this.minecraft
             when {
-                event.button() != 0 -> {}
+                event.button() != MouseButtons.LEFT -> {}
                 open.isOverClose(event.x(), event.y()) || !open.isOver(event.x(), event.y()) -> {
                     mc?.let { AbstractWidget.playButtonClickSound(it.soundManager) }
                     closeNotes()
                 }
                 open.isOverLink(this.font, event.x(), event.y()) -> {
                     mc?.let { AbstractWidget.playButtonClickSound(it.soundManager) }
-                    ReleaseNotes.shown()?.let { ConfirmLinkScreen.confirmLinkNow(this, it.url) }
+                    ReleaseNotes.shown()?.let { ConfirmLinkScreen.confirmLinkNow(this, java.net.URI.create(it.url)) }
                 }
             }
             return true
         }
-        if (event.button() == 0 && isOverLogo(Layout(), event.x(), event.y())) {
+        if (event.button() == MouseButtons.LEFT && isOverLogo(Layout(), event.x(), event.y())) {
             // Vanilla's click, which the custom-sound swap replaces when the player opted in.
             this.minecraft?.let { AbstractWidget.playButtonClickSound(it.soundManager) }
             this.minecraft?.gui?.setScreen(AlpakaConfigScreen(this))
             return true
         }
         if (super.mouseClicked(event, doubleClick)) return true
-        return event.button() == 0 && avatar?.mouseClicked(event.x(), event.y()) == true
+        return event.button() == MouseButtons.LEFT && avatar?.mouseClicked(event.x(), event.y()) == true
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
@@ -595,7 +598,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
-        if (event.key() == 256 && panel != null) { // GLFW_KEY_ESCAPE
+        if (event.key() == InputConstants.KEY_ESCAPE && panel != null) {
             closeNotes()
             return true
         }

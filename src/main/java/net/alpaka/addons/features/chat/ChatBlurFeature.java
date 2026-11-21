@@ -3,8 +3,8 @@ package net.alpaka.addons.features.chat;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.FilterMode;
-import com.mojang.blaze3d.textures.GpuTexture;
+import com.mojang.renderpearl.api.textures.FilterMode;
+import com.mojang.renderpearl.api.textures.GpuTexture;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.BlurRectRenderState;
 import net.alpaka.addons.client.gui.HudPanel;
@@ -495,7 +495,7 @@ public final class ChatBlurFeature {
         if (source == null || main.width <= 0 || main.height <= 0) return;
         try {
             if (BLUR.fits(main.width, main.height)) return;
-            BLUR.resize(main.width, main.height, source.getFormat(), PENDING_CLOSE);
+            BLUR.resize(main.width, main.height, PENDING_CLOSE);
             // The new targets hold nothing yet: this frame's panels are prepared without blur.
             ready = false;
         } catch (RuntimeException e) {

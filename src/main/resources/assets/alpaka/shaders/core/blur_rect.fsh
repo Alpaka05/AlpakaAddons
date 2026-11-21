@@ -1,26 +1,27 @@
 #version 330
+#extension GL_ARB_separate_shader_objects : require
 
-#moj_import <minecraft:globals.glsl>
+#include <minecraft:globals.glsl>
 
 layout(std140) uniform DynamicTransforms {
     mat4 ModelViewMat;
+    mat4 TextureMat;
     vec4 ColorModulator;
     vec3 ModelOffset;
-    mat4 TextureMat;
 };
 
 // The blurred frame, at half the frame's size.
 uniform sampler2D Sampler0;
 
-in vec4 vertexColor;
-in vec2 localPos;
-flat in vec2 halfSize;
-flat in vec2 shape;
-flat in float opacity;
+layout(location = 0) in vec4 vertexColor;
+layout(location = 1) in vec2 localPos;
+layout(location = 2) flat in vec2 halfSize;
+layout(location = 3) flat in vec2 shape;
+layout(location = 4) flat in float opacity;
 // Reach in screen pixels and strength of the drop shadow; a reach of 0 means none.
-flat in vec2 shadow;
+layout(location = 5) flat in vec2 shadow;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 float roundedBoxDistance(vec2 p, vec2 b, float r) {
     vec2 q = abs(p) - b + vec2(r);

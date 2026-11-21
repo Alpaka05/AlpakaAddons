@@ -29,7 +29,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -218,19 +217,12 @@ public final class PriceTooltipFeature {
     /** The Price Tooltip key. A subclass only so the bound key, which KeyMapping keeps protected, can be read for holding. */
     public static final class PriceKeyMapping extends KeyMapping {
         PriceKeyMapping() {
-            super("key.alpaka.price_tooltip", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY);
+            super("key.alpaka.price_tooltip", InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), AlpakaKeyCategory.CATEGORY);
         }
 
         /** Whether the bound key is physically down right now: a key mapping hears nothing while a menu is open. */
         boolean isHeld(Window window) {
-            InputConstants.Key bound = this.key;
-            return switch (bound.getType()) {
-                case KEYSYM -> bound.getValue() != GLFW.GLFW_KEY_UNKNOWN
-                        && InputConstants.isKeyDown(window, bound.getValue());
-                case MOUSE -> GLFW.glfwGetMouseButton(window.handle(), bound.getValue()) == GLFW.GLFW_PRESS;
-                // GLFW cannot be asked about a raw scan code; the mapping's own state is all there is.
-                case SCANCODE -> this.isDown();
-            };
+            return net.alpaka.addons.utils.PhysicalInput.isDown(this.key);
         }
     }
 }

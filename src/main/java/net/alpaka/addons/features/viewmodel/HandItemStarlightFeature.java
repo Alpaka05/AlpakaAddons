@@ -1,11 +1,11 @@
 package net.alpaka.addons.features.viewmodel;
 
-import com.mojang.blaze3d.pipeline.ColorTargetState;
-import com.mojang.blaze3d.pipeline.DepthStencilState;
-import com.mojang.blaze3d.pipeline.BlendFunction;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.platform.CompareOp;
-import com.mojang.blaze3d.PrimitiveTopology;
+import com.mojang.renderpearl.api.pipeline.ColorTargetState;
+import com.mojang.renderpearl.api.pipeline.DepthStencilState;
+import com.mojang.renderpearl.api.pipeline.BlendFunction;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.CompareOp;
+import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.alpaka.addons.config.AlpakaConfig;
@@ -92,7 +92,7 @@ public final class HandItemStarlightFeature {
         renderType();
     }
 
-    /** Called right before ItemInHandRenderer hands the item state to the collector. */
+    /** Called right before FirstPersonHandsAndItemsRenderer hands the item state to the collector. */
     public static void beginHandItem(LivingEntity entity, ItemDisplayContext context) {
         capturing = isEnabled() && context.firstPerson() && entity == Minecraft.getInstance().player;
     }
@@ -127,7 +127,8 @@ public final class HandItemStarlightFeature {
                             .withVertexShader(Identifier.fromNamespaceAndPath("alpaka", "core/starlight"))
                             .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "core/starlight"))
                             .withBindGroupLayout(BindGroupLayouts.GLOBALS)
-                            .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
+                            .withBindGroupLayout(BindGroupLayouts.PROJECTION)
+                            .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
                             .withCull(false)
                             .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT_PREMULTIPLIED_ALPHA))
                             .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
@@ -203,6 +204,11 @@ public final class HandItemStarlightFeature {
 
         @Override
         public VertexConsumer setUv1(int u, int v) {
+            return this;
+        }
+
+        @Override
+        public VertexConsumer setUv3(float u, float v) {
             return this;
         }
 

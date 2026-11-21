@@ -1,6 +1,6 @@
 package net.alpaka.addons.client.gui;
 
-import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.minecraft.client.gui.navigation.ScreenRectangle;

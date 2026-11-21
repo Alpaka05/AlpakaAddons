@@ -1,5 +1,6 @@
 package net.alpaka.addons.client.gui;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.IntPredicate;
@@ -140,13 +141,24 @@ public final class EditableText {
         boolean shortcut = event.hasControlDownWithQuirk();
         boolean mac = InputQuirks.REPLACE_CTRL_KEY_WITH_CMD_KEY;
         boolean word = mac ? event.hasAltDown() : event.hasControlDown();
-        return keyPressed(event.key(), shortcut, word, mac && shortcut, event.hasShiftDown());
+        return keyPressed(shortcutKey(event), shortcut, word, mac && shortcut, event.hasShiftDown());
+    }
+
+    /**
+     * The key of an event as this field reads it. A letter is taken from what the key types on the
+     * player's keyboard layout, as vanilla's own text fields do since 26.3, so the undo shortcut is
+     * the key that says Z on a German keyboard too; every other key is the physical one.
+     */
+    private static int shortcutKey(KeyEvent event) {
+        int typed = event.shortcutKey();
+        if (typed >= 'a' && typed <= 'z') return InputConstants.KEY_A + (typed - 'a');
+        return event.key();
     }
 
     /**
      * As above, from the bare key: {@code ctrl} is the shortcut modifier and also jumps by word.
      *
-     * @param key   the GLFW key code.
+     * @param key   the key, as {@link InputConstants} numbers it (an SDL scancode since 26.3).
      * @param ctrl  whether the platform's word/command modifier is held (Ctrl, or Cmd on macOS).
      * @param shift whether Shift is held, which extends the selection rather than dropping it.
      */
@@ -379,17 +391,18 @@ public final class EditableText {
         return value.length() > maxLength ? value.substring(0, maxLength) : value;
     }
 
-    // GLFW key codes, named rather than left as the bare numbers the screens used to compare against.
-    private static final int KEY_A = 65;
-    private static final int KEY_C = 67;
-    private static final int KEY_V = 86;
-    private static final int KEY_X = 88;
-    private static final int KEY_Y = 89;
-    private static final int KEY_Z = 90;
-    private static final int KEY_RIGHT = 262;
-    private static final int KEY_LEFT = 263;
-    private static final int KEY_BACKSPACE = 259;
-    private static final int KEY_DELETE = 261;
-    private static final int KEY_END = 269;
-    private static final int KEY_HOME = 268;
+    // The keys this field knows, by vanilla's numbers. The letters run in one block from A, which
+    // shortcutKey relies on.
+    private static final int KEY_A = InputConstants.KEY_A;
+    private static final int KEY_C = InputConstants.KEY_C;
+    private static final int KEY_V = InputConstants.KEY_V;
+    private static final int KEY_X = InputConstants.KEY_X;
+    private static final int KEY_Y = InputConstants.KEY_Y;
+    private static final int KEY_Z = InputConstants.KEY_Z;
+    private static final int KEY_RIGHT = InputConstants.KEY_RIGHT;
+    private static final int KEY_LEFT = InputConstants.KEY_LEFT;
+    private static final int KEY_BACKSPACE = InputConstants.KEY_BACKSPACE;
+    private static final int KEY_DELETE = InputConstants.KEY_DELETE;
+    private static final int KEY_END = InputConstants.KEY_END;
+    private static final int KEY_HOME = InputConstants.KEY_HOME;
 }

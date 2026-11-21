@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.market;
 
+import net.minecraft.world.level.block.entity.SignTextSlot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
@@ -327,9 +328,9 @@ public final class MarketPreview {
         BlockPos pos = mc.player.blockPosition().above(2);
         SignBlockEntity sign = new SignBlockEntity(pos, Blocks.OAK_SIGN.defaultBlockState());
         sign.setLevel(mc.level);
-        SignText text = new SignText();
-        for (int i = 0; i < 4; i++) text = text.setMessage(i, Component.literal(lines[i]));
-        sign.setText(text, true);
+        SignText.Mutable text = SignText.EMPTY.asMutable();
+        for (int i = 0; i < 4; i++) text = text.setLine(i, Component.literal(lines[i]));
+        sign.setText(text.asImmutable(), SignTextSlot.FRONT);
         sign.setAllowedPlayerEditor(mc.player.getUUID());
         if (context == MarketKind.AUCTION_HOUSE && Markets.recentSearches(context).isEmpty()) {
             for (String q : List.of("juju shortbow", "terminator", "aotv", "hyperion")) Markets.rememberSearch(context, q);
@@ -337,7 +338,7 @@ public final class MarketPreview {
         if (context == MarketKind.AUCTION_HOUSE && Markets.recentPrices(context).isEmpty()) {
             for (double p : new double[] {450_000_000, 439_000_000}) Markets.rememberPrice(context, p);
         }
-        MarketInputScreen screen = new MarketInputScreen(sign, true, false, SignPrompt.of(lines), context);
+        MarketInputScreen screen = new MarketInputScreen(sign, SignTextSlot.FRONT, false, SignPrompt.of(lines), context);
         return typed == null ? screen : screen.typed(typed);
     }
 
@@ -357,7 +358,7 @@ public final class MarketPreview {
         MarketInputScreen made = input(lines, null, null);
         Markets.devAnywhere = true;
         try {
-            mc.player.openTextEdit(made.sign(), true);
+            mc.player.openTextEdit(made.sign(), SignTextSlot.FRONT);
         } finally {
             Markets.devAnywhere = false;
         }

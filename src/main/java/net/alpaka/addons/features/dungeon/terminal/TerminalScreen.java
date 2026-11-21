@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.dungeon.terminal;
 
+import net.alpaka.addons.utils.MouseButtons;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.GuiItemFade;
@@ -543,7 +544,8 @@ public class TerminalScreen extends ContainerScreen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         TerminalGuiLayout l = layout;
         if (l == null) return true;
-        int button = event.button();
+        // From here on a container click button: left 0, right 1.
+        int button = MouseButtons.containerButton(event.button());
         classicPressed = false;
         if (button == 0 || button == 1) {
             if (closeButton(l).contains(event.x(), event.y())) {
@@ -576,7 +578,7 @@ public class TerminalScreen extends ContainerScreen {
         }
         if (l != null) {
             int slot = clickable(l.slotAt(event.x(), event.y()), items());
-            send(input.release(slot, event.button(), event.hasShiftDown(), carrying()));
+            send(input.release(slot, MouseButtons.containerButton(event.button()), event.hasShiftDown(), carrying()));
         }
         return true;
     }

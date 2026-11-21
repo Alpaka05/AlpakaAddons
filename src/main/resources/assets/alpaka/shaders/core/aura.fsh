@@ -1,20 +1,21 @@
 #version 330
+#extension GL_ARB_separate_shader_objects : require
 
 // A copy of globals.glsl, as in starlight.fsh; only GameTime is read, to move the clouds.
 layout(std140) uniform Globals {
     ivec3 CameraBlockPos;
-    vec3 CameraOffset;
-    vec2 ScreenSize;
     float GlintAlpha;
+    vec3 CameraOffset;
     float GameTime;
+    vec2 ScreenSize;
     int MenuBlurRadius;
     int UseRgss;
 };
 
-in vec2 texCoord;
-in vec4 vertexColor;
+layout(location = 0) in vec2 texCoord;
+layout(location = 1) in vec4 vertexColor;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 // Every piece of the aura is a quad of soft light; the shape of that light is worked out here, so no
 // texture is needed and the glow stays smooth however close the camera comes.

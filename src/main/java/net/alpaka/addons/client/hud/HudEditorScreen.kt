@@ -1,5 +1,7 @@
 package net.alpaka.addons.client.hud
 
+import net.alpaka.addons.utils.MouseButtons
+import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.AlpakaConfigScreen
 import net.alpaka.addons.client.AlpakaConfirmScreen
 import net.alpaka.addons.client.gui.AlpakaStyle
@@ -12,7 +14,6 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Style
-import org.lwjgl.glfw.GLFW
 
 /**
  * One editor for every HUD the mod draws: drag to reposition, scroll to resize, arrow keys to
@@ -264,9 +265,9 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
         // The bar first: a HUD parked under it must not take its clicks.
-        if (event.button() == 0 && clickBar(event.x(), event.y())) return true
+        if (event.button() == MouseButtons.LEFT && clickBar(event.x(), event.y())) return true
 
-        if (event.button() == 0) {
+        if (event.button() == MouseButtons.LEFT) {
             val hit = HudRegistry.topmostAt(event.x(), event.y(), this.width, this.height)
             if (hit != null) {
                 select(hit)
@@ -283,7 +284,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         }
 
         // A right click on a HUD opens its feature's settings; leaving them comes back here.
-        if (event.button() == 1 && !inside(event.x(), event.y(), bar().x, bar().y, bar().w, BAR_H)) {
+        if (event.button() == MouseButtons.RIGHT && !inside(event.x(), event.y(), bar().x, bar().y, bar().w, BAR_H)) {
             val hit = HudRegistry.topmostAt(event.x(), event.y(), this.width, this.height)
             val screen = hit?.settingsOptionId?.let { AlpakaConfigScreen.openOnOption(this, it) }
             if (screen != null) {
@@ -293,12 +294,12 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
             }
         }
 
-        if (event.button() == 0) select(null)
+        if (event.button() == MouseButtons.LEFT) select(null)
         return false
     }
 
     override fun mouseReleased(event: MouseButtonEvent): Boolean {
-        if (event.button() == 0 && dragging != null) {
+        if (event.button() == MouseButtons.LEFT && dragging != null) {
             dragging = null
             flush()
         }
@@ -348,7 +349,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (event.key() == InputConstants.KEY_ESCAPE) {
             // A selection first, the editor after.
             if (selected != null) selected = null else onClose()
             return true
@@ -358,13 +359,13 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         val element = selected
         if (element != null) {
             val dx = when (event.key()) {
-                GLFW.GLFW_KEY_LEFT -> -1
-                GLFW.GLFW_KEY_RIGHT -> 1
+                InputConstants.KEY_LEFT -> -1
+                InputConstants.KEY_RIGHT -> 1
                 else -> 0
             }
             val dy = when (event.key()) {
-                GLFW.GLFW_KEY_UP -> -1
-                GLFW.GLFW_KEY_DOWN -> 1
+                InputConstants.KEY_UP -> -1
+                InputConstants.KEY_DOWN -> 1
                 else -> 0
             }
             if (dx != 0 || dy != 0) {

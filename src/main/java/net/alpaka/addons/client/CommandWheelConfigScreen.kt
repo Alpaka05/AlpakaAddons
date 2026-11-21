@@ -1,5 +1,7 @@
 package net.alpaka.addons.client
 
+import net.alpaka.addons.utils.MouseButtons
+import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.EditableText
@@ -11,7 +13,6 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import org.lwjgl.glfw.GLFW
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -536,7 +537,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     // ------------------------------------------------------------------ input
 
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
-        if (event.button() != 0) return super.mouseClicked(event, isDoubleClick)
+        if (event.button() != MouseButtons.LEFT) return super.mouseClicked(event, isDoubleClick)
         val mouseX = event.x().toInt()
         val mouseY = event.y().toInt()
         val f = frame()
@@ -670,7 +671,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     }
 
     override fun mouseReleased(event: MouseButtonEvent): Boolean {
-        if (event.button() == 0 && pressPage >= 0) {
+        if (event.button() == MouseButtons.LEFT && pressPage >= 0) {
             if (dragging && dropPage >= 0 && dropAllowed) {
                 // dropIndex counts rows with the dragged one taken out, which is exactly the index
                 // after the move's own removal; on the same page the move corrects for that itself,
@@ -734,7 +735,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
-        if ((pagePickerOpen || wheelPickerOpen) && event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if ((pagePickerOpen || wheelPickerOpen) && event.key() == InputConstants.KEY_ESCAPE) {
             pagePickerOpen = false
             wheelPickerOpen = false
             return true
@@ -745,11 +746,11 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
                 return true
             }
             when (event.key()) {
-                GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
+                InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
                     addCurrentInput()
                     return true
                 }
-                GLFW.GLFW_KEY_ESCAPE -> {
+                InputConstants.KEY_ESCAPE -> {
                     inputFocused = false
                     return true
                 }

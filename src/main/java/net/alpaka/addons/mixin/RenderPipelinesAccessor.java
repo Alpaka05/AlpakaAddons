@@ -1,6 +1,6 @@
 package net.alpaka.addons.mixin;
 
-import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import net.minecraft.client.renderer.RenderPipelines;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -24,6 +24,26 @@ public interface RenderPipelinesAccessor {
     /** The snippet vanilla's world lines are built from: line shader, translucent blend. */
     @Accessor("LINES_SNIPPET")
     static RenderPipeline.Snippet alpaka$linesSnippet() {
+        throw new AssertionError("replaced by mixin");
+    }
+
+    /**
+     * The two snippets again as vanilla's "Improved Transparency" draws them, which is a set of
+     * three pipelines per render type instead of one.
+     */
+    @Accessor("OIT_DEBUG_FILLED_SNIPPET")
+    static RenderPipeline.Snippet alpaka$oitDebugFilledSnippet() {
+        throw new AssertionError("replaced by mixin");
+    }
+
+    @Accessor("OIT_LINES_SNIPPET")
+    static RenderPipeline.Snippet alpaka$oitLinesSnippet() {
+        throw new AssertionError("replaced by mixin");
+    }
+
+    /** The snippet vanilla's entity pipelines are built from, for an unshaded twin of the glinted item types. */
+    @Accessor("ENTITY_SNIPPET")
+    static RenderPipeline.Snippet alpaka$entitySnippet() {
         throw new AssertionError("replaced by mixin");
     }
 

@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.itemvalue;
 
+import net.alpaka.addons.utils.MouseButtons;
 import net.alpaka.addons.utils.ItemData;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -882,7 +883,7 @@ public final class ItemValuePopup {
             heldButton = button;
             return true;
         }
-        if (button != 0) return true;
+        if (button != MouseButtons.LEFT) return true;
         for (int i = hits.size() - 1; i >= 0; i--) {
             Hit hit = hits.get(i);
             if (hit.contains(mx, my)) {

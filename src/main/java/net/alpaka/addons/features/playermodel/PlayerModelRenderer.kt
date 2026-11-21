@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.playermodel
 
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.item.component.SwingAnimation
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
@@ -83,8 +85,8 @@ object PlayerModelRenderer {
     // swing timing, reach and hit registration are untouched.
     private var slowSwingStartMs = 0L
     private var slowSwingActive = false
-    private var wasSwinging = false
-    private var lastSwingTime = 0
+    /** The player's swing last seen; vanilla makes a new one for every swing it starts. */
+    private var lastSeenSwing: LivingEntity.SwingDescription? = null
 
     /**
      * Set when the player swings while a slowed arc is still playing, and consumed the moment that
@@ -166,8 +168,8 @@ object PlayerModelRenderer {
             player.isCrouching ||
             player.isSprinting ||
             player.isPassenger ||
-            player.swingTime > 0 ||
-            // A slowed swing outlives the player's own swingTime, so keep the avatar up until
+            player.isSwinging ||
+            // A slowed swing outlives the player's own swing, so keep the avatar up until
             // the stretched animation has finished rather than vanishing mid-arc.
             slowSwingActive ||
             player.isSwimming ||
@@ -264,9 +266,14 @@ object PlayerModelRenderer {
             if (cfg.playerModelHideArmor) hideArmor(state)
             // Replaces the player's own attack progress with our stretched one, always: at vanilla
             // speed the arm snaps through its arc too fast to read on an avatar this small.
-            // attackTime is the 0..1 value the humanoid model derives the whole arm arc from.
+            // swingAnimation is the 0..1 value the humanoid model derives the whole arm arc from; it
+            // only animates while a swing is set, which the real one no longer is once it ended.
             if (state is ArmedEntityRenderState) {
-                state.attackTime = slowSwingProgress()
+                state.swingAnimation = slowSwingProgress()
+                if (slowSwingActive && state.currentSwing == null) {
+                    state.currentSwing = LivingEntity.SwingDescription(
+                        InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, SwingAnimation.DEFAULT.duration())
+                }
             }
 
             state.bodyRot = 180.0f + yaw * LOOK_STRENGTH
@@ -291,21 +298,19 @@ object PlayerModelRenderer {
     }
 
     /**
-     * Watches the player's swing counter and restarts a wall-clock timer whenever a new swing
+     * Watches the player's swing and restarts a wall-clock timer whenever a new swing
      * begins, so the avatar's arm can be animated on our own slower schedule.
      *
      * Called once per frame from [render]. Repeat calls within a frame are harmless: the player's
-     * swing counter cannot change between them, so no second swing is detected.
+     * swing cannot change between them, so no second swing is detected.
      */
     private fun updateSlowSwing(player: LocalPlayer) {
-        val swinging = player.swinging
-        val swingTime = player.swingTime
+        // Either a swing starting from rest, or a re-swing mid-arc: both are a new swing object,
+        // seen at once rather than when the swing's progress drops a tick or two later.
+        val swing = player.currentSwing
+        val newSwing = swing != null && swing !== lastSeenSwing
+        lastSeenSwing = swing
         val now = System.currentTimeMillis()
-
-        // Either a swing starting from rest, or a re-swing that reset the counter mid-arc.
-        val newSwing = swinging && (!wasSwinging || swingTime < lastSwingTime)
-        wasSwinging = swinging
-        lastSwingTime = swingTime
         if (newSwing) lastNewSwingAtMs = now
 
         if (slowSwingActive && now - slowSwingStartMs >= SLOW_SWING_DURATION_MS) {

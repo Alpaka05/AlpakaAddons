@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.profile;
 
+import net.alpaka.addons.utils.MouseButtons;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.alpaka.addons.client.gui.AlpakaStyle;
@@ -4193,7 +4194,7 @@ public class ProfileDashboardScreen extends Screen {
         Minecraft mc = Minecraft.getInstance();
         mc.gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(this, title,
                 "Opens this profile in your browser: " + url, "Open", false,
-                () -> net.minecraft.util.Util.getPlatform().openUri(url)));
+                () -> com.mojang.blaze3d.Blaze3D.openUri(java.net.URI.create(url))));
     }
 
     private void lookUp() {
@@ -4284,7 +4285,7 @@ public class ProfileDashboardScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() != 0) return true;
+        if (event.button() != MouseButtons.LEFT) return true;
         click = event;
         clickFrom = searchFocused ? search : itemSearchFocused ? itemSearch : null;
         searchFocused = false;

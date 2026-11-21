@@ -263,7 +263,7 @@ public final class DevClutterBenchmark {
         server.execute(() -> {
             ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player == null) return;
-            player.setInvulnerable(true);
+            player.setPermanentlyInvulnerable(true);
             var source = server.createCommandSourceStack();
             for (String command : List.of("time set 6000", "weather clear", "gamerule advance_time false",
                     "gamerule advance_weather false", "gamerule spawn_mobs false", "gamerule random_tick_speed 0",

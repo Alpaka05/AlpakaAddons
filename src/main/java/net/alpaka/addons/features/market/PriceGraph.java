@@ -123,7 +123,7 @@ public final class PriceGraph {
         Minecraft mc = Minecraft.getInstance();
         mc.gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(mc.gui.screen(), "Open SkyCofl",
                 "Opens this item's price page on SkyCofl in your browser: " + url, "Open", false,
-                () -> net.minecraft.util.Util.getPlatform().openUri(url)));
+                () -> com.mojang.blaze3d.Blaze3D.openUri(java.net.URI.create(url))));
     }
 
     private static void message(GuiGraphicsExtractor graphics, Font font, String text, int x, int y, int w, int h) {

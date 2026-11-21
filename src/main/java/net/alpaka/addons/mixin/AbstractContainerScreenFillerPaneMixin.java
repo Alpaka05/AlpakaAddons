@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class AbstractContainerScreenFillerPaneMixin {
 
     /** Ignore Filler Panes: a click on an empty SkyBlock menu cell is dropped before vanilla handles it. */
-    @Inject(method = "slotClicked", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V", at = @At("HEAD"), cancellable = true)
     private void alpaka$ignoreFillerPane(Slot slot, int slotId, int button, ContainerInput input, CallbackInfo ci) {
         if (FillerPaneClicks.ignores(slot)) ci.cancel();
     }

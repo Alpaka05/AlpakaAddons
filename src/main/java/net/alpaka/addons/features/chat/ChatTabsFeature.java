@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.chat;
 
+import net.alpaka.addons.utils.MouseButtons;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
@@ -12,7 +14,6 @@ import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import org.lwjgl.glfw.GLFW;
 import java.util.Arrays;
 
 /**
@@ -224,7 +225,7 @@ public final class ChatTabsFeature {
      */
     public static boolean onChatScreenKey(int key, boolean shift, boolean control, boolean repeat,
                                           boolean suggestionsVisible, String input) {
-        if (!tabKeyEnabled() || key != GLFW.GLFW_KEY_TAB) return false;
+        if (!tabKeyEnabled() || key != InputConstants.KEY_TAB) return false;
         if (!control && (suggestionsVisible || !input.isBlank())) return false;
         if (!repeat) cycle(shift);
         return true;
@@ -235,7 +236,7 @@ public final class ChatTabsFeature {
      * tabs on a press and is merely swallowed on a repeat, so a held Tab does not race through them.
      */
     public static boolean onPeekKey(int key, boolean shift, boolean repeat) {
-        if (!tabKeyEnabled() || key != GLFW.GLFW_KEY_TAB || !ChatPeekFeature.isPeeking()) return false;
+        if (!tabKeyEnabled() || key != InputConstants.KEY_TAB || !ChatPeekFeature.isPeeking()) return false;
         if (!repeat) cycle(shift);
         releasePlayerListKey();
         return true;
@@ -396,7 +397,7 @@ public final class ChatTabsFeature {
 
     /** A left click in the chat screen. True when it landed on a tab, which is then selected. */
     public static boolean handleClick(double mouseX, double mouseY, int button, int screenHeight) {
-        if (!isEnabled() || button != 0) return false;
+        if (!isEnabled() || button != MouseButtons.LEFT) return false;
         Font font = Minecraft.getInstance().font;
         int y1 = screenHeight - BOTTOM_GAP;
         int y0 = y1 - TAB_HEIGHT;

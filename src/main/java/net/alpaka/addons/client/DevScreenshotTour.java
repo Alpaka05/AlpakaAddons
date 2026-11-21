@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
@@ -289,18 +290,18 @@ public final class DevScreenshotTour {
                     () -> true, 2),
             new Stop("textedit-config-type", () -> type("XY"), () -> true, 2),
             new Stop("textedit-config-shift-left", () -> {
-                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT);
-                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT);
-                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT);
+                key(InputConstants.KEY_LEFT, InputConstants.MOD_SHIFT);
+                key(InputConstants.KEY_LEFT, InputConstants.MOD_SHIFT);
+                key(InputConstants.KEY_LEFT, InputConstants.MOD_SHIFT);
             }, () -> true, 2),
-            new Stop("textedit-config-home", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_HOME, 0), () -> true, 2),
-            new Stop("textedit-config-select-all", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_A, org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL),
+            new Stop("textedit-config-home", () -> key(InputConstants.KEY_HOME, 0), () -> true, 2),
+            new Stop("textedit-config-select-all", () -> key(InputConstants.KEY_A, InputConstants.MOD_CONTROL),
                     () -> true, 2),
             new Stop("textedit-config-replace", () -> type("Bot"), () -> true, 2),
-            new Stop("textedit-config-undo", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_Z, org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL),
+            new Stop("textedit-config-undo", () -> key(InputConstants.KEY_Z, InputConstants.MOD_CONTROL),
                     () -> true, 2),
             new Stop(null, () -> {
-                key(org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE, 0);
+                key(InputConstants.KEY_ESCAPE, 0);
                 AlpakaConfig.instance.bridgeBotName = "";
                 java.util.List<java.util.List<String>> pages = new java.util.ArrayList<>();
                 pages.add(new java.util.ArrayList<>(java.util.List.of("/hub")));
@@ -310,10 +311,10 @@ public final class DevScreenshotTour {
             new Stop(null, () -> {
                 click(((CommandWheelConfigScreen) screen()).devInputPoint(0.5));
                 type("warp garden");
-                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL);
+                key(InputConstants.KEY_LEFT, InputConstants.MOD_CONTROL);
             }, () -> true, 2),
-            new Stop("textedit-wheel-word-select", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT,
-                    org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL | org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT), () -> true, 2),
+            new Stop("textedit-wheel-word-select", () -> key(InputConstants.KEY_RIGHT,
+                    InputConstants.MOD_CONTROL | InputConstants.MOD_SHIFT), () -> true, 2),
             screen("confirm-config-player-scale",() -> AlpakaConfigScreen.openOn("Cosmetics", "Player Scale")),
             new Stop("confirm-dialog-player-scale", () -> trigger("player_scale_reset"), () -> true, 30),
             // Quick commands with one of the player's own: Reset asks, Cancel keeps it, Reset for
@@ -508,7 +509,7 @@ public final class DevScreenshotTour {
                     new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
                     net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "aotd")), () -> true, 10),
             new Stop("market-input-suggest-initials", () -> screen().keyPressed(
-                    new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN, 0, 0)), () -> true, 5),
+                    new net.minecraft.client.input.KeyEvent(InputConstants.KEY_DOWN, 0, 0)), () -> true, 5),
             new Stop("market-input-suggest-bazaar", () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
                     net.alpaka.addons.features.market.MarketKind.BAZAAR, "ench hay")), () -> true, 20),
@@ -524,8 +525,8 @@ public final class DevScreenshotTour {
             screen("market-input-rancher", () -> net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "^^^^^^", "Set your", "speed cap!"}, null, null)),
             new Stop("market-input-rancher-keys", () -> {
-                screen().keyPressed(new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN, 0, 0));
-                screen().keyPressed(new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN, 0, 0));
+                screen().keyPressed(new net.minecraft.client.input.KeyEvent(InputConstants.KEY_DOWN, 0, 0));
+                screen().keyPressed(new net.minecraft.client.input.KeyEvent(InputConstants.KEY_DOWN, 0, 0));
             }, () -> true, 5),
             new Stop("market-classic", () -> {
                 net.alpaka.addons.features.market.MarketPreview.classic(net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, true);

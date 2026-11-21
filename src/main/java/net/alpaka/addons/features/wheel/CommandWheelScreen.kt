@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.wheel
 
+import net.alpaka.addons.utils.MouseButtons
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.GuiFont
@@ -174,7 +175,7 @@ class CommandWheelScreen(
 
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
         when (event.button()) {
-            0 -> {
+            MouseButtons.LEFT -> {
                 // Hovering an arrow already turned the page; a click on it must not run a command.
                 if (arrowAt(event.x(), event.y()) >= 0) return true
                 if (selectedIndex >= 0) {
@@ -182,7 +183,7 @@ class CommandWheelScreen(
                     return true
                 }
             }
-            1 -> {
+            MouseButtons.RIGHT -> {
                 close()
                 return true
             }

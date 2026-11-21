@@ -1,11 +1,12 @@
 #version 330
+#extension GL_ARB_separate_shader_objects : require
 
 // Copies of dynamictransforms.glsl, projection.glsl and globals.glsl, as in rounded_rect.vsh.
 layout(std140) uniform DynamicTransforms {
     mat4 ModelViewMat;
+    mat4 TextureMat;
     vec4 ColorModulator;
     vec3 ModelOffset;
-    mat4 TextureMat;
 };
 layout(std140) uniform Projection {
     mat4 ProjMat;
@@ -14,17 +15,17 @@ layout(std140) uniform Projection {
 //   Position - the item's vertex, as the item itself was drawn
 //   UV0      - the camera's yaw and pitch, as Camera.setRotation hands them to rotationYXZ
 //   Color    - the starlight's color, and in alpha its strength
-in vec3 Position;
-in vec2 UV0;
-in vec4 Color;
+layout(location = 0) in vec3 Position;
+layout(location = 1) in vec2 UV0;
+layout(location = 2) in vec4 Color;
 
-out vec3 viewPos;
+layout(location = 0) out vec3 viewPos;
 // The view-to-world rotation by its columns, not as one mat3: on the Vulkan backend every output
 // gets one location, and a mat3 takes three, so the next output would land on one of them.
-flat out vec3 viewToWorld0;
-flat out vec3 viewToWorld1;
-flat out vec3 viewToWorld2;
-out vec4 vertexColor;
+layout(location = 1) flat out vec3 viewToWorld0;
+layout(location = 2) flat out vec3 viewToWorld1;
+layout(location = 3) flat out vec3 viewToWorld2;
+layout(location = 4) out vec4 vertexColor;
 
 void main() {
     // Exactly vanilla's expression, as in entity.vsh and glint.vsh: the pass only draws where its

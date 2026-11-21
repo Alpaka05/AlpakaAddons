@@ -16,7 +16,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * The Item Value key: pressed over an item in any menu - the inventory, a chest, the Auction House -
@@ -36,8 +35,8 @@ public final class ItemValueFeature {
     public static KeyMapping KEY;
 
     public static void register() {
-        KEY = AlpakaKeyBinds.register(new KeyMapping("key.alpaka.item_value", InputConstants.Type.KEYSYM,
-                GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY));
+        KEY = AlpakaKeyBinds.register(new KeyMapping("key.alpaka.item_value", InputConstants.Type.KEYBOARD,
+                InputConstants.UNKNOWN.getValue(), AlpakaKeyCategory.CATEGORY));
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (!(screen instanceof AbstractContainerScreen<?>)) return;
             ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> {

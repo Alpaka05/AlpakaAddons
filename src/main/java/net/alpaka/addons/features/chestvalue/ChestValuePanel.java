@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.chestvalue;
 
+import net.alpaka.addons.utils.MouseButtons;
 import net.alpaka.addons.utils.ItemData;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -1431,7 +1432,7 @@ public final class ChestValuePanel {
     static boolean mouseClicked(Screen in, double mx, double my, int button) {
         if (screen == null || in != screen || panelW <= 0 || !AlpakaStyle.inside(mx, my, panelX, panelY, panelW, panelH)) return false;
         heldButton = button;
-        if (button != 0) return true;
+        if (button != MouseButtons.LEFT) return true;
         for (int i = hits.size() - 1; i >= 0; i--) {
             Hit hit = hits.get(i);
             if (hit.contains(mx, my)) {

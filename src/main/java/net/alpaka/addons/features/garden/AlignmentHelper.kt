@@ -17,7 +17,6 @@ import net.minecraft.core.component.DataComponents
 import net.minecraft.tags.ItemTags
 import net.minecraft.util.Mth
 import net.minecraft.world.item.ItemStack
-import org.lwjgl.glfw.GLFW
 import java.util.Locale
 
 /**
@@ -57,7 +56,7 @@ object AlignmentHelper {
     @JvmStatic
     fun register() {
         KEY = AlpakaKeyBinds.register(KeyMapping("key.alpaka.alignment_helper",
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY))
+            InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.value, AlpakaKeyCategory.CATEGORY))
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
         ClientPlayConnectionEvents.JOIN.register { _, _, _ -> reset() }
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> reset() }

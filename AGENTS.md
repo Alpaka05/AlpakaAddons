@@ -51,6 +51,14 @@ session always win over this file.
     only the latest command, never retried, dropped on a world change or disconnect,
     and the resource pack answers of the pack cache in
     `mixin/DownloadedPackSourceMixin` and `mixin/ClientCommonPacketListenerPackCacheMixin`.
+  - `compat/oneconfig/`: puts the settings into OneConfig's own menu (OneClient) through its
+    `oneconfig:config` entrypoint, as a tree built from `ConfigTree`, so a new option shows up
+    there by itself. The values stay in the mod's config; OneConfig only calls the options'
+    getters and setters. Whatever OneConfig has a control for is set right there (a key in its
+    key field, a color's gradient or rainbow as a mode with its rows); a button into the mod's
+    own menu is the last resort. OneConfig is compile-only (`oneconfigApi` in `build.gradle`) and on
+    javac's classpath alone: it is built with a newer Kotlin than this project's compiler reads,
+    so only Java code may touch it. `ALPAKA_SCREENSHOT_TOUR=oneconfig` shows the result.
 - `src/test/`: JUnit 5 tests (Java and Kotlin).
 - `tools/`: helper scripts (Modrinth cleanup, menu icons, ...).
 

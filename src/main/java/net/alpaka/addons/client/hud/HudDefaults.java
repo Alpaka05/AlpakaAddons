@@ -74,6 +74,10 @@ public final class HudDefaults {
     public static final int FARMING_X = SLAYER_SESSION_X;
     public static final int FARMING_Y = SLAYER_SESSION_Y;
 
+    /** Where the slayer session HUD is too: the Farming Islands see no slayer either. */
+    public static final int TREVOR_X = SLAYER_SESSION_X;
+    public static final int TREVOR_Y = SLAYER_SESSION_Y;
+
     /**
      * The avatar's feet; at the default size it stands 72 pixels tall and 48 wide. Right of the
      * session HUD's widest rows, and with its top at 60, below the HUD editor's header (to 59).

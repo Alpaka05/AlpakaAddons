@@ -441,6 +441,17 @@ public class AlpakaConfig {
 
     // Farming HUD, on the Garden only. Each line has its own toggle, like the slayer session HUD.
     public boolean farmingHudEnabled = false;
+
+    /** Trevor Helper: HUD and waypoint for Trevor the Trapper's tasks; see TrevorTracker. */
+    public boolean trevorHelperEnabled = false;
+    public int trevorHudX = net.alpaka.addons.client.hud.HudDefaults.TREVOR_X;
+    public int trevorHudY = net.alpaka.addons.client.hud.HudDefaults.TREVOR_Y;
+    public float trevorHudScale = 1.0f;
+    public boolean trevorWaypoint = true;
+    public int trevorWaypointColor = 0xFFFFAA00;
+    public boolean trevorReadyAlert = true;
+    public boolean trevorHudBlur = true;
+    public boolean trevorHudSmoothFont = true;
     public int farmingHudX = net.alpaka.addons.client.hud.HudDefaults.FARMING_X;
     public int farmingHudY = net.alpaka.addons.client.hud.HudDefaults.FARMING_Y;
     public float farmingHudScale = 1.0f;
@@ -2112,6 +2123,7 @@ public class AlpakaConfig {
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
         this.farmingHudEnabled = false;
+        this.trevorHelperEnabled = false;
         this.customTabEnabled = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;

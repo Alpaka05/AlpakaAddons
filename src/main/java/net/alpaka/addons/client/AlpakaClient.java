@@ -86,6 +86,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.garden.PestFinder.register();
         net.alpaka.addons.features.garden.AlignmentHelper.register();
         net.alpaka.addons.features.garden.FarmingTracker.INSTANCE.register();
+        net.alpaka.addons.features.trevor.TrevorTracker.register();
         CommandWheelFeature.register();
         net.alpaka.addons.features.shortcuts.CommandShortcuts.register();
         net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.register();

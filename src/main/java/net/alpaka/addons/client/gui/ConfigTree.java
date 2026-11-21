@@ -97,6 +97,8 @@ public final class ConfigTree {
             "slayer_boss_highlight",
             // Dungeon, kept apart the same way
             "starred_mobs_highlight", "teammate_class_glow",
+            // Farming Islands, kept apart the same way
+            "trevor_helper",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_visual_clutter",
@@ -145,6 +147,8 @@ public final class ConfigTree {
             Map.entry("farming_hud_smooth_font", "farming_hud_enabled"),
             Map.entry("slayer_timer_blur", "slayer_timer"),
             Map.entry("slayer_timer_smooth_font", "slayer_timer"),
+            Map.entry("trevor_hud_blur", "trevor_helper"),
+            Map.entry("trevor_hud_smooth_font", "trevor_helper"),
             Map.entry("deployable_timer_blur", "deployable_timer"),
             Map.entry("deployable_timer_smooth_font", "deployable_timer"),
             Map.entry("performance_hud_blur", "performance_hud_enabled"),
@@ -215,7 +219,7 @@ public final class ConfigTree {
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "clean_blaze", "blaze_fire_pits"},
-                    {"Garden", "farming_hud_enabled", "pest_finder", "alignment_helper", "visitor_bazaar"},
+                    {"Garden", "farming_hud_enabled", "pest_finder", "alignment_helper", "visitor_bazaar", "trevor_helper"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
                             "world_age_join_message_enabled", "ragnarock", "exact_skill_xp", "deployable_timer", "ignore_filler_panes", "slot_highlight", "#Enchantments", "cache_resource_pack",
                             "profile_dashboard"},

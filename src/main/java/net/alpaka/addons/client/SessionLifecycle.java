@@ -85,6 +85,7 @@ public final class SessionLifecycle {
         net.alpaka.addons.features.ragnarock.RagnarockFeature.reset();
         net.alpaka.addons.features.skills.ExactSkillXp.reset();
         net.alpaka.addons.features.mobdeath.HideMobDeathsFeature.forgetNames();
+        net.alpaka.addons.features.trevor.TrevorTracker.reset();
     }
 
     /** Nothing waiting to be written is lost on exit. */

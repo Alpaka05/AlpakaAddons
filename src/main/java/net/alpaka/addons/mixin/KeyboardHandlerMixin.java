@@ -49,6 +49,10 @@ public class KeyboardHandlerMixin {
             ci.cancel();
             return;
         }
+        if (net.alpaka.addons.features.trevor.TrevorTracker.onKey(event.key(), event.scancode(), repeat)) {
+            ci.cancel();
+            return;
+        }
         if (ChatTabsFeature.onPeekKey(event.key(), event.hasShiftDown(), repeat)) {
             ci.cancel();
             return;

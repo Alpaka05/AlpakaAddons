@@ -40,8 +40,6 @@
     "LivingEntityRendererMixin",
     "MinecraftFrameMixin",
     "MinecraftPestFinderMixin",
-    "NameTagFeatureRendererMixin",
-    "NameTagSubmitMixin",
     "ParticleEngineMixin",
     "PictureInPictureRendererMixin",
     "ScoreboardEntryFontMixin",

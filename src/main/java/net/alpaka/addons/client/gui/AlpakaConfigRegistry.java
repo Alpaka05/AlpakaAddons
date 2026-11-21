@@ -414,29 +414,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.firstPersonFireStatic = v; AlpakaConfig.save(); },
                 "first person fire flame animation animated flicker still static freeze screen overlay burning"));
 
-        OPTIONS.add(new ConfigOption("Nametags", ConfigCategory.VISUALS));
-
-        OPTIONS.add(ConfigOption.color("name_tag_background_color", "Background Color",
-                "The box behind every nametag. Set the opacity to 0 to remove it and leave only the text.",
-                ConfigCategory.VISUALS,
-                c -> c.nameTagBackgroundColor,
-                v -> { AlpakaConfig.instance.nameTagBackgroundColor = v; AlpakaConfig.save(); },
-                "name tag nametag background backdrop box dark color colour opacity hide remove transparent player mob"));
-
-        OPTIONS.add(new ConfigOption("name_tag_text_shadow", "Text Shadow",
-                "Draws the text of every nametag with the usual Minecraft drop shadow.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.nameTagTextShadow,
-                v -> { AlpakaConfig.instance.nameTagTextShadow = v; AlpakaConfig.save(); },
-                "name tag nametag text shadow drop readable player mob"));
-
-        OPTIONS.add(new ConfigOption("show_own_name_tag", "Show Own Nametag",
-                "Shows your own nametag above you in third person. Custom Name Tag draws its animated one instead.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.showOwnNameTag,
-                v -> { AlpakaConfig.instance.showOwnNameTag = v; AlpakaConfig.save(); },
-                "own name tag nametag self third person f5 see my name show"));
-
         OPTIONS.add(new ConfigOption("Camera", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("render_hand_third_person", "First-Person Hand in F5",

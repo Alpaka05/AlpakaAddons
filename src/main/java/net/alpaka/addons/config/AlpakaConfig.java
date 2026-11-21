@@ -283,18 +283,6 @@ public class AlpakaConfig {
     public float firstPersonFireHeight = 1.0f;
     /** Draws that fire as one still frame instead of the flickering animation. */
     public boolean firstPersonFireStatic = false;
-    /**
-     * The box behind every nametag. The default is vanilla's own box, which then stays vanilla's,
-     * accessibility opacity setting included; zero opacity drops the box and leaves only the text.
-     */
-    public int nameTagBackgroundColor = DEFAULT_NAME_TAG_BACKGROUND;
-    public static final int DEFAULT_NAME_TAG_BACKGROUND = 0x3F000000;
-    /** Legacy, before the background color. Read once on load and then cleared. */
-    public Boolean hideNameTagBackground = null;
-    /** Shows the player their own vanilla nametag in third person. */
-    public boolean showOwnNameTag = false;
-    /** Gives the text of every name tag the usual drop shadow, which vanilla leaves off in the world. */
-    public boolean nameTagTextShadow = false;
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
@@ -1751,7 +1739,6 @@ public class AlpakaConfig {
 
         // Settings that were replaced keep the other pattern: a legacy field, read once and then
         // cleared, so it needs no number.
-        instance.migrateNameTagBackground();
         boolean chromaMoved = instance.migrateChroma();
         instance.migrateInventoryHudVisibility();
         instance.migrateWorldAgeHud();
@@ -1946,12 +1933,6 @@ public class AlpakaConfig {
         return Math.max(Chroma.MIN_SPEED, Math.min(Chroma.MAX_SPEED, speed));
     }
 
-    private void migrateNameTagBackground() {
-        if (hideNameTagBackground == null) return;
-        if (hideNameTagBackground) nameTagBackgroundColor = 0;
-        hideNameTagBackground = null;
-    }
-
     /**
      * The file is there but unusable: empty, cut short, or not valid JSON.
      *
@@ -2087,8 +2068,6 @@ public class AlpakaConfig {
         this.hideVisualClutter = false;
         this.hideEntityFire = false;
         this.firstPersonFireStatic = false;
-        this.showOwnNameTag = false;
-        this.nameTagTextShadow = false;
         this.wideHealthBarEnabled = false;
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;

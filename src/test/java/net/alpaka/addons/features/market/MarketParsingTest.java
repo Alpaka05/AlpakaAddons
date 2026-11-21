@@ -443,6 +443,22 @@ class MarketParsingTest {
     }
 
     @Test
+    void namesEnchantmentsAsTheBazaarFindsThem() {
+        assertEquals("Chimera IV", ItemTags.enchantmentName("chimera 4 enchant", "ENCHANTMENT_ULTIMATE_CHIMERA_4"));
+        assertEquals("Luck of the Sea III", ItemTags.enchantmentName("luck of the sea 3 enchant", "ENCHANTMENT_LUCK_OF_THE_SEA_3"));
+        assertEquals("Bobbin' Time V", ItemTags.enchantmentName("bobbin' time 5 enchant", "ENCHANTMENT_ULTIMATE_BOBBIN_TIME_5"));
+        assertEquals("Turbo-Wheat V", ItemTags.enchantmentName("turbo wheat 5 enchant", "ENCHANTMENT_TURBO_WHEAT_5"));
+        assertEquals("Sharpness VII", ItemTags.enchantmentName("sharpness 7 enchant", "ENCHANTMENT_SHARPNESS_7"));
+        assertEquals("Fortune X", ItemTags.enchantmentName("fortune 10 enchant", "ENCHANTMENT_FORTUNE_10"));
+        assertEquals("Enchantment Table", ItemTags.enchantmentName("Enchantment Table", "ENCHANTMENT_TABLE"));
+        ItemTags.index("""
+                [{"name":"chimera 4 enchant","tag":"ENCHANTMENT_ULTIMATE_CHIMERA_4","flags":"BAZAAR"}]""");
+        assertEquals(List.of("Chimera IV"), ItemTags.names(MarketKind.BAZAAR));
+        assertEquals("ENCHANTMENT_ULTIMATE_CHIMERA_4", ItemTags.lookup("Chimera IV", MarketKind.BAZAAR));
+        assertEquals("ENCHANTMENT_ULTIMATE_CHIMERA_4", ItemTags.lookup("chimera 4 enchant", MarketKind.BAZAAR));
+    }
+
+    @Test
     void theAuctionHousesSuggestionsLeaveOutPlainMinecraftItems() {
         ItemIcons.Catalog catalog = ItemIcons.index(com.google.gson.JsonParser.parseString("""
                 {"items":[

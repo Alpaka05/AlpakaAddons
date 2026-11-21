@@ -227,13 +227,17 @@ public final class ItemTags {
                 String name = string(o, "name").replaceAll("§.", "").trim();
                 String tag = string(o, "tag");
                 if (name.isEmpty() || tag.isEmpty() || name.equals("null")) continue;
+                String raw = name;
+                name = enchantmentName(name, tag);
                 String key = name.toLowerCase(Locale.ROOT);
                 String flags = string(o, "flags");
                 if (flags.contains("BAZAAR")) {
                     bazaar.putIfAbsent(key, tag);
+                    bazaar.putIfAbsent(raw.toLowerCase(Locale.ROOT), tag);
                     bazaarList.add(name);
                 } else {
                     auction.putIfAbsent(key, tag);
+                    auction.putIfAbsent(raw.toLowerCase(Locale.ROOT), tag);
                     // Only what is actually sold there: items that never are would crowd the suggestions.
                     if (flags.contains("AUCTION") || flags.contains("MUSEUM")) {
                         auctionList.computeIfAbsent(name, n -> new ArrayList<>()).add(tag);
@@ -247,6 +251,39 @@ public final class ItemTags {
         // Last: it is what tells the lists are there.
         bazaarByName = bazaar;
         bazaarNames = List.copyOf(bazaarList);
+    }
+
+    private static final java.util.regex.Pattern ENCHANT_NAME = java.util.regex.Pattern.compile("(.+) (\\d{1,2}) enchant");
+    private static final Set<String> SMALL_WORDS = Set.of("of", "the", "a", "an", "and", "in", "on", "to");
+
+    /**
+     * An enchantment as Hypixel writes it, the way the Bazaar finds it: SkyCofl calls Chimera IV
+     * "chimera 4 enchant", and a search for that finds nothing. Any other name stays as it is.
+     */
+    static String enchantmentName(String name, String tag) {
+        if (!tag.startsWith("ENCHANTMENT_")) return name;
+        java.util.regex.Matcher m = ENCHANT_NAME.matcher(name);
+        if (!m.matches()) return name;
+        int level = Integer.parseInt(m.group(2));
+        if (level < 1) return name;
+        StringBuilder out = new StringBuilder();
+        String[] words = m.group(1).trim().split("\\s+");
+        for (int i = 0; i < words.length; i++) {
+            String w = words[i].toLowerCase(Locale.ROOT);
+            if (i > 0) out.append(' ');
+            if (i > 0 && SMALL_WORDS.contains(w)) out.append(w);
+            else out.append(Character.toUpperCase(w.charAt(0))).append(w, 1, w.length());
+        }
+        // Hypixel joins the farming ones with a hyphen: Turbo-Wheat.
+        String base = out.toString().replaceFirst("^Turbo ", "Turbo-");
+        return base + " " + roman(level);
+    }
+
+    /** 1 to 99 in Roman numerals, as enchantment levels are written. */
+    static String roman(int n) {
+        String[] tens = {"", "X", "XX", "XXX", "XL", "L", "LX", "LXX", "LXXX", "XC"};
+        String[] ones = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"};
+        return tens[n / 10 % 10] + ones[n % 10];
     }
 
     /** The Auction House's names with their tags after {@link #index}, for the tests. */

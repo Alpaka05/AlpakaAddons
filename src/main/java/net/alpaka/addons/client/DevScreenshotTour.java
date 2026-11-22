@@ -955,7 +955,8 @@ public final class DevScreenshotTour {
                 if (server != null) server.execute(() -> server.getCommands().performPrefixedCommand(
                         server.createCommandSourceStack(), "time set noon"));
                 net.alpaka.addons.features.cosmetics.RareDropAnimation.test();
-            }, () -> true, 20),
+            }, () -> true, 12),
+            new Stop("rare-drop-dye-sweep", () -> {}, () -> true, 1),
             new Stop("rare-drop-day", () -> {}, () -> true, 30),
             new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),
             new Stop("rare-drop-item-3", () -> {}, () -> true, 40),

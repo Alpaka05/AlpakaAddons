@@ -27,11 +27,38 @@ public record GlowRenderState(
     public static final int RING = 1;
     public static final int RAY = 2;
     public static final int SPARKLE = 3;
+    /**
+     * An arc of rainbow bands at the edge of a disc, drawn from the left over the top as far as its
+     * parameter in thousandths (0 left, 1000 right); the color only tints it.
+     */
+    public static final int RAINBOW = 4;
 
     /** A glow, ring or sparkle: a square around (cx, cy), reaching out by radius. */
     public static GlowRenderState disc(Matrix3x2fc pose, float cx, float cy, float radius, int shape, int param, int color) {
         float l = cx - radius, r = cx + radius, t = cy - radius, b = cy + radius;
         return new GlowRenderState(pose, l, t, l, b, r, b, r, t,
+                -1, -1, -1, 1, 1, 1, 1, -1, shape, param, color, boundsOf(pose, l, t, r, b));
+    }
+
+    /**
+     * A glow, ring or sparkle stretched into an ellipse around (cx, cy): {@code rx} along the
+     * direction {@code angle} (radians), {@code ry} across it. A glow drawn long and thin is a soft
+     * line or a petal.
+     */
+    public static GlowRenderState ellipse(Matrix3x2fc pose, float cx, float cy, float rx, float ry, float angle,
+                                          int shape, int param, int color) {
+        float c = (float) Math.cos(angle), s = (float) Math.sin(angle);
+        float ax = c * rx, ay = s * rx;
+        float bx = -s * ry, by = c * ry;
+        float x0 = cx - ax - bx, y0 = cy - ay - by;
+        float x1 = cx - ax + bx, y1 = cy - ay + by;
+        float x2 = cx + ax + bx, y2 = cy + ay + by;
+        float x3 = cx + ax - bx, y3 = cy + ay - by;
+        float l = Math.min(Math.min(x0, x1), Math.min(x2, x3));
+        float r = Math.max(Math.max(x0, x1), Math.max(x2, x3));
+        float t = Math.min(Math.min(y0, y1), Math.min(y2, y3));
+        float b = Math.max(Math.max(y0, y1), Math.max(y2, y3));
+        return new GlowRenderState(pose, x0, y0, x1, y1, x2, y2, x3, y3,
                 -1, -1, -1, 1, 1, 1, 1, -1, shape, param, color, boundsOf(pose, l, t, r, b));
     }
 

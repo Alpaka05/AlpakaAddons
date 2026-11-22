@@ -1610,53 +1610,44 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Swing Trail", ConfigCategory.VIEWMODEL));
 
         OPTIONS.add(new ConfigOption("item_swing_trail", "Swing Trail",
-                "Leaves a trail of small particles behind the tip of the held item when you strike.",
+                "Draws a slash in the air behind the tip of the held item when you strike.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwingTrailEnabled,
                 v -> { AlpakaConfig.instance.itemSwingTrailEnabled = v; AlpakaConfig.save(); },
-                "swing trail particles sparks dust slash streak swoosh sword tip strike attack hit effect"));
+                "swing trail slash streak swoosh arc crescent sword tip strike attack hit effect"));
 
         OPTIONS.add(ConfigOption.color("item_swing_trail_color", "Trail Color",
-                "The color of the particles.",
+                "The color of the slash.",
                 ConfigCategory.VIEWMODEL,
                 c -> c.itemSwingTrailColor,
                 v -> { AlpakaConfig.instance.itemSwingTrailColor = v; AlpakaConfig.save(); },
-                "swing trail particles color white tint"));
+                "swing trail slash color white tint"));
 
-        OPTIONS.add(new ConfigOption("item_swing_trail_length", "Trail Length",
-                "How long the particles hang in the air before they have faded.",
+        OPTIONS.add(new ConfigOption("item_swing_trail_duration", "Trail Length",
+                "How long the slash stays in the air. Longer also means more of the strike is drawn.",
                 ConfigCategory.VIEWMODEL,
-                () -> AlpakaConfig.instance.itemSwingTrailLength,
-                v -> { AlpakaConfig.instance.itemSwingTrailLength = (float) Math.round(v / 50.0f) * 50.0f; AlpakaConfig.save(); },
+                () -> AlpakaConfig.instance.itemSwingTrailDuration,
+                v -> { AlpakaConfig.instance.itemSwingTrailDuration = (float) Math.round(v / 25.0f) * 25.0f; AlpakaConfig.save(); },
                 SwingTrailFeature.MIN_LENGTH_MS, SwingTrailFeature.MAX_LENGTH_MS,
                 val -> String.format(Locale.ROOT, "%.0f ms", val),
-                "swing trail particles length duration time long short fade lingers lifetime"));
+                "swing trail slash length duration time long short fade lingers lifetime"));
 
-        OPTIONS.add(new ConfigOption("item_swing_trail_amount", "Particle Amount",
-                "How many particles a strike leaves behind.",
+        OPTIONS.add(new ConfigOption("item_swing_trail_width", "Trail Width",
+                "How wide the slash is at the item.",
                 ConfigCategory.VIEWMODEL,
-                () -> AlpakaConfig.instance.itemSwingTrailAmount,
-                v -> { AlpakaConfig.instance.itemSwingTrailAmount = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
-                SwingTrailFeature.MIN_AMOUNT, SwingTrailFeature.MAX_AMOUNT,
+                () -> AlpakaConfig.instance.itemSwingTrailWidth,
+                v -> { AlpakaConfig.instance.itemSwingTrailWidth = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
+                SwingTrailFeature.MIN_WIDTH, SwingTrailFeature.MAX_WIDTH,
                 val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
-                "swing trail particles amount number count density many few"));
-
-        OPTIONS.add(new ConfigOption("item_swing_trail_size", "Particle Size",
-                "How big the particles are.",
-                ConfigCategory.VIEWMODEL,
-                () -> AlpakaConfig.instance.itemSwingTrailSize,
-                v -> { AlpakaConfig.instance.itemSwingTrailSize = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
-                SwingTrailFeature.MIN_SIZE, SwingTrailFeature.MAX_SIZE,
-                val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
-                "swing trail particles size big small scale"));
+                "swing trail slash width thick thin wide narrow size"));
 
         OPTIONS.add(new ConfigOption("item_swing_trail_opacity", "Trail Opacity",
-                "How strongly the particles are drawn.",
+                "How strongly the slash is drawn.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwingTrailOpacity,
                 v -> { AlpakaConfig.instance.itemSwingTrailOpacity = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
                 0.1f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
-                "swing trail particles opacity alpha strength transparency intensity"));
+                "swing trail slash opacity alpha strength transparency intensity"));
 
         OPTIONS.add(new ConfigOption("item_viewmodel_reset", "Reset Viewmodel Settings",
                 "Resets every viewmodel and swing value, Starlight, Swing Motion Blur and Swing Trail included. Presets are kept.",

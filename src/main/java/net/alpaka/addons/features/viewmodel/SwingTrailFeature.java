@@ -21,23 +21,22 @@ import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 /**
- * Swing trail: small particles that the tip of the first-person held item sheds while it strikes
- * and leaves hanging in the air behind it.
+ * Swing trail: a slash drawn in the air behind the tip of the first-person held item while it
+ * strikes, like the stroke of a sword in a comic.
  *
  * The hand item's submits are captured the way {@link ItemMotionBlurFeature} does it. Each carries
  * the item's final pose - the model's own display transform, the swing, and everything the
  * viewmodel settings add - and its quads. {@link SwingTrailTip} finds the tip and the grip end in
- * the quads, the pose takes both to where they are drawn, and {@link SwingTrailParticles} sheds
- * the particles along the way the tip takes. Because the tip comes from the model and goes through
- * the same pose as the item, the trail starts at the tip at any size, offset and rotation, and
- * its particles grow and shrink with the item.
+ * the quads, the pose takes both to where they are drawn, and {@link SwingTrailRibbon} draws the
+ * slash along the way the tip takes. Because the tip comes from the model and goes through the
+ * same pose as the item, the slash hangs on the tip at any size, offset and rotation, and is as
+ * wide as the item is long.
  *
- * The particles are submitted as plain colored squares in the space the item's pose ends in, so
- * they stay where they were on screen while the camera turns, like the hand itself. They test
- * against the hand item's depth but write none: the item covers the ones behind it.
+ * The slash is submitted as plain colored quads in the space the item's pose ends in, so it stays
+ * where it was on screen while the camera turns, like the hand itself. It tests against the hand
+ * item's depth but writes none: the item covers the part behind it.
  *
  * An item drawn by a special renderer (a head, a shield) has no quads to find a tip in and gets no
  * trail.
@@ -49,11 +48,9 @@ public final class SwingTrailFeature {
 
     // The config sliders share these so the feature never sees a value it cannot take.
     public static final float MIN_LENGTH_MS = 100.0f;
-    public static final float MAX_LENGTH_MS = 1500.0f;
-    public static final float MIN_AMOUNT = 0.25f;
-    public static final float MAX_AMOUNT = 3.0f;
-    public static final float MIN_SIZE = 0.5f;
-    public static final float MAX_SIZE = 3.0f;
+    public static final float MAX_LENGTH_MS = 1000.0f;
+    public static final float MIN_WIDTH = 0.25f;
+    public static final float MAX_WIDTH = 2.0f;
 
     /** Set while the hand renderer submits the local player's first-person item. */
     private static boolean capturing = false;
@@ -65,16 +62,15 @@ public final class SwingTrailFeature {
     /** ItemSubmits of this frame's hand item, one per model layer. */
     private static final List<ItemFeatureRenderer.Submit> currentSubmits = new ArrayList<>();
 
-    private static final SwingTrailParticles[] trails = {
-            new SwingTrailParticles(new Random()), new SwingTrailParticles(new Random())};
+    private static final SwingTrailRibbon[] trails = {new SwingTrailRibbon(), new SwingTrailRibbon()};
 
     /** The tip each hand's trail was last recorded for; another one means another item. */
     private static final SwingTrailTip[] lastTips = new SwingTrailTip[2];
 
-    /** The particles are already where they are drawn, so they are submitted without a pose of their own. */
+    /** The slash is already where it is drawn, so it is submitted without a pose of its own. */
     private static final PoseStack NO_POSE = new PoseStack();
 
-    private static final float[] squares = new float[SwingTrailParticles.MAX_PARTICLES * SwingTrailParticles.PARTICLE_FLOATS];
+    private static final float[] quads = new float[SwingTrailRibbon.MAX_FLOATS];
     /** Where this frame's tip and grip end are drawn, and how big one pixel of the item is there. */
     private static final float[] point = new float[6];
     private static float texel;
@@ -112,7 +108,7 @@ public final class SwingTrailFeature {
 
     /**
      * Called right after the real submit returns, before any motion blur ghost is submitted.
-     * Records where the tip is this frame and submits the particles through the same collector.
+     * Records where the tip is this frame and submits the slash through the same collector.
      */
     public static void endHandItem(SubmitNodeCollector collector) {
         if (!capturing) {
@@ -120,36 +116,35 @@ public final class SwingTrailFeature {
         }
         capturing = false;
         int hand = currentHand;
-        SwingTrailParticles trail = trails[hand];
+        SwingTrailRibbon trail = trails[hand];
         try {
             SwingTrailTip tip = locateTip();
             if (tip == null) {
                 return;
             }
+            long now = System.nanoTime();
             if (tip != lastTips[hand]) {
                 // Another item: its tip is somewhere else, which is no strike from the old one's.
-                trail.interrupt();
+                trail.interrupt(now);
                 lastTips[hand] = tip;
             }
             AlpakaConfig config = AlpakaConfig.instance;
-            long now = System.nanoTime();
-            long lifeNanos = (long) (Mth.clamp(config.itemSwingTrailLength, MIN_LENGTH_MS, MAX_LENGTH_MS) * 1_000_000.0f);
-            trail.update(now, currentProgress, point, texel, lifeNanos,
-                    Mth.clamp(config.itemSwingTrailAmount, MIN_AMOUNT, MAX_AMOUNT));
-            if (trail.count() == 0) {
+            long lifeNanos = (long) (Mth.clamp(config.itemSwingTrailDuration, MIN_LENGTH_MS, MAX_LENGTH_MS) * 1_000_000.0f);
+            trail.update(now, currentProgress, point, texel, lifeNanos);
+            if (trail.isEmpty()) {
                 return;
             }
-            int floats = trail.build(now, Mth.clamp(config.itemSwingTrailSize, MIN_SIZE, MAX_SIZE), squares);
+            int floats = trail.build(now, texel, lifeNanos, Mth.clamp(config.itemSwingTrailWidth, MIN_WIDTH, MAX_WIDTH), quads);
             if (floats == 0) {
                 return;
             }
-            // The squares are drawn after this method returns, when the next frame may have moved
-            // the particles on already; they get a copy of their own.
-            float[] vertices = Arrays.copyOf(squares, floats);
+            // The quads are drawn after this method returns, when the other hand or the next frame
+            // may have written its own already; they get a copy of their own.
+            float[] vertices = Arrays.copyOf(quads, floats);
             int rgb = config.itemSwingTrailColor & 0xFFFFFF;
             float opacity = Mth.clamp(config.itemSwingTrailOpacity, 0.0f, 1.0f);
             collector.submitCustomGeometry(NO_POSE, RenderTypes.debugQuads(), (pose, buffer) -> {
-                for (int i = 0; i < vertices.length; i += SwingTrailParticles.VERTEX_FLOATS) {
+                for (int i = 0; i < vertices.length; i += SwingTrailRibbon.VERTEX_FLOATS) {
                     int alpha = Math.round(vertices[i + 3] * opacity * 255.0f);
                     buffer.addVertex(pose, vertices[i], vertices[i + 1], vertices[i + 2]).setColor(ARGB.color(alpha, rgb));
                 }

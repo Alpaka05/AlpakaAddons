@@ -2077,20 +2077,6 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Commands", ConfigCategory.SKYBLOCK));
 
-        OPTIONS.add(new ConfigOption("shorten_warp", "Shorten Warp",
-                "Type just the destination to warp there: /isle instead of /warp isle, in chat and on the command wheel. Commands that already exist keep their meaning.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.shortenWarpEnabled,
-                v -> { AlpakaConfig.instance.shortenWarpEnabled = v; AlpakaConfig.save(); },
-                "shorten warp short shortcut alias destination /isle /hub /garden /dh command"));
-
-        OPTIONS.add(new ConfigOption("warp_cooldown_queue", "Warp Cooldown",
-                "A warp typed or picked on the command wheel right after joining a server waits for Hypixel's cooldown and goes out on its own when it ends, instead of being refused.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.warpCooldownQueueEnabled,
-                v -> { AlpakaConfig.instance.warpCooldownQueueEnabled = v; AlpakaConfig.save(); },
-                "warp cooldown queue delay wait server join transfer early command you may only use this command"));
-
         OPTIONS.add(new ConfigOption("ignore_filler_panes", "Ignore Filler Panes",
                 "Clicks on the empty black glass panes in SkyBlock menus do nothing, so a missed click doesn't pick one up.",
                 ConfigCategory.SKYBLOCK,

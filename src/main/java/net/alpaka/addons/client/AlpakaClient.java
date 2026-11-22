@@ -74,6 +74,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.market.MarketKeys.register();
         net.alpaka.addons.features.market.Markets.register();
         ZoomFeature.register();
+        net.alpaka.addons.features.viewmodel.ItemInspectFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
         // Before ChatOverHud, which hands the player list over as it stands after this replaced it.
         net.alpaka.addons.features.chat.ChatOverHud.register();
@@ -82,9 +83,6 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.itemvalue.PriceTooltipFeature.register();
         net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
         net.alpaka.addons.features.itemsearch.ItemSearchFeature.register();
-        net.alpaka.addons.features.garden.PestFinder.register();
-        net.alpaka.addons.features.garden.AlignmentHelper.register();
-        net.alpaka.addons.features.garden.FarmingTracker.INSTANCE.register();
         CommandWheelFeature.register();
         net.alpaka.addons.features.shortcuts.CommandShortcuts.register();
         net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.register();
@@ -108,12 +106,9 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         net.alpaka.addons.features.quickjoin.QuickJoin.register();
         net.alpaka.addons.features.party.PartyCommandsFeature.register();
-        net.alpaka.addons.features.commands.WarpCooldownQueue.register();
         net.alpaka.addons.features.chat.MessageFilterFeature.register();
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
         net.alpaka.addons.features.storagepreview.StoragePreviewFeature.register();
-        net.alpaka.addons.features.garden.VisitorBazaarFeature.register();
-        net.alpaka.addons.features.enchantments.MaxEnchantColorFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
         WorldAgeFeature.registerEvents();
         net.alpaka.addons.features.performance.PerformanceStats.register();

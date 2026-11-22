@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.features.blaze.CleanBlazeFeature;
+import net.alpaka.addons.features.clutter.HideVisualClutterFeature;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
@@ -8,7 +9,7 @@ import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Drops the sky flash a lightning bolt causes while Clean Blaze hides lightning. The bolt itself is
+ * Drops the sky flash a lightning bolt causes while Clean Blaze or Hide Visual Clutter hides lightning. The bolt itself is
  * hidden from {@link EntityRendererMixin}; the thunder still plays.
  */
 @Mixin(LightningBolt.class)
@@ -23,6 +24,6 @@ public class LightningBoltMixin {
         )
     )
     private boolean alpaka$skipSkyFlash(Level level, int ticks) {
-        return !CleanBlazeFeature.hideLightning();
+        return !(CleanBlazeFeature.hideLightning() || HideVisualClutterFeature.shouldHideLightning());
     }
 }

@@ -329,29 +329,17 @@ public class AlpakaConfigRegistry {
                 "hide mob death smoke poof particles cloud puff"));
 
         OPTIONS.add(new ConfigOption("hide_visual_clutter", "Hide Visual Clutter",
-                "Hides effects that only cost frames: explosions, falling blocks, block particles, hit sparks, fireworks, experience orbs, dying dragons and stuck arrows.",
+                "Hides effects that only cost frames: falling blocks, hit sparks, fireworks, experience orbs, dying dragons, stuck arrows and lightning.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideVisualClutter,
                 v -> { AlpakaConfig.instance.hideVisualClutter = v; AlpakaConfig.save(); },
-                "hide visual clutter performance fps lag particles effects explosions falling blocks fireworks orbs dragon arrows"));
-        OPTIONS.add(new ConfigOption("hide_clutter_explosions", "Explosions",
-                "The flash, smoke and debris of explosions, like Hyperion, Bonzo's Staff, TNT and creepers.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.clutterExplosions,
-                v -> { AlpakaConfig.instance.clutterExplosions = v; AlpakaConfig.save(); },
-                "hide explosion explosions explode tnt creeper hyperion wither impact implosion bonzo particles flash cloud smoke"));
+                "hide visual clutter performance fps lag particles effects falling blocks fireworks orbs dragon arrows lightning"));
         OPTIONS.add(new ConfigOption("hide_clutter_falling_blocks", "Falling Blocks",
                 "Blocks flying through the air, like the gold of Molten Wave. What they hit is decided by the server either way.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.clutterFallingBlocks,
                 v -> { AlpakaConfig.instance.clutterFallingBlocks = v; AlpakaConfig.save(); },
                 "hide falling blocks block entity sand gravel molten wave midas staff seismic wave debris"));
-        OPTIONS.add(new ConfigOption("hide_clutter_block_break", "Block Break Particles",
-                "The bits that fly off broken and mined blocks, yours and everyone else's. The cracks on the block stay.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.clutterBlockBreak,
-                v -> { AlpakaConfig.instance.clutterBlockBreak = v; AlpakaConfig.save(); },
-                "hide block break breaking particles mining farming garden crops terrain dig destroy"));
         OPTIONS.add(new ConfigOption("hide_clutter_hit_particles", "Hit Particles",
                 "The sparks of critical and enchanted hits, and the sparkle trail behind fully drawn arrows.",
                 ConfigCategory.VISUALS,
@@ -382,6 +370,12 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.clutterAttachedArrows,
                 v -> { AlpakaConfig.instance.clutterAttachedArrows = v; AlpakaConfig.save(); },
                 "hide attached stuck arrows arrow body player ground wall block bow pincushion"));
+        OPTIONS.add(new ConfigOption("hide_clutter_lightning", "Lightning",
+                "Lightning bolts and the flash of the sky they cause, everywhere. The thunder stays.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterLightning,
+                v -> { AlpakaConfig.instance.clutterLightning = v; AlpakaConfig.save(); },
+                "hide lightning bolt bolts strike thunder flash sky storm blitz"));
 
         OPTIONS.add(new ConfigOption("Hide Fire Overlay", ConfigCategory.VISUALS));
 
@@ -424,27 +418,12 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.renderHandInThirdPerson = v; AlpakaConfig.save(); },
                 "hand view third person render"));
 
-        OPTIONS.add(new ConfigOption("smooth_perspective", "Smooth Perspective",
-                "Animates the camera smoothly when you switch perspective.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.smoothPerspectiveEnabled,
-                v -> { AlpakaConfig.instance.smoothPerspectiveEnabled = v; AlpakaConfig.save(); },
-                "smooth perspective camera transition f5 third person first person"));
-
         OPTIONS.add(new ConfigOption("disable_front_perspective", "Disable Front Perspective",
                 "Makes F5 skip the front view and switch only between first and third person.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.disableFrontPerspective,
                 v -> { AlpakaConfig.instance.disableFrontPerspective = v; AlpakaConfig.save(); },
                 "disable front perspective skip view f5 third person first person camera 1st 3rd toggles"));
-
-        OPTIONS.add(new ConfigOption("smooth_perspective_duration", "Transition Duration",
-                "How long the perspective transition takes.",
-                ConfigCategory.VISUALS,
-                () -> (float) AlpakaConfig.instance.smoothPerspectiveDurationMs,
-                v -> { AlpakaConfig.instance.smoothPerspectiveDurationMs = Math.round(v); AlpakaConfig.save(); },
-                100.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
-                "smooth perspective camera speed duration transition time ms"));
 
         OPTIONS.add(new ConfigOption("zoom", "Zoom",
                 "Zooms in while you hold the Zoom key, or from one press to the next with Toggle Zoom.",
@@ -1649,6 +1628,29 @@ public class AlpakaConfigRegistry {
                 0.1f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
                 "swing trail slash opacity alpha strength transparency intensity"));
 
+        OPTIONS.add(new ConfigOption("Inspect Animation", ConfigCategory.VIEWMODEL));
+
+        OPTIONS.add(new ConfigOption("item_inspect", "Inspect Animation",
+                "Shows off the held item when you press the key, like a weapon inspect in shooters. Swords, tools, bows, blocks and other items each have their own animation. Only on your screen.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemInspectEnabled,
+                v -> { AlpakaConfig.instance.itemInspectEnabled = v; AlpakaConfig.save(); },
+                "inspect animation look item weapon show off twirl spin flip csgo valorant knife hand"));
+
+        OPTIONS.add(ConfigOption.keybind("item_inspect_key", "Key",
+                "The key that starts the inspect. Unbound by default.",
+                ConfigCategory.VIEWMODEL,
+                () -> net.alpaka.addons.features.viewmodel.ItemInspectFeature.INSPECT_KEY,
+                "inspect animation key hotkey bind"));
+
+        OPTIONS.add(new ConfigOption("item_inspect_speed", "Speed",
+                "How fast the inspect plays. 1.00x is its normal pace.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemInspectSpeed,
+                v -> { AlpakaConfig.instance.itemInspectSpeed = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
+                0.5f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "inspect animation speed fast slow duration pace multiplier"));
+
         OPTIONS.add(new ConfigOption("item_viewmodel_reset", "Reset Viewmodel Settings",
                 "Resets every viewmodel and swing value, Starlight, Swing Motion Blur and Swing Trail included. Presets are kept.",
                 ConfigCategory.VIEWMODEL,
@@ -1860,148 +1862,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.etherwarpSoundVolume = v; AlpakaConfig.save(); },
                 0.1f, 2.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
                 "etherwarp sound volume loud quiet"));
-
-        OPTIONS.add(new ConfigOption("Farming HUD", ConfigCategory.SKYBLOCK));
-
-        OPTIONS.add(new ConfigOption("farming_hud_enabled", "Farming HUD",
-                "Shows your farming stats on the Garden: crop milestone, pest cooldown, repellent, blocks per second, XP per hour, visitors and the next Jacob's Contest.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.farmingHudEnabled,
-                v -> { AlpakaConfig.instance.farmingHudEnabled = v; AlpakaConfig.save(); },
-                "farming hud garden bps blocks per second xp per hour crop milestone tier eta pest cooldown repellent visitors visitor timer queue jacob contest crops"));
-
-        OPTIONS.add(new ConfigOption("farming_hud_lines", "Shown Lines",
-                "Pick which lines the HUD shows. Milestone, pest cooldown and visitors need the Crop Milestones, Pests and Visitors tab widgets; open /cropmilestones once to see the milestone in crops.",
-                ConfigCategory.SKYBLOCK,
-                java.util.List.of(
-                        toggle("Title", c -> c.farmingHudShowTitle, (c, v) -> c.farmingHudShowTitle = v),
-                        toggle("Crop Milestone", c -> c.farmingHudShowMilestone, (c, v) -> c.farmingHudShowMilestone = v),
-                        toggle("Time to Next Milestone", c -> c.farmingHudShowMilestoneEta, (c, v) -> c.farmingHudShowMilestoneEta = v),
-                        toggle("Pest Cooldown", c -> c.farmingHudShowPestCooldown, (c, v) -> c.farmingHudShowPestCooldown = v),
-                        toggle("Pest Repellent", c -> c.farmingHudShowRepellent, (c, v) -> c.farmingHudShowRepellent = v),
-                        toggle("Blocks per Second", c -> c.farmingHudShowBps, (c, v) -> c.farmingHudShowBps = v),
-                        toggle("Farming XP per Hour", c -> c.farmingHudShowXpPerHour, (c, v) -> c.farmingHudShowXpPerHour = v),
-                        toggle("Visitors", c -> c.farmingHudShowVisitors, (c, v) -> c.farmingHudShowVisitors = v),
-                        toggle("Next Jacob's Contest", c -> c.farmingHudShowContest, (c, v) -> c.farmingHudShowContest = v)
-                ),
-                "farming hud lines toggle show hide title bps blocks per second xp per hour crop milestone eta next tier pest cooldown repellent visitors visitor timer jacob contest crops"));
-
-        OPTIONS.add(new ConfigOption("Pest Finder", ConfigCategory.SKYBLOCK));
-
-        OPTIONS.add(new ConfigOption("pest_finder", "Pest Finder",
-                "Helps find pests on the Garden: left-click a vacuum for a waypoint where its trail leads, and pests nearby glow.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.pestFinderEnabled,
-                v -> { AlpakaConfig.instance.pestFinderEnabled = v; AlpakaConfig.save(); },
-                "pest finder garden vacuum tracker waypoint guess line tracer locate find pests farming"));
-
-        OPTIONS.add(ConfigOption.keybind("pest_finder_teleport_key", "Key",
-                "Teleports you with /plottp to the plot the waypoint points at, when it marks a plot's center. Open Configure Plots at your desk once so renamed plots are known. Unbound by default.",
-                ConfigCategory.SKYBLOCK,
-                () -> net.alpaka.addons.features.garden.PestFinder.TELEPORT_KEY,
-                "pest finder teleport plottp plot warp"));
-
-        OPTIONS.add(ConfigOption.color("pest_finder_guess_color", "Waypoint Color",
-                "Color of the waypoint where the vacuum's trail leads. A guess at a plot's center is shown in yellow.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.pestFinderGuessColor,
-                v -> { AlpakaConfig.instance.pestFinderGuessColor = v; AlpakaConfig.save(); },
-                "pest finder waypoint guess color colour"));
-
-        OPTIONS.add(new ConfigOption("pest_finder_guess_line", "Line to Waypoint",
-                "Draws a line from your crosshair to the waypoint.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.pestFinderGuessLine,
-                v -> { AlpakaConfig.instance.pestFinderGuessLine = v; AlpakaConfig.save(); },
-                "pest finder line tracer waypoint crosshair"));
-
-        OPTIONS.add(new ConfigOption("pest_finder_guess_seconds", "Waypoint Duration",
-                "How long the waypoint stays after a click. It goes away sooner once you reach it.",
-                ConfigCategory.SKYBLOCK,
-                () -> (float) AlpakaConfig.instance.pestFinderGuessSeconds,
-                v -> { AlpakaConfig.instance.pestFinderGuessSeconds = Math.round(v); AlpakaConfig.save(); },
-                5.0f, 30.0f, val -> Math.round(val) + " s",
-                "pest finder waypoint duration seconds time"));
-
-        OPTIONS.add(new ConfigOption("pest_finder_hide_particles", "Hide Trail Particles",
-                "Hides the vacuum's particle trail once it has been read.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.pestFinderHideParticles,
-                v -> { AlpakaConfig.instance.pestFinderHideParticles = v; AlpakaConfig.save(); },
-                "pest finder hide particles trail villager"));
-
-        OPTIONS.add(new ConfigOption("pest_finder_highlight", "Highlight Pests",
-                "Gives the pests around you a glowing outline, visible through walls.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.pestFinderHighlight,
-                v -> { AlpakaConfig.instance.pestFinderHighlight = v; AlpakaConfig.save(); },
-                "pest finder highlight outline glow esp"));
-
-        OPTIONS.add(ConfigOption.color("pest_finder_highlight_color", "Highlight Color",
-                "Color of the pests' outline and of the lines to them.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.pestFinderHighlightColor,
-                v -> { AlpakaConfig.instance.pestFinderHighlightColor = v; AlpakaConfig.save(); },
-                "pest finder highlight outline color colour"));
-
-        OPTIONS.add(new ConfigOption("pest_finder_line_to_pests", "Lines to Pests",
-                "While you hold a vacuum, draws a line from your crosshair to every pest around you.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.pestFinderLineToPests,
-                v -> { AlpakaConfig.instance.pestFinderLineToPests = v; AlpakaConfig.save(); },
-                "pest finder line tracer pests vacuum"));
-
-        OPTIONS.add(new ConfigOption("Alignment Helper", ConfigCategory.SKYBLOCK));
-
-        OPTIONS.add(new ConfigOption("alignment_helper", "Alignment Helper",
-                "Helps set the exact yaw and pitch a farm needs: when you stand still with a farming tool, the mouse turns slower and the angles show under the crosshair. Always off on the Barn.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.alignmentHelperEnabled,
-                v -> { AlpakaConfig.instance.alignmentHelperEnabled = v; AlpakaConfig.save(); },
-                "alignment helper garden farming angle yaw pitch sensitivity aim align farm crops"));
-
-        OPTIONS.add(ConfigOption.keybind("alignment_helper_key", "Key",
-                "Switches the helper the other way, on or off, until you walk again. Unbound by default.",
-                ConfigCategory.SKYBLOCK,
-                () -> net.alpaka.addons.features.garden.AlignmentHelper.KEY,
-                "alignment helper toggle override garden"));
-
-        OPTIONS.add(new ConfigOption("alignment_helper_still_seconds", "Standing Still For",
-                "How long you stand still on the ground with a farming tool before the helper turns on. It turns off when you walk, break crops or put the tool away.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.alignmentHelperStillSeconds,
-                v -> { AlpakaConfig.instance.alignmentHelperStillSeconds = Math.round(v * 4.0f) / 4.0f; AlpakaConfig.save(); },
-                0.25f, 3.0f, val -> String.format(Locale.ROOT, "%.2f s", Math.round(val * 4.0f) / 4.0f),
-                "alignment helper standing still time seconds delay activation automatic"));
-
-        OPTIONS.add(new ConfigOption("alignment_helper_sensitivity", "Sensitivity",
-                "How fast the mouse turns while the helper is active, compared to your normal sensitivity.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.alignmentHelperSensitivity,
-                v -> { AlpakaConfig.instance.alignmentHelperSensitivity = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
-                0.01f, 0.5f, val -> Math.round(val * 100.0f) + "%",
-                "alignment helper sensitivity mouse speed slow precise"));
-
-        OPTIONS.add(new ConfigOption("alignment_helper_fine_only", "Only Slow Fine Moves",
-                "Only slow, small mouse movements are slowed down; a quick flick still turns you at full speed.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.alignmentHelperFineOnly,
-                v -> { AlpakaConfig.instance.alignmentHelperFineOnly = v; AlpakaConfig.save(); },
-                "alignment helper fine flick fast adaptive acceleration precision"));
-
-        OPTIONS.add(new ConfigOption("alignment_helper_show_angles", "Show Angles",
-                "Shows your yaw to five decimals and your pitch to two under the crosshair while the helper is active.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.alignmentHelperShowAngles,
-                v -> { AlpakaConfig.instance.alignmentHelperShowAngles = v; AlpakaConfig.save(); },
-                "alignment helper show angles yaw pitch crosshair degrees f3"));
-
-        OPTIONS.add(new ConfigOption("alignment_helper_lock_mouse", "Lock Mouse While Farming",
-                "While you hold a farming tool and the attack key outside the Barn, the mouse does not turn the camera, so a bump cannot change your angle.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.alignmentHelperLockMouse,
-                v -> { AlpakaConfig.instance.alignmentHelperLockMouse = v; AlpakaConfig.save(); },
-                "alignment helper lock mouse camera farming freeze rotation"));
 
         OPTIONS.add(new ConfigOption("Slayer Tracking", ConfigCategory.SKYBLOCK));
 
@@ -2259,20 +2119,6 @@ public class AlpakaConfigRegistry {
         }
 
         OPTIONS.add(new ConfigOption("Commands", ConfigCategory.SKYBLOCK));
-
-        OPTIONS.add(new ConfigOption("shorten_warp", "Shorten Warp",
-                "Type just the destination to warp there: /isle instead of /warp isle, in chat and on the command wheel. Commands that already exist keep their meaning.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.shortenWarpEnabled,
-                v -> { AlpakaConfig.instance.shortenWarpEnabled = v; AlpakaConfig.save(); },
-                "shorten warp short shortcut alias destination /isle /hub /garden /dh command"));
-
-        OPTIONS.add(new ConfigOption("warp_cooldown_queue", "Warp Cooldown",
-                "A warp typed or picked on the command wheel right after joining a server waits for Hypixel's cooldown and goes out on its own when it ends, instead of being refused.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.warpCooldownQueueEnabled,
-                v -> { AlpakaConfig.instance.warpCooldownQueueEnabled = v; AlpakaConfig.save(); },
-                "warp cooldown queue delay wait server join transfer early command you may only use this command"));
 
         OPTIONS.add(new ConfigOption("ignore_filler_panes", "Ignore Filler Panes",
                 "Clicks on the empty black glass panes in SkyBlock menus do nothing, so a missed click doesn't pick one up.",
@@ -2711,72 +2557,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.deployableTimerEnabled = v; AlpakaConfig.save(); },
                 "deployable timer power orb flare radiant mana flux overflux plasmaflux warning alert sos lantern mithril titanium glacite dwarven will-o'-wisp wisp umberella umbrella totem corruption black hole fishing mining hud icon time left range buff"));
 
-        OPTIONS.add(new ConfigOption("Enchantments", ConfigCategory.SKYBLOCK));
-
-        OPTIONS.add(new ConfigOption("max_enchant_color", "Max Enchant Color",
-                "Enchantments at their highest level get their own color in tooltips.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.maxEnchantColorEnabled,
-                v -> { AlpakaConfig.instance.maxEnchantColorEnabled = v; AlpakaConfig.save(); },
-                "enchantments enchants max maxed level highest color colour tooltip lore sharpness perfect"));
-
-        OPTIONS.add(ConfigOption.color("max_enchant_color_value", "Max Level Color",
-                "Color of maxed enchantments. Switch on Chroma in the picker for a moving rainbow instead.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.maxEnchantColor,
-                v -> { AlpakaConfig.instance.maxEnchantColor = v; AlpakaConfig.save(); },
-                "enchantments enchants max maxed level color colour picker tooltip chroma rainbow rgb")
-                .withChroma(c -> c.maxEnchantChroma, true));
-
-        OPTIONS.add(new ConfigOption("max_enchant_color_ultimate", "Include Ultimate Enchants",
-                "Maxed ultimate enchantments get the color too instead of their pink.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.maxEnchantColorUltimate,
-                v -> { AlpakaConfig.instance.maxEnchantColorUltimate = v; AlpakaConfig.save(); },
-                "enchantments enchants ultimate pink max color tooltip wise soul eater chimera"));
-
-        OPTIONS.add(new ConfigOption("anvil_combine_helper", "Anvil Combine Helper",
-                "Put an enchanted book into the anvil and the books it combines with are highlighted in your inventory.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.anvilCombineHelperEnabled,
-                v -> { AlpakaConfig.instance.anvilCombineHelperEnabled = v; AlpakaConfig.save(); },
-                "anvil combine helper enchanted book books highlight matching same level merge inventory"));
-
-        OPTIONS.add(ConfigOption.color("anvil_combine_helper_color", "Highlight Color",
-                "Color of the highlighted books.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.anvilCombineHelperColor,
-                v -> { AlpakaConfig.instance.anvilCombineHelperColor = v; AlpakaConfig.save(); },
-                "anvil combine helper highlight color colour picker books"));
-
-        OPTIONS.add(new ConfigOption("experiment_solver", "Experiment Solver",
-                "Shows the answers in the Experimentation Table: the next click in Chronomatron and Ultrasequencer, and every card already seen in Superpairs.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.experimentSolverEnabled,
-                v -> { AlpakaConfig.instance.experimentSolverEnabled = v; AlpakaConfig.save(); },
-                "experiment experiments experimentation table solver chronomatron ultrasequencer superpairs enchanting minigame add-ons"));
-
-        OPTIONS.add(ConfigOption.color("experiment_solver_next_color", "Next Click Color",
-                "The slot to click now, and Superpairs cards whose pair is known.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.experimentSolverNextColor,
-                v -> { AlpakaConfig.instance.experimentSolverNextColor = v; AlpakaConfig.save(); },
-                "experiment solver next click highlight color colour picker"));
-
-        OPTIONS.add(ConfigOption.color("experiment_solver_later_color", "Click After Color",
-                "The slot to click after that.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.experimentSolverLaterColor,
-                v -> { AlpakaConfig.instance.experimentSolverLaterColor = v; AlpakaConfig.save(); },
-                "experiment solver after following second highlight color colour picker"));
-
-        OPTIONS.add(new ConfigOption("experiment_solver_prevent_misclicks", "Prevent Misclicks",
-                "Ignores clicks on a wrong block in Chronomatron and Ultrasequencer, so a misclick doesn't end the game.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.experimentSolverPreventMisclicks,
-                v -> { AlpakaConfig.instance.experimentSolverPreventMisclicks = v; AlpakaConfig.save(); },
-                "experiment solver prevent misclicks missclick wrong click block ignore chronomatron ultrasequencer"));
-
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",
@@ -2786,12 +2566,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.onlyCritDamageEnabled = v; AlpakaConfig.save(); },
                 "damage indicator tags numbers hide non-crit fire poison abilities crit skyblock"));
 
-        OPTIONS.add(new ConfigOption("visitor_bazaar", "Visitor Bazaar Shortcut",
-                "Clicking Accept Offer at a garden visitor while you lack the items opens the bazaar for them and copies the amount. On Ironman it opens the recipe.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.visitorBazaarEnabled,
-                v -> { AlpakaConfig.instance.visitorBazaarEnabled = v; AlpakaConfig.save(); },
-                "garden visitor bazaar bz buy missing items accept offer shortcut shopping farming ironman recipe craft"));
 
 
         // --- 6. COSMETICS ---
@@ -3785,10 +3559,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.slayerHudBlur, v -> AlpakaConfig.instance.slayerHudBlur = v);
         styleToggle("slayer_hud_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
                 () -> AlpakaConfig.instance.slayerHudSmoothFont, v -> AlpakaConfig.instance.slayerHudSmoothFont = v);
-        styleToggle("farming_hud_blur", "Blur", ConfigCategory.SKYBLOCK, true,
-                () -> AlpakaConfig.instance.farmingHudBlur, v -> AlpakaConfig.instance.farmingHudBlur = v);
-        styleToggle("farming_hud_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
-                () -> AlpakaConfig.instance.farmingHudSmoothFont, v -> AlpakaConfig.instance.farmingHudSmoothFont = v);
         styleToggle("slayer_timer_blur", "Blur", ConfigCategory.SKYBLOCK, true,
                 () -> AlpakaConfig.instance.slayerTimerHudBlur, v -> AlpakaConfig.instance.slayerTimerHudBlur = v);
         styleToggle("slayer_timer_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,

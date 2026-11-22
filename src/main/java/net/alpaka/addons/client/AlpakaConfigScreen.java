@@ -131,6 +131,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private ConfigOption openChoice = null;
     /** The keybind waiting for its new key or mouse button, if any. */
     private ConfigOption listeningKey = null;
+    /**
+     * Set when a key press bound a keybind. GLFW sends that key's character right after it, which
+     * must not start a search; cleared on the next frame, so a key without a character (F5) can't
+     * swallow a later one.
+     */
+    private boolean swallowBoundKeyChar = false;
 
     private final Scroll sidebarScroll = new Scroll();
     private final Scroll featureScroll = new Scroll();
@@ -442,6 +448,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         long now = System.currentTimeMillis();
         float deltaSec = Math.min(0.1f, (now - lastFrameMs) / 1000.0f);
         lastFrameMs = now;
+        swallowBoundKeyChar = false;
         hits.clear();
 
         if (setupMode && !isViewmodelSection()) setupMode = false;
@@ -1428,6 +1435,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        if (swallowBoundKeyChar) {
+            swallowBoundKeyChar = false;
+            return true;
+        }
         if (focusedText != null) {
             if (textEdit.insert(event.codepoint())) focusedText.setText(textEdit.getText());
             caretBlinkFrom = System.currentTimeMillis();
@@ -1435,6 +1446,17 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         }
         if (searchFocused) {
             if (search.insert((char) event.codepoint())) onSearchChanged();
+            caretBlinkFrom = System.currentTimeMillis();
+            return true;
+        }
+        // Typing with no field focused starts a search, so the menu can be searched right after it
+        // opens. The box isn't focused on open itself: then the first Escape would only leave it
+        // instead of closing the menu. A leading space types nothing, and in setup mode the search
+        // is folded away.
+        if (!setupMode && !Character.isWhitespace(event.codepoint())) {
+            searchFocused = true;
+            search.setCaret(search.getText().length());
+            if (search.insert(event.codepoint())) onSearchChanged();
             caretBlinkFrom = System.currentTimeMillis();
             return true;
         }
@@ -1448,6 +1470,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             // Escape unbinds, as in vanilla's Controls.
             ConfigOption option = listeningKey;
             listeningKey = null;
+            swallowBoundKeyChar = true;
             if (option.getKeyMapping() != null) {
                 AlpakaKeyBinds.set(option.getKeyMapping(), key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE
                         ? InputConstants.UNKNOWN : InputConstants.getKey(event));

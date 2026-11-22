@@ -608,7 +608,7 @@ public class AlpakaConfigRegistry {
                 "master stars red dungeon star number revert old item name tooltip hotbar"));
 
         OPTIONS.add(new ConfigOption("storage_preview", "Storage Preview",
-                "Hovering a backpack or ender chest page in the Storage menu shows what is inside. Each one has to be opened once first.",
+                "Hovering a backpack or ender chest page in the Storage menu shows what is inside. Each one has to be opened once first. With the key below, a preview stays on screen so its items can be hovered.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.storagePreviewEnabled,
                 v -> { AlpakaConfig.instance.storagePreviewEnabled = v; AlpakaConfig.save(); },

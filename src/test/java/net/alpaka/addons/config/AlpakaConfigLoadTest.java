@@ -193,17 +193,15 @@ class AlpakaConfigLoadTest {
     }
 
     @Test
-    void hideExplosionsBecomesHideVisualClutterWithOnlyExplosions() throws IOException {
+    void hideExplosionsIsSwitchedOffAndHidesNothingNew() throws IOException {
         AlpakaConfig had = load("{\"configVersion\": 3, \"hideExplosions\": true}");
-        assertTrue(had.hideVisualClutter, "the old switch turns the new feature on");
-        assertTrue(had.clutterExplosions);
+        assertFalse(had.hideVisualClutter, "explosions are no longer hidden, so the old switch goes off");
         assertFalse(had.clutterFallingBlocks, "nothing hides that was not hidden before");
-        assertFalse(had.clutterBlockBreak);
         assertFalse(had.clutterHitParticles);
         assertFalse(had.clutterFireworks);
         assertFalse(had.clutterExperienceOrbs);
         assertFalse(had.clutterDragonDeath);
-        assertTrue(saved().contains("\"hideVisualClutter\": true"));
+        assertTrue(saved().contains("\"hideVisualClutter\": false"));
 
         AlpakaConfig hadNot = load("{\"configVersion\": 3, \"hideExplosions\": false}");
         assertFalse(hadNot.hideVisualClutter);

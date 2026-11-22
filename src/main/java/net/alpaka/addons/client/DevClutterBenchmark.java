@@ -30,7 +30,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.FireworkExplosion;
 import net.minecraft.world.item.component.Fireworks;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.block.Blocks;
@@ -101,9 +100,7 @@ public final class DevClutterBenchmark {
 
     private static void defineScenarios(String wanted) {
         List<Scenario> all = List.of(
-                new Scenario("explosions", on -> AlpakaConfig.instance.clutterExplosions = on, DevClutterBenchmark::explosions, null),
                 new Scenario("falling_blocks", on -> AlpakaConfig.instance.clutterFallingBlocks = on, DevClutterBenchmark::fallingBlocks, null),
-                new Scenario("block_break", on -> AlpakaConfig.instance.clutterBlockBreak = on, DevClutterBenchmark::blockBreak, null),
                 new Scenario("hit_particles", on -> AlpakaConfig.instance.clutterHitParticles = on, DevClutterBenchmark::critArrows, DevClutterBenchmark::hitSparks),
                 new Scenario("fireworks", on -> AlpakaConfig.instance.clutterFireworks = on, DevClutterBenchmark::fireworks, null),
                 new Scenario("experience_orbs", on -> AlpakaConfig.instance.clutterExperienceOrbs = on, DevClutterBenchmark::experienceOrbs, null),
@@ -198,9 +195,7 @@ public final class DevClutterBenchmark {
         AlpakaConfig config = AlpakaConfig.instance;
         // In memory only: the benchmark never saves.
         config.hideVisualClutter = true;
-        config.clutterExplosions = false;
         config.clutterFallingBlocks = false;
-        config.clutterBlockBreak = false;
         config.clutterHitParticles = false;
         config.clutterFireworks = false;
         config.clutterExperienceOrbs = false;
@@ -313,15 +308,6 @@ public final class DevClutterBenchmark {
 
     // Workloads (server thread, once per client tick) --------------------------------------------
 
-    /** Hyperion spam: three explosions a tick, each with an explosion particle packet like Hypixel's. */
-    private static void explosions(ServerLevel level) {
-        for (int i = 0; i < 3; i++) {
-            double x = ax(), y = oy + 1 + RANDOM.nextDouble() * 2, z = az();
-            level.explode(null, x, y, z, 3.0f, Level.ExplosionInteraction.NONE);
-            level.sendParticles(ParticleTypes.EXPLOSION, x, y, z, 8, 1.5, 1.0, 1.5, 0.0);
-        }
-    }
-
     /** Molten Wave: fifteen gold blocks a tick hanging in the air for two seconds. */
     private static void fallingBlocks(ServerLevel level) {
         BlockState gold = Blocks.GOLD_BLOCK.defaultBlockState();
@@ -333,17 +319,6 @@ public final class DevClutterBenchmark {
             block.setNoGravity(true);
             block.dropItem = false;
             SPAWNED.addLast(new Spawned(block, serverTicks + 40));
-        }
-    }
-
-    /** Farming with other players around: five full blocks broken a tick, 100 a second. */
-    private static void blockBreak(ServerLevel level) {
-        BlockState[] kinds = {Blocks.STONE.defaultBlockState(), Blocks.MELON.defaultBlockState(),
-                Blocks.PUMPKIN.defaultBlockState(), Blocks.OAK_LOG.defaultBlockState(), Blocks.DIRT.defaultBlockState()};
-        for (int i = 0; i < 5; i++) {
-            BlockPos pos = BlockPos.containing(ox - 4 + RANDOM.nextInt(9), oy + RANDOM.nextInt(2), oz + 4 + RANDOM.nextInt(4));
-            level.setBlock(pos, kinds[i], 3);
-            level.destroyBlock(pos, false);
         }
     }
 

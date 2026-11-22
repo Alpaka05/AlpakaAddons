@@ -55,7 +55,6 @@ public final class SessionLifecycle {
         PartyInviteFeature.dismiss();
         net.alpaka.addons.features.party.PartyCommandsFeature.dismiss();
         net.alpaka.addons.features.prompts.NpcPromptsFeature.reset();
-        net.alpaka.addons.features.commands.WarpCooldownQueue.onDisconnect();
         InventoryHudFeature.reset();
         FirePitFeature.reset();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
@@ -72,7 +71,6 @@ public final class SessionLifecycle {
     }
 
     private static void onLevelChange() {
-        net.alpaka.addons.features.commands.WarpCooldownQueue.onWorldChange();
         net.alpaka.addons.features.prompts.NpcPromptsFeature.onWorldChange();
         SlayerQuestDetector.INSTANCE.resetForLevelChange();
         FirePitFeature.reset();

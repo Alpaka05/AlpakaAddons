@@ -45,7 +45,7 @@ import kotlin.random.Random
 
 /**
  * A rare drop flies onto the screen: the item alone, no text, big and in 3D. It shoots up from below
- * the screen's edge, tumbling end over end, lands in the upper middle with a flash and a shock wave,
+ * the screen's edge, tumbling end over end, lands in the middle with a flash and a shock wave,
  * whirls round and settles facing the player, then turns on show in a golden glow until it spins up
  * and vanishes in a sparkle. Bound to the screen, not the world, so it stays where it is while the
  * player turns, and it is drawn over an open menu too (a dungeon chest).
@@ -80,6 +80,16 @@ object RareDropAnimation {
     /** How often the item makes a full turn on show, in seconds, and how long that turn takes. */
     private const val TURN_EVERY = 3.2f
     private const val TURN_SECONDS = 1.1f
+
+    /**
+     * Where SkyHanni's titles stand by default, in GUI pixels from the top: the big line at three
+     * times the text size from 160 down, its subtitle under it, with a few pixels to spare.
+     */
+    private const val TITLE_TOP = 154f
+    private const val TITLE_BOTTOM = 214f
+
+    /** How much of the screen's bottom the hotbar, hearts and armor take, in GUI pixels. */
+    private const val HOTBAR_PX = 52f
 
     /** How big the item is at Size 1, in GUI pixels. */
     private const val ITEM_PX = 56f
@@ -463,7 +473,7 @@ object RareDropAnimation {
         val height = graphics.guiHeight().toFloat()
         // Where it rests, and where it sets off: below the screen's bottom edge, off to one side.
         val cx = width / 2f
-        val cy = height * 0.36f
+        val cy = restY(height, r)
         val fromX = cx + drop.side * minOf(0.3f * width, 3.5f * r)
         val fromY = height + 1.3f * r
 
@@ -523,6 +533,18 @@ object RareDropAnimation {
             sink.`alpaka$submitPicture`(RareDropItemRenderer.State(drop.itemState, spin, tilt, roll,
                 ix - x, iy - y + bob, x - half, y - half, x + half, y + half, itemScale))
         }
+    }
+
+    /**
+     * How far down the item rests, in GUI pixels, for an item [r] across on a screen [height] high:
+     * clear of the title SkyHanni shows for a rare drop, which stands at a fixed height from the
+     * top. Under it where there is room above the hotbar, else over it.
+     */
+    private fun restY(height: Float, r: Float): Float {
+        val reach = 0.62f * r
+        val below = TITLE_BOTTOM + reach
+        if (below <= height - HOTBAR_PX - reach) return below
+        return minOf(TITLE_TOP - reach, height * 0.36f).coerceAtLeast(reach + 4f)
     }
 
     /** Where the item is across the screen [t] seconds after it set off: it swings in from its side early. */

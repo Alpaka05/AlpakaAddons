@@ -18,7 +18,7 @@ out vec4 fragColor;
 //   1 ring    - a soft ring at the edge of that disc, the parameter its width
 //   2 ray     - a spoke, localPos.x 0 at its root to 1 at its tip, localPos.y -1..1 across
 //   3 sparkle - a four-pointed star with a bright core, localPos in -1..1
-//   4 rainbow - an arc of rainbow bands at the edge of that disc, red outside and violet inside,
+//   4 rainbow - an arc of rainbow bands, the outer 30 % of that disc, red outside and violet inside,
 //               drawn from the left over the top as far as the parameter (0 left, 1 right); the
 //               vertex color only tints it
 vec3 hue(float h) {
@@ -44,11 +44,13 @@ void main() {
         float root = smoothstep(0.0, 0.15, along);
         a = across * root * (1.0 - along) * (1.0 - along);
     } else if (shape.x == 4) {
-        float width = 0.12;
+        float width = 0.3;
         float across = (length(p) - (1.0 - width)) / width;
         float band = smoothstep(0.0, 0.15, across) * (1.0 - smoothstep(0.85, 1.0, across));
         float along = atan(-p.y, -p.x) / 3.14159265;
-        float shown = (1.0 - smoothstep(param - 0.025, param, along)) * step(0.0, along);
+        // Faded out at both feet rather than cut off where the arc meets its own middle line.
+        float shown = (1.0 - smoothstep(param - 0.025, param, along)) * smoothstep(0.0, 0.1, along)
+                * (1.0 - smoothstep(0.9, 1.0, along));
         vec4 color = vertexColor * ColorModulator;
         color.rgb *= hue(0.78 * (1.0 - clamp(across, 0.0, 1.0)));
         color.a *= band * shown;

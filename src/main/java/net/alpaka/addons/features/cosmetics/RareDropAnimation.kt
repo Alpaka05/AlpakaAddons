@@ -50,7 +50,7 @@ import kotlin.random.Random
  * the screen's edge, tumbling end over end, lands in the middle with a flash and a shock wave,
  * whirls round and settles facing the player, then turns on show in its light until it spins up
  * and vanishes in a sparkle. The light is the drop's own ([Effect]): a vortex in the slayer's color
- * for a slayer drop, a rainbow across the screen for a dye, a beam for a dungeon reward, a flower
+ * for a slayer drop, a rainbow behind the item for a dye, a beam for a dungeon reward, a flower
  * and fireflies for a pet, a constellation for the rest; Special Effects off leaves the item alone. Bound to the screen, not the
  * world, so it stays where it is while the player turns, and it is drawn over an open menu too.
  *
@@ -134,7 +134,7 @@ object RareDropAnimation {
     private enum class Effect {
         /** A slayer's headline drop: a vortex of sparks in gold and the slayer's color, a beating heart. */
         GOLDEN,
-        /** A dye: a rainbow drawing itself across the screen, glittering; confetti raining down. */
+        /** A dye: a broad rainbow drawing itself over the item, glittering; confetti raining down. */
         PRISM,
         /** A dungeon reward: a beam of light, runes on two orbits, ripples. */
         ARCANE,
@@ -540,7 +540,7 @@ object RareDropAnimation {
         val pose = Matrix3x2f(graphics.pose())
         if (cfg.rareDropAnimationEffects) {
             drawFlight(sink, pose, drop, t, r, fromX, fromY, cx, cy, landed)
-            if (drop.effect == Effect.PRISM) drawRainbow(sink, pose, width, height, r, sinceLand, landed, end)
+            if (drop.effect == Effect.PRISM) drawRainbow(sink, pose, cx, cy, r, sinceLand, landed, end)
             drawLight(sink, pose, drop, ix, iy, r, sinceLand, landed * fade)
             drawVanish(sink, pose, drop, ix, iy, r, end, sinceLand)
         }
@@ -742,9 +742,9 @@ object RareDropAnimation {
     }
 
     /**
-     * A dye: a real rainbow. It draws itself across the background from left to right, a star at
-     * its tip, glitters along its whole length once it stands, twinkles while it stays and at the end
-     * dissolves into sparkles. A color-shifting glow behind the item and confetti raining down.
+     * A dye: a real rainbow, broad, arching over the item behind it. It draws itself from left to
+     * right, a star at its tip, glitters along its whole length once it stands, twinkles while it
+     * stays and at the end dissolves into sparkles. A color-shifting glow behind the item and confetti raining down.
      */
     private fun drawPrism(sink: AlpakaGuiElementSink, pose: Matrix3x2f, drop: Drop, cx: Float, cy: Float, r: Float, t: Float, light: Float) {
         val breathe = 0.5f + 0.5f * sin(t * 2.2f)
@@ -766,30 +766,28 @@ object RareDropAnimation {
         }
     }
 
-    /** The dye's rainbow across the screen behind everything; see [drawPrism]. */
-    private fun drawRainbow(sink: AlpakaGuiElementSink, pose: Matrix3x2f, width: Float, height: Float, r: Float,
+    /**
+     * The dye's rainbow, a broad arc over the item resting at (cx, cy) and behind it; see [drawPrism].
+     */
+    private fun drawRainbow(sink: AlpakaGuiElementSink, pose: Matrix3x2f, cx: Float, cy: Float, r: Float,
                             t: Float, landed: Float, end: Float) {
         if (landed <= 0f) return
-        // Centered below the screen, so the arc stands on its bottom edge and spans it.
-        val radius = maxOf(width * 0.62f, height * 0.9f)
-        val ccx = width / 2f
-        val ccy = height + 0.25f * radius
-        // How far along the arc it leaves the screen at the bottom, on either side.
-        val edge = (kotlin.math.asin(((ccy - height) / radius).coerceIn(0f, 1f)) / PI.toFloat())
-        val span = 1f - 2f * edge
-        val sweep = easeInOutCubic(((t - 0.1f) / 1.5f).coerceIn(0f, 1f))
-        val reveal = edge + span * sweep
-        val alpha = 0.6f * landed * (1f - smooth(end))
+        // Its middle a little below the item, so the item stands under the top of the arc.
+        val radius = 2.3f * r
+        val ccx = cx
+        val ccy = cy + 0.8f * r
+        val reveal = easeInOutCubic(((t - 0.1f) / 1.3f).coerceIn(0f, 1f))
+        val alpha = 0.75f * landed * (1f - smooth(end))
         sink.`alpaka$submitElement`(GlowRenderState.disc(pose, ccx, ccy, radius, GlowRenderState.RAINBOW,
             (reveal * 1000f).toInt().coerceIn(0, 1000), argb(0xFFFFFF, alpha)))
 
-        val bandIn = radius * 0.88f
-        val bandW = radius * 0.12f
+        val bandIn = radius * 0.7f
+        val bandW = radius * 0.3f
         fun pointX(along: Float, across: Float) = ccx + (bandIn + bandW * across) * cos(PI.toFloat() * (1f - along))
         fun pointY(along: Float, across: Float) = ccy - (bandIn + bandW * across) * sin(PI.toFloat() * (1f - along))
 
         // The star at the tip as it draws itself.
-        if (sweep in 0.001f..0.999f) {
+        if (reveal in 0.001f..0.999f) {
             val x = pointX(reveal, 0.5f)
             val y = pointY(reveal, 0.5f)
             sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, 0.7f * r, GlowRenderState.GLOW, 0, argb(0xFFFFFF, 0.7f * landed)))
@@ -798,13 +796,13 @@ object RareDropAnimation {
 
         // Glitter running along it from left to right as it stands complete, then a slow twinkle,
         // and a shower of sparkles as it fades away at the end.
-        val run = (t - 1.6f) / 1.1f
-        val sparkles = 48
+        val run = (t - 1.4f) / 1.1f
+        val sparkles = 36
         for (i in 0 until sparkles) {
-            val along = edge + span * AuraEffects.hash(i * 23 + 5)
+            // Kept off the faded feet of the arc.
+            val along = 0.08f + 0.84f * AuraEffects.hash(i * 23 + 5)
             val across = AuraEffects.hash(i * 7 + 2)
-            val place = (along - edge) / span
-            val wave = if (run in -0.3f..1.3f) exp(-((run * 1.3f - 0.15f - place).let { it * it }) * 80f) else 0f
+            val wave = if (run in -0.3f..1.3f) exp(-((run * 1.3f - 0.15f - along).let { it * it }) * 80f) else 0f
             val twinkle = if (run > 0f) maxOf(0f, sin(t * (2f + AuraEffects.hash(i * 3 + 1) * 2f) + i)).let { it * it * it * it } * 0.6f else 0f
             val shower = sin(end * PI.toFloat()) * maxOf(0f, sin(t * 9f + i * 1.3f))
             val flash = maxOf(wave, twinkle, shower) * landed

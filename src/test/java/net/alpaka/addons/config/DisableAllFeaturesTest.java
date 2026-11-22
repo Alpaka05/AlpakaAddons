@@ -40,7 +40,7 @@ class DisableAllFeaturesTest {
             // Visuals
             "fullbrightEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
             "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideVisualClutter", "hideEntityFire", "firstPersonFireStatic",
-            "renderHandInThirdPerson", "smoothPerspectiveEnabled",
+            "renderHandInThirdPerson",
             "disableFrontPerspective", "zoomEnabled", "containerBgFadeInEnabled", "inventorySnowEnabled",
             "scrollableTooltipsEnabled", "persistentItemNameEnabled", "oldMasterStarsEnabled",
             "wideHealthBarEnabled", "betterChatEnabled", "chatSearchEnabled", "chatCopyEnabled", "expandChatHistory",

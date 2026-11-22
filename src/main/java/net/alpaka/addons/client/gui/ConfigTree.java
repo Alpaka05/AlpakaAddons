@@ -101,7 +101,7 @@ public final class ConfigTree {
             "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_visual_clutter",
             "hide_inventory_effects",
-            "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom",
+            "render_hand_third_person", "disable_front_perspective", "zoom",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar",
             "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat", "message_filter",
             "mention_notification", "chat_peek", "chat_tabs",
@@ -133,7 +133,6 @@ public final class ConfigTree {
 
     /** Settings registered away from their feature. */
     private static final Map<String, String> PARENTS = Map.ofEntries(
-            Map.entry("smooth_perspective_duration", "smooth_perspective"),
             Map.entry("custom_main_menu_whats_new", "custom_main_menu"),
             // The chat's background and font are parts of Better Chat.
             Map.entry("chat_blur", "better_chat"),
@@ -195,7 +194,7 @@ public final class ConfigTree {
                             "custom_sound_zombie_remedy", "custom_sound_blaze_death", "custom_sound_low_hp_heartbeat"}},
             {{"Visuals"},
                     {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_visual_clutter",
-                            "#Hide Fire Overlay", "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom"},
+                            "#Hide Fire Overlay", "render_hand_third_person", "disable_front_perspective", "zoom"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
                             "hide_inventory_effects",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar", "#Scoreboard"},

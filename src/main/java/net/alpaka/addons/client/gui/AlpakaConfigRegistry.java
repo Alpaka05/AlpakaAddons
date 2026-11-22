@@ -429,27 +429,12 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.renderHandInThirdPerson = v; AlpakaConfig.save(); },
                 "hand view third person render"));
 
-        OPTIONS.add(new ConfigOption("smooth_perspective", "Smooth Perspective",
-                "Animates the camera smoothly when you switch perspective.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.smoothPerspectiveEnabled,
-                v -> { AlpakaConfig.instance.smoothPerspectiveEnabled = v; AlpakaConfig.save(); },
-                "smooth perspective camera transition f5 third person first person"));
-
         OPTIONS.add(new ConfigOption("disable_front_perspective", "Disable Front Perspective",
                 "Makes F5 skip the front view and switch only between first and third person.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.disableFrontPerspective,
                 v -> { AlpakaConfig.instance.disableFrontPerspective = v; AlpakaConfig.save(); },
                 "disable front perspective skip view f5 third person first person camera 1st 3rd toggles"));
-
-        OPTIONS.add(new ConfigOption("smooth_perspective_duration", "Transition Duration",
-                "How long the perspective transition takes.",
-                ConfigCategory.VISUALS,
-                () -> (float) AlpakaConfig.instance.smoothPerspectiveDurationMs,
-                v -> { AlpakaConfig.instance.smoothPerspectiveDurationMs = Math.round(v); AlpakaConfig.save(); },
-                100.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
-                "smooth perspective camera speed duration transition time ms"));
 
         OPTIONS.add(new ConfigOption("zoom", "Zoom",
                 "Zooms in while you hold the Zoom key, or from one press to the next with Toggle Zoom.",

@@ -111,12 +111,12 @@ public final class ConfigTree {
             // Block overlay: one feature, outline, fill, animation and filters its settings
             "block_overlay_enabled",
             // SkyBlock
-            "etherwarp_overlay", "etherwarp_sound", "item_search", "farming_hud_enabled", "pest_finder", "alignment_helper",
+            "etherwarp_overlay", "etherwarp_sound", "item_search",
             "slayer_drop_tracker", "slayer_rng_drop_guild_chat",
             "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_join_message_enabled", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
-            "visitor_bazaar", "ignore_filler_panes", "slot_highlight",
+            "ignore_filler_panes", "slot_highlight",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value", "price_tooltip",
             "profile_dashboard",
             // SkyBlock: dungeon
@@ -141,8 +141,6 @@ public final class ConfigTree {
             // Each HUD's own style switches, registered at the end and placed in its feature.
             Map.entry("slayer_hud_blur", "slayer_hud_enabled"),
             Map.entry("slayer_hud_smooth_font", "slayer_hud_enabled"),
-            Map.entry("farming_hud_blur", "farming_hud_enabled"),
-            Map.entry("farming_hud_smooth_font", "farming_hud_enabled"),
             Map.entry("slayer_timer_blur", "slayer_timer"),
             Map.entry("slayer_timer_smooth_font", "slayer_timer"),
             Map.entry("deployable_timer_blur", "deployable_timer"),
@@ -209,7 +207,6 @@ public final class ConfigTree {
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "clean_blaze", "blaze_fire_pits"},
-                    {"Garden", "farming_hud_enabled", "pest_finder", "alignment_helper", "visitor_bazaar"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
                             "world_age_join_message_enabled", "ragnarock", "deployable_timer", "ignore_filler_panes", "slot_highlight", "cache_resource_pack",
                             "profile_dashboard"},

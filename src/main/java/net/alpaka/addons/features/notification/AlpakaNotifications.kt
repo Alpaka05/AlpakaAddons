@@ -112,6 +112,9 @@ object AlpakaNotifications {
     /** At most this many wrapped lines of body text; the rest is dropped rather than shown cut. */
     private const val MAX_BODY_LINES = 2
 
+    /** The most a caller may ask for instead, for a notice that lists choices. */
+    private const val MAX_LIST_LINES = 10
+
     /**
      * The box when the blur is off: the config menu's panel color, a little translucent so the
      * world still shows through, with the HUD panel's corners and a soft shadow - the same box as
@@ -172,11 +175,16 @@ object AlpakaNotifications {
         return enqueue(title, lines, accent, holdMs)
     }
 
-    /** Queues a notice whose body lines carry their own styling. Each line is wrapped on its own. */
+    /**
+     * Queues a notice whose body lines carry their own styling. Each line is wrapped on its own.
+     *
+     * [maxLines] is for a notice that is a list of things to pick from, such as an NPC's dialog
+     * choices, where dropping the lines past the second would drop choices.
+     */
     @JvmStatic
     @JvmOverloads
-    fun sendLines(title: String, lines: List<Component>, accent: Int = 0, holdMs: Long = 0L): Long =
-        enqueue(title, lines.flatMap { wrap(it) }, accent, holdMs)
+    fun sendLines(title: String, lines: List<Component>, accent: Int = 0, holdMs: Long = 0L, maxLines: Int = MAX_BODY_LINES): Long =
+        enqueue(title, lines.flatMap { wrap(it) }, accent, holdMs, maxLines)
 
     /** Whether the notice is on screen and not yet on its way out. */
     @JvmStatic
@@ -203,14 +211,14 @@ object AlpakaNotifications {
         return font.split(HudPanel.text(text, AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.notificationSmoothFont)), WIDTH - PAD * 2)
     }
 
-    private fun enqueue(title: String, lines: List<FormattedCharSequence>, accent: Int, holdMs: Long): Long {
+    private fun enqueue(title: String, lines: List<FormattedCharSequence>, accent: Int, holdMs: Long, maxLines: Int = MAX_BODY_LINES): Long {
         val hold = if (holdMs > 0L) holdMs else configuredHoldMs()
         synchronized(active) {
             val now = System.currentTimeMillis()
             active.removeAll { now >= it.retireAtMs }
 
             val id = nextId++
-            active.add(Notice(id, title, lines.take(MAX_BODY_LINES), accent, now, hold))
+            active.add(Notice(id, title, lines.take(maxLines.coerceIn(1, MAX_LIST_LINES)), accent, now, hold))
 
             // Retire from the top rather than refusing the new one: the newest notice is the one
             // the player is most likely waiting for. Only notices still on screen count, and the

@@ -76,7 +76,7 @@ public final class ServerPackCache {
      * Whether the server is Hypixel, by its exact host: "mc.hypixel.net:25565" is, a look-alike such
      * as "hypixel.net.example.com" is not, so no other server's pack gets kept and loaded at startup.
      */
-    static boolean isHypixel(ServerData server) {
+    public static boolean isHypixel(ServerData server) {
         return server != null && server.ip != null && isHypixelHost(server.ip);
     }
 

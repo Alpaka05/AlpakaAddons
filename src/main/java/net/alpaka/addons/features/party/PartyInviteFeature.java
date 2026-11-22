@@ -67,7 +67,7 @@ public final class PartyInviteFeature {
     private static long noticeId = 0L;
 
     public static boolean isEnabled() {
-        return AlpakaConfig.instance.partyInvitePromptEnabled;
+        return AlpakaConfig.instance.playerRequestsEnabled && AlpakaConfig.instance.playerRequestsParty;
     }
 
     public static void register() {
@@ -180,7 +180,7 @@ public final class PartyInviteFeature {
     }
 
     /** The lower-case character a key produces on the current layout, or 0 when it has none. */
-    static char keyCharacter(int key, int scancode) {
+    public static char keyCharacter(int key, int scancode) {
         String name = GLFW.glfwGetKeyName(key, scancode);
         if (name != null && name.length() == 1) {
             return Character.toLowerCase(name.charAt(0));

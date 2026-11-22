@@ -948,8 +948,26 @@ public class AlpakaConfig {
     /** Absorption hearts: 0 a row of their own, 1 gold over the first hearts, 2 hidden. */
     public int wideHealthBarAbsorption = 0;
 
-    /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
-    public boolean partyInvitePromptEnabled = false;
+    /**
+     * A party invite or a trade, friend, guild or duel request raises a notification: Y accepts,
+     * N dismisses. Was the Party Invite Prompt's switch before the other requests joined it.
+     */
+    @SerializedName(value = "playerRequestsEnabled", alternate = "partyInvitePromptEnabled")
+    public boolean playerRequestsEnabled = false;
+    /** Which requests are raised; see PartyInviteFeature and ChatPromptsFeature. */
+    public boolean playerRequestsParty = true;
+    public boolean playerRequestsTrade = true;
+    public boolean playerRequestsFriend = true;
+    public boolean playerRequestsGuild = true;
+    public boolean playerRequestsDuel = true;
+
+    /** What an NPC or Hypixel itself asks in chat raises a notification with keys; see ChatPromptsFeature. */
+    public boolean npcPromptsEnabled = false;
+    /** Which kinds of prompt are raised. */
+    public boolean npcPromptsDialogs = true;
+    public boolean npcPromptsAbiphone = true;
+    public boolean npcPromptsRequeue = true;
+    public boolean npcPromptsGg = true;
 
     /** A party member's "!warp", "!tps"... raises a Y/N prompt to answer it; see PartyCommandsFeature. */
     public boolean partyCommandsEnabled = false;
@@ -2036,7 +2054,8 @@ public class AlpakaConfig {
         this.itemInspectEnabled = false;
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
-        this.partyInvitePromptEnabled = false;
+        this.playerRequestsEnabled = false;
+        this.npcPromptsEnabled = false;
         this.partyCommandsEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;

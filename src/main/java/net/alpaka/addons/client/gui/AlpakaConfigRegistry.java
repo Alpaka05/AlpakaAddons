@@ -2034,12 +2034,82 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Party", ConfigCategory.SKYBLOCK));
 
-        OPTIONS.add(new ConfigOption("party_invite_prompt", "Party Invite Prompt",
-                "Shows a Y/N prompt on screen when someone invites you to a party.",
+        OPTIONS.add(new ConfigOption("player_requests", "Player Requests",
+                "Shows what other players ask of you as a notification: Y accepts, N dismisses it without answering.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.partyInvitePromptEnabled,
-                v -> { AlpakaConfig.instance.partyInvitePromptEnabled = v; AlpakaConfig.save(); },
-                "party invite prompt accept join decline y n key popup hypixel"));
+                () -> AlpakaConfig.instance.playerRequestsEnabled,
+                v -> { AlpakaConfig.instance.playerRequestsEnabled = v; AlpakaConfig.save(); },
+                "player requests party invite prompt trade friend guild duel accept join decline y n key popup hypixel"));
+
+        OPTIONS.add(new ConfigOption("player_requests_party", "Party Invites",
+                "Y joins the party you were invited to.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.playerRequestsParty,
+                v -> { AlpakaConfig.instance.playerRequestsParty = v; AlpakaConfig.save(); },
+                "player requests party invite prompt accept join"));
+
+        OPTIONS.add(new ConfigOption("player_requests_trade", "Trade Requests",
+                "Y accepts a trade request.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.playerRequestsTrade,
+                v -> { AlpakaConfig.instance.playerRequestsTrade = v; AlpakaConfig.save(); },
+                "player requests trade request accept"));
+
+        OPTIONS.add(new ConfigOption("player_requests_friend", "Friend Requests",
+                "Y accepts a friend request.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.playerRequestsFriend,
+                v -> { AlpakaConfig.instance.playerRequestsFriend = v; AlpakaConfig.save(); },
+                "player requests friend request accept"));
+
+        OPTIONS.add(new ConfigOption("player_requests_guild", "Guild Invites",
+                "Y joins the guild you were invited to.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.playerRequestsGuild,
+                v -> { AlpakaConfig.instance.playerRequestsGuild = v; AlpakaConfig.save(); },
+                "player requests guild invite accept join"));
+
+        OPTIONS.add(new ConfigOption("player_requests_duel", "Duel Invites",
+                "Y accepts a duel invite.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.playerRequestsDuel,
+                v -> { AlpakaConfig.instance.playerRequestsDuel = v; AlpakaConfig.save(); },
+                "player requests duel invite accept"));
+
+        OPTIONS.add(new ConfigOption("npc_prompts", "NPC Prompts",
+                "Shows what an NPC asks in chat as a notification you answer with a key instead of clicking the chat line: Y and N, or 1 to 5 when there are more than two choices.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcPromptsEnabled,
+                v -> { AlpakaConfig.instance.npcPromptsEnabled = v; AlpakaConfig.save(); },
+                "npc prompts dialog dialogue option select yes no y n key answer accept chat click overlay popup hypixel"));
+
+        OPTIONS.add(new ConfigOption("npc_prompts_dialogs", "NPC Dialogs",
+                "The choices an NPC offers, such as Yes and No. While more than two are shown, the keys 1 to 5 answer instead of changing the hotbar slot.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcPromptsDialogs,
+                v -> { AlpakaConfig.instance.npcPromptsDialogs = v; AlpakaConfig.save(); },
+                "npc prompts dialog dialogue option select an option yes no trapper trevor hoppity choices"));
+
+        OPTIONS.add(new ConfigOption("npc_prompts_abiphone", "Abiphone Calls",
+                "Y picks up an incoming call.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcPromptsAbiphone,
+                v -> { AlpakaConfig.instance.npcPromptsAbiphone = v; AlpakaConfig.save(); },
+                "npc prompts abiphone call ring pick up phone"));
+
+        OPTIONS.add(new ConfigOption("npc_prompts_requeue", "Dungeon Re-Queue",
+                "Y queues for the same floor again after a run.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcPromptsRequeue,
+                v -> { AlpakaConfig.instance.npcPromptsRequeue = v; AlpakaConfig.save(); },
+                "npc prompts dungeon catacombs requeue re-queue instancerequeue again floor"));
+
+        OPTIONS.add(new ConfigOption("npc_prompts_gg", "Rare Drop GG",
+                "Y says gg when Hypixel offers it under a rare drop announcement.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcPromptsGg,
+                v -> { AlpakaConfig.instance.npcPromptsGg = v; AlpakaConfig.save(); },
+                "npc prompts gg good game rare drop congratulate trophy fish"));
 
         OPTIONS.add(new ConfigOption("party_commands", "Party Commands",
                 "When a party member writes a command like !warp, !tps or !pt in party chat, a Y/N prompt offers to run it for them.",

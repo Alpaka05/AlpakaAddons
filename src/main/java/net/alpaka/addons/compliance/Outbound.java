@@ -3,7 +3,10 @@ package net.alpaka.addons.compliance;
 import net.alpaka.addons.AlpakaAddons;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.protocol.common.ServerboundCustomClickActionPacket;
 import net.minecraft.network.protocol.ping.ServerboundPingRequestPacket;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.StringUtil;
 import net.minecraft.util.Util;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -12,8 +15,9 @@ import net.minecraft.world.inventory.ContainerInput;
 /**
  * The one place the mod sends anything to the server.
  *
- * Every message, command or menu click the mod sends is the direct result of the player pressing a
- * key, clicking, or pressing Enter, and says which through its {@link Cause}. Nothing reacts to other players' chat, timers or game events by
+ * Every message, command, menu click or dialog answer the mod sends is the direct result of the
+ * player pressing a key, clicking, or pressing Enter, and says which through its {@link Cause}.
+ * Nothing reacts to other players' chat, timers or game events by
  * sending unless the player switched it on; two features once did so unasked - a party-chat
  * auto-reply and a guild announcement fired from a timer - and were removed. A scan of the compiled
  * classes in the tests (OutboundBytecodeScanTest) fails the build if anything outside this class
@@ -75,6 +79,15 @@ public final class Outbound {
     public static final long QUICK_JOIN_FLOOR_MS = 30_000L;
     private static long lastQuickJoinAtMs = Long.MIN_VALUE / 2;
 
+    /**
+     * What Hypixel puts on an NPC dialog's choices in chat ("Select an option: [Yes] [No]"): not a
+     * command but a click action of its own, which the client hands back to the server as it is.
+     */
+    public static final Identifier DIALOGUE_RESPONSE = Identifier.fromNamespaceAndPath("skyblock", "dialogue_response");
+
+    private static ClickEvent.Custom lastDialogueResponse = null;
+    private static long lastDialogueResponseAtMs = 0L;
+
     /** The least time between two party chat answers, however many requests come in. */
     public static final long PARTY_ANSWER_FLOOR_MS = 2_000L;
     private static long lastPartyAnswerAtMs = Long.MIN_VALUE / 2;
@@ -106,6 +119,31 @@ public final class Outbound {
 
         AlpakaAddons.LOGGER.debug("Sending /{} ({})", cleaned, cause);
         mc.player.connection.sendCommand(cleaned);
+        return true;
+    }
+
+    /**
+     * Answers an NPC dialog with one of the choices Hypixel offered in chat, for a key the player
+     * just pressed on the prompt that shows those choices (ChatPromptsFeature). Returns whether it
+     * went out.
+     *
+     * It is the packet vanilla sends when that choice is clicked in chat - the click action's own
+     * id and payload, untouched - and one per press. Only for {@link #DIALOGUE_RESPONSE}: no other
+     * click action a server may define goes out through here.
+     */
+    public static boolean dialogueResponse(ClickEvent.Custom choice, Cause cause) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.player.connection == null || choice == null) return false;
+        if (cause != Cause.KEY_PRESS) return false;
+        if (!DIALOGUE_RESPONSE.equals(choice.id())) return false;
+
+        long now = System.currentTimeMillis();
+        if (choice.equals(lastDialogueResponse) && now - lastDialogueResponseAtMs < REPEAT_MS) return false;
+        lastDialogueResponse = choice;
+        lastDialogueResponseAtMs = now;
+
+        AlpakaAddons.LOGGER.debug("Answering an NPC dialog ({})", cause);
+        mc.player.connection.send(new ServerboundCustomClickActionPacket(choice.id(), choice.payload()));
         return true;
     }
 

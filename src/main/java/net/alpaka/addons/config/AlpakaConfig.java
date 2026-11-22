@@ -1023,10 +1023,6 @@ public class AlpakaConfig {
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = false;
 
-    /** "/isle" is sent as "/warp isle"; see WarpShortcut. */
-    public boolean shortenWarpEnabled = false;
-    /** A warp typed in the first seconds on a server waits for Hypixel's cooldown; see WarpCooldownQueue. */
-    public boolean warpCooldownQueueEnabled = false;
     /** A party member's "!warp", "!tps"... raises a Y/N prompt to answer it; see PartyCommandsFeature. */
     public boolean partyCommandsEnabled = false;
     /** Info and fun party commands are answered without the Y/N prompt. */
@@ -2111,8 +2107,6 @@ public class AlpakaConfig {
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;
-        this.shortenWarpEnabled = false;
-        this.warpCooldownQueueEnabled = false;
         this.partyCommandsEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;

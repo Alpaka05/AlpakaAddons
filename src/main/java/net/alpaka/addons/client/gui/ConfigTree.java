@@ -101,7 +101,7 @@ public final class ConfigTree {
             "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_visual_clutter",
             "hide_inventory_effects",
-            "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom",
+            "render_hand_third_person", "disable_front_perspective", "zoom",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar",
             "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat", "message_filter",
             "mention_notification", "chat_peek", "chat_tabs",
@@ -111,12 +111,12 @@ public final class ConfigTree {
             // Block overlay: one feature, outline, fill, animation and filters its settings
             "block_overlay_enabled",
             // SkyBlock
-            "etherwarp_overlay", "etherwarp_sound", "item_search", "farming_hud_enabled", "pest_finder", "alignment_helper",
+            "etherwarp_overlay", "etherwarp_sound", "item_search",
             "slayer_drop_tracker", "slayer_rng_drop_guild_chat",
             "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_join_message_enabled", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
-            "visitor_bazaar", "ignore_filler_panes", "slot_highlight",
+            "ignore_filler_panes", "slot_highlight",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value", "price_tooltip",
             "profile_dashboard",
             // SkyBlock: dungeon
@@ -133,7 +133,6 @@ public final class ConfigTree {
 
     /** Settings registered away from their feature. */
     private static final Map<String, String> PARENTS = Map.ofEntries(
-            Map.entry("smooth_perspective_duration", "smooth_perspective"),
             Map.entry("custom_main_menu_whats_new", "custom_main_menu"),
             // The chat's background and font are parts of Better Chat.
             Map.entry("chat_blur", "better_chat"),
@@ -141,8 +140,6 @@ public final class ConfigTree {
             // Each HUD's own style switches, registered at the end and placed in its feature.
             Map.entry("slayer_hud_blur", "slayer_hud_enabled"),
             Map.entry("slayer_hud_smooth_font", "slayer_hud_enabled"),
-            Map.entry("farming_hud_blur", "farming_hud_enabled"),
-            Map.entry("farming_hud_smooth_font", "farming_hud_enabled"),
             Map.entry("slayer_timer_blur", "slayer_timer"),
             Map.entry("slayer_timer_smooth_font", "slayer_timer"),
             Map.entry("deployable_timer_blur", "deployable_timer"),
@@ -195,7 +192,7 @@ public final class ConfigTree {
                             "custom_sound_zombie_remedy", "custom_sound_blaze_death", "custom_sound_low_hp_heartbeat"}},
             {{"Visuals"},
                     {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_visual_clutter",
-                            "#Hide Fire Overlay", "smooth_perspective", "disable_front_perspective", "zoom"},
+                            "#Hide Fire Overlay", "disable_front_perspective", "zoom"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
                             "hide_inventory_effects",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar", "#Scoreboard"},
@@ -209,7 +206,6 @@ public final class ConfigTree {
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "clean_blaze", "blaze_fire_pits"},
-                    {"Garden", "farming_hud_enabled", "pest_finder", "alignment_helper", "visitor_bazaar"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
                             "world_age_join_message_enabled", "ragnarock", "deployable_timer", "ignore_filler_panes", "slot_highlight", "cache_resource_pack",
                             "profile_dashboard"},

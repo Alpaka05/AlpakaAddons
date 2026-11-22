@@ -6,7 +6,6 @@
   "client": [
     "ClientPacketListenerTimeMixin",
     "MouseHandlerMixin",
-    "AlignmentMouseHandlerMixin",
     "ScreenMixin",
     "ArmorStandSplashMixin",
     "MultiPlayerGameModeMixin",
@@ -19,7 +18,6 @@
     "FontManagerOptionsMixin",
     "AbstractRecipeBookScreenAccessor",
     "AbstractContainerScreenMixin",
-    "AbstractContainerScreenVisitorMixin",
     "AbstractContainerScreenFillerPaneMixin",
     "ScreenItemValueMixin",
     "KeyboardHandlerItemValueMixin",

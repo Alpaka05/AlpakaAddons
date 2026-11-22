@@ -142,7 +142,6 @@ public final class DevScreenshotTour {
             screen("config-chat-peek-key", () -> AlpakaConfigScreen.openOn("Chat", "Chat Peek")),
             screen("config-zoom-key", () -> AlpakaConfigScreen.openOn("World", "Zoom")),
             screen("config-chest-value-key", () -> AlpakaConfigScreen.openOn("Markets", "Chest Value")),
-            screen("config-alignment-helper", () -> AlpakaConfigScreen.openOn("Garden", "Alignment Helper")),
             screen("config-slot-highlight", () -> AlpakaConfigScreen.openOn("Tools", "Slot Highlight")),
             screen("config-damage-tags", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Damage Tags")),
             screen("config-sensei-hat", () -> AlpakaConfigScreen.openOn("Cosmetics", "Sensei Hat")),

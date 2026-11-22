@@ -77,7 +77,7 @@ public final class ItemInspectFeature {
             kind = null;
             return;
         }
-        if (pressed && mc.gui.screen() == null && mc.options.getCameraType().isFirstPerson()) {
+        if (pressed && mc.gui.screen() == null && HandInThirdPerson.handShown(mc.options.getCameraType())) {
             start(player);
             return;
         }
@@ -87,7 +87,7 @@ public final class ItemInspectFeature {
                 || !ItemStack.isSameItem(player.getMainHandItem(), stack);
         boolean acting = mc.options.keyAttack.isDown() || mc.options.keyUse.isDown()
                 || (player.swinging && !swingingAtStart);
-        if (otherItem || acting || !mc.options.getCameraType().isFirstPerson()) cancel();
+        if (otherItem || acting || !HandInThirdPerson.handShown(mc.options.getCameraType())) cancel();
     }
 
     private static void start(LocalPlayer player) {

@@ -46,9 +46,11 @@ import kotlin.random.Random
 /**
  * A rare drop flies onto the screen: the item alone, no text, big and in 3D. It shoots up from below
  * the screen's edge, tumbling end over end, lands in the middle with a flash and a shock wave,
- * whirls round and settles facing the player, then turns on show in a golden glow until it spins up
- * and vanishes in a sparkle. Bound to the screen, not the world, so it stays where it is while the
- * player turns, and it is drawn over an open menu too (a dungeon chest).
+ * whirls round and settles facing the player, then turns on show in its light until it spins up
+ * and vanishes in a sparkle. The light is the drop's own ([Effect]): gold in the slayer's color for
+ * a slayer drop, a rainbow for a dye, a beam for a dungeon reward, a soft glow for a pet, a
+ * starburst for the rest; Special Effects off leaves the item alone. Bound to the screen, not the
+ * world, so it stays where it is while the player turns, and it is drawn over an open menu too.
  *
  * Which drops count is read off Hypixel's chat lines ([RareDrops]): a slayer's rarest drop, a dye
  * the player finds, a dungeon chest's rare reward, and any other drop that is crazy rare or better,
@@ -126,7 +128,21 @@ object RareDropAnimation {
     /** SkyBlock's rarities by the color of their names, in SkyCofl's order for pet ids. */
     private val RARITY_COLORS = intArrayOf(0xFFFFFF, 0x55FF55, 0x5555FF, 0xAA00AA, 0xFFAA00, 0xFF55FF)
 
-    private class Drop(val kind: Kind, val name: String, val nameColor: Int, val accent: Int) {
+    /** Which light a drop gets, by what it is: a dye does not look like a slayer drop. */
+    private enum class Effect {
+        /** A slayer's headline drop: gold and the slayer's color, god rays, sparkles drifting up. */
+        GOLDEN,
+        /** A dye: the rainbow, rays in a wave of color, confetti raining down. */
+        PRISM,
+        /** A dungeon reward: a beam of light, runes on two orbits, ripples. */
+        ARCANE,
+        /** A pet: a soft warm glow, wide slow rays, bubbles floating up. */
+        BLOOM,
+        /** Any other valuable drop: many thin rays, beating shock rings, twinkling stars. */
+        STARBURST,
+    }
+
+    private class Drop(val kind: Kind, val name: String, val nameColor: Int, val accent: Int, val effect: Effect) {
         /** When the drop's turn came; its item is looked for from then on. */
         var queuedNanos = 0L
 
@@ -219,9 +235,15 @@ object RareDropAnimation {
         if (key in recent) return
         recent[key] = now
 
-        val accent = if (slayer != null && AlpakaConfig.instance.rareDropAnimationSlayerColors) accentOf(slayer)
-        else color ?: AMBER
-        val drop = Drop(kind, name, color ?: GOLD, accent)
+        val accent = if (slayer != null) accentOf(slayer) else color ?: AMBER
+        val effect = when {
+            slayer != null -> Effect.GOLDEN
+            kind == Kind.DYE -> Effect.PRISM
+            kind == Kind.DUNGEON -> Effect.ARCANE
+            kind == Kind.PET -> Effect.BLOOM
+            else -> Effect.STARBURST
+        }
+        val drop = Drop(kind, name, color ?: GOLD, accent, effect)
         if (current == null) start(drop) else if (queue.size < QUEUE_MAX) queue.addLast(drop)
     }
 
@@ -514,9 +536,11 @@ object RareDropAnimation {
 
         val sink = graphics as AlpakaGuiElementSink
         val pose = Matrix3x2f(graphics.pose())
-        drawFlight(sink, pose, drop, t, r, fromX, fromY, cx, cy, landed)
-        drawLight(sink, pose, ix, iy, r, sinceLand, landed * fade, drop.accent)
-        drawVanish(sink, pose, ix, iy, r, end, drop.accent)
+        if (cfg.rareDropAnimationEffects) {
+            drawFlight(sink, pose, drop, t, r, fromX, fromY, cx, cy, landed)
+            drawLight(sink, pose, drop, ix, iy, r, sinceLand, landed * fade)
+            drawVanish(sink, pose, drop, ix, iy, r, end, sinceLand)
+        }
 
         // The item over its light: a later stratum is drawn after the light's.
         graphics.nextStratum()
@@ -556,6 +580,30 @@ object RareDropAnimation {
         fromY + (cy - fromY) * easeOutBack((t / FLY_SECONDS).coerceIn(0f, 1f), OVERSHOOT)
 
     /**
+     * The color of the [i]th piece of light of a drop's effect, [t] seconds after it landed: gold and
+     * the slayer's color for a slayer drop, the whole rainbow running round for a dye, and the drop's
+     * rarity color with paler light for the rest.
+     */
+    private fun tint(drop: Drop, i: Int, t: Float): Int = when (drop.effect) {
+        Effect.GOLDEN -> when (i % 3) { 0 -> GOLD_PALE; 1 -> GOLD; else -> drop.accent }
+        Effect.PRISM -> hue(fract(i * 0.137f + t * 0.25f))
+        Effect.ARCANE -> if (i % 2 == 0) AuraEffects.mix(drop.accent, 0xFFFFFF, 0.45f) else drop.accent
+        Effect.BLOOM -> when (i % 3) { 0 -> AuraEffects.mix(drop.accent, 0xFFFFFF, 0.55f); 1 -> drop.accent; else -> 0xFFD6E8 }
+        Effect.STARBURST -> if (i % 2 == 0) 0xFFFFFF else AuraEffects.mix(drop.accent, 0xFFFFFF, 0.2f)
+    }
+
+    /** A bright, not quite full color at [h] round the color wheel, from 0 to 1. */
+    private fun hue(h: Float): Int {
+        val k = h * 6f
+        fun channel(n: Float): Int {
+            val x = fract((n + k) / 6f) * 6f
+            val v = 1f - 0.85f * maxOf(0f, minOf(x, 4f - x, 1f))
+            return (v * 255f).toInt().coerceIn(0, 255)
+        }
+        return (channel(5f) shl 16) or (channel(3f) shl 8) or channel(1f)
+    }
+
+    /**
      * The flight's light: a glow around the item on its way up and a trail of light behind it along
      * the path it came, both going out as it lands ([landed] from 0 to 1).
      */
@@ -565,7 +613,7 @@ object RareDropAnimation {
         if (left <= 0f) return
         val x = flightX(t, fromX, cx)
         val y = flightY(t, fromY, cy)
-        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, 0.9f * r, GlowRenderState.GLOW, 0, argb(GOLD, 0.7f * left)))
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, 0.9f * r, GlowRenderState.GLOW, 0, argb(tint(drop, 1, t), 0.7f * left)))
         val trail = 14
         for (k in 1..trail) {
             val tk = t - k * 0.022f
@@ -575,12 +623,12 @@ object RareDropAnimation {
             val py = flightY(tk, fromY, cy)
             val near = 0.45f + 0.55f * easeOutCubic((tk / FLY_SECONDS).coerceIn(0f, 1f))
             sink.`alpaka$submitElement`(GlowRenderState.disc(pose, px, py, (0.5f * fall + 0.1f) * r * near,
-                GlowRenderState.GLOW, 0, argb(if (k % 2 == 0) GOLD_PALE else drop.accent, 0.75f * fall * left)))
+                GlowRenderState.GLOW, 0, argb(tint(drop, k, t), 0.75f * fall * left)))
             // Sparks shed along the trail, drifting off it a little.
             val seed = AuraEffects.hash(k * 29 + 5)
             val drift = (seed - 0.5f) * 0.8f * r * (k / trail.toFloat())
             sink.`alpaka$submitElement`(GlowRenderState.disc(pose, px + drift, py + 0.2f * r * fall, (0.08f + 0.08f * seed) * r,
-                GlowRenderState.SPARKLE, 0, argb(GOLD_PALE, fall * left)))
+                GlowRenderState.SPARKLE, 0, argb(tint(drop, k * 2, t), fall * left)))
         }
     }
 
@@ -588,44 +636,61 @@ object RareDropAnimation {
      * The end: as the item shrinks away ([end] from 0 to 1) a star of light flares up where it was,
      * with a ring running out from it, and goes out with it.
      */
-    private fun drawVanish(sink: AlpakaGuiElementSink, pose: Matrix3x2f, x: Float, y: Float, r: Float, end: Float, accent: Int) {
+    private fun drawVanish(sink: AlpakaGuiElementSink, pose: Matrix3x2f, drop: Drop, x: Float, y: Float, r: Float, end: Float, t: Float) {
         val u = ((end - 0.55f) / 0.45f).coerceIn(0f, 1f)
         if (u <= 0f || u >= 1f) return
         val flare = sin(u * PI.toFloat())
-        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.6f + 0.9f * u) * r, GlowRenderState.GLOW, 0, argb(GOLD_PALE, 0.7f * flare)))
-        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.3f + 0.8f * flare) * r, GlowRenderState.SPARKLE, 0, argb(GOLD_PALE, flare)))
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.6f + 0.9f * u) * r, GlowRenderState.GLOW, 0, argb(tint(drop, 0, t), 0.7f * flare)))
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.3f + 0.8f * flare) * r, GlowRenderState.SPARKLE, 0, argb(0xFFFFFF, flare)))
         sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.3f + 1.6f * easeOutCubic(u)) * r, GlowRenderState.RING, 70,
-            argb(AuraEffects.mix(GOLD, accent, 0.6f), 0.8f * (1f - u))))
+            argb(tint(drop, 1, t), 0.8f * (1f - u))))
     }
 
     /**
      * Everything that glows around the resting item at (cx, cy), for an item [r] across, [t] seconds
-     * after it landed: the flash, shock wave and sparks of the landing, the halo and rays behind the
-     * item and sparkles drifting up around it.
+     * after it landed: the landing's flash, then the drop's own effect, all at [light].
      */
-    private fun drawLight(sink: AlpakaGuiElementSink, pose: Matrix3x2f, cx: Float, cy: Float, r: Float, t: Float, light: Float, accent: Int) {
+    private fun drawLight(sink: AlpakaGuiElementSink, pose: Matrix3x2f, drop: Drop, cx: Float, cy: Float, r: Float, t: Float, light: Float) {
         if (light <= 0f) return
-        val outer = AuraEffects.mix(GOLD_DEEP, accent, 0.6f)
-        val rayAccent = AuraEffects.mix(GOLD, accent, 0.6f)
-
-        // The landing: a bright flash, two rings running out from the item and sparks flying off.
-        val burst = (t / 0.9f).coerceIn(0f, 1f)
-        if (burst < 1f) {
-            val k = easeOutCubic(burst)
-            val gone = 1f - burst
-            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.6f + 2.2f * k) * r, GlowRenderState.GLOW, 0, argb(GOLD_PALE, gone * 0.9f)))
-            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.4f + 3.2f * k) * r, GlowRenderState.RING, 90, argb(rayAccent, gone * 0.9f)))
-            val late = easeOutCubic(((t - 0.12f) / 0.8f).coerceIn(0f, 1f))
-            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.3f + 2.0f * late) * r, GlowRenderState.RING, 50, argb(GOLD_PALE, (1f - late) * 0.7f)))
-            val sparks = 18
-            for (i in 0 until sparks) {
-                val seed = AuraEffects.hash(i * 41 + 11)
-                val angle = i * (2f * PI.toFloat() / sparks) + seed
-                val dist = (0.5f + (1.6f + 1.2f * seed) * k) * r
-                sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx + cos(angle) * dist, cy + sin(angle) * dist + 0.5f * r * burst * burst,
-                    (0.09f + 0.07f * seed) * r * gone + 1f, GlowRenderState.SPARKLE, 0, argb(if (i % 2 == 0) GOLD_PALE else accent, gone)))
-            }
+        drawLanding(sink, pose, drop, cx, cy, r, t)
+        when (drop.effect) {
+            Effect.GOLDEN -> drawGolden(sink, pose, drop, cx, cy, r, t, light)
+            Effect.PRISM -> drawPrism(sink, pose, drop, cx, cy, r, t, light)
+            Effect.ARCANE -> drawArcane(sink, pose, drop, cx, cy, r, t, light)
+            Effect.BLOOM -> drawBloom(sink, pose, drop, cx, cy, r, t, light)
+            Effect.STARBURST -> drawStarburst(sink, pose, drop, cx, cy, r, t, light)
         }
+    }
+
+    /** The landing: a bright flash, two rings running out from the item and sparks flying off. */
+    private fun drawLanding(sink: AlpakaGuiElementSink, pose: Matrix3x2f, drop: Drop, cx: Float, cy: Float, r: Float, t: Float) {
+        val burst = (t / 0.9f).coerceIn(0f, 1f)
+        if (burst >= 1f) return
+        val k = easeOutCubic(burst)
+        val gone = 1f - burst
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.6f + 2.2f * k) * r, GlowRenderState.GLOW, 0, argb(tint(drop, 0, t), gone * 0.9f)))
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.4f + 3.2f * k) * r, GlowRenderState.RING, 90, argb(tint(drop, 1, t), gone * 0.9f)))
+        val late = easeOutCubic(((t - 0.12f) / 0.8f).coerceIn(0f, 1f))
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.3f + 2.0f * late) * r, GlowRenderState.RING, 50, argb(tint(drop, 2, t), (1f - late) * 0.7f)))
+        val sparks = 18
+        for (i in 0 until sparks) {
+            val seed = AuraEffects.hash(i * 41 + 11)
+            val angle = i * (2f * PI.toFloat() / sparks) + seed
+            val dist = (0.5f + (1.6f + 1.2f * seed) * k) * r
+            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx + cos(angle) * dist, cy + sin(angle) * dist + 0.5f * r * burst * burst,
+                (0.09f + 0.07f * seed) * r * gone + 1f, GlowRenderState.SPARKLE, 0, argb(tint(drop, i, t), gone)))
+        }
+        // A dungeon reward's beam of light comes down on it from the top of the screen as it lands.
+        if (drop.effect == Effect.ARCANE) {
+            sink.`alpaka$submitElement`(GlowRenderState.ray(pose, cx, cy, 0f, -1f, 0f, cy * (1f - k * 0.3f), (1.6f - k) * r,
+                argb(tint(drop, 0, t), gone)))
+        }
+    }
+
+    /** A slayer's headline drop: gold and the slayer's color, god rays and sparkles drifting up. */
+    private fun drawGolden(sink: AlpakaGuiElementSink, pose: Matrix3x2f, drop: Drop, cx: Float, cy: Float, r: Float, t: Float, light: Float) {
+        val outer = AuraEffects.mix(GOLD_DEEP, drop.accent, 0.6f)
+        val rayAccent = AuraEffects.mix(GOLD, drop.accent, 0.6f)
 
         // The halo behind the item, breathing slowly.
         val breathe = 0.5f + 0.5f * sin(t * 2.6f)
@@ -659,8 +724,151 @@ object RareDropAnimation {
             val x = cx + cos(angle) * radius
             val y = cy + sin(angle) * radius * 0.6f + (0.6f - 1.3f * life) * r
             val twinkle = sin(life * PI.toFloat())
-            val rgb = if (i % 3 == 0) GOLD_PALE else if (i % 3 == 1) GOLD else accent
-            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.1f + 0.1f * seed) * r, GlowRenderState.SPARKLE, 0, argb(rgb, light * twinkle)))
+            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.1f + 0.1f * seed) * r, GlowRenderState.SPARKLE, 0, argb(tint(drop, i, t), light * twinkle)))
+        }
+    }
+
+    /** A dye: the whole rainbow, rays running round in a wave of color and confetti raining down. */
+    private fun drawPrism(sink: AlpakaGuiElementSink, pose: Matrix3x2f, drop: Drop, cx: Float, cy: Float, r: Float, t: Float, light: Float) {
+        val breathe = 0.5f + 0.5f * sin(t * 2.2f)
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (1.9f + 0.25f * breathe) * r, GlowRenderState.GLOW, 0, argb(hue(fract(t * 0.12f)), light * 0.4f)))
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (1.05f + 0.15f * breathe) * r, GlowRenderState.GLOW, 0, argb(hue(fract(t * 0.12f + 0.5f)), light * 0.45f)))
+
+        // Twelve rays, each its own color, turning, their lengths a wave running round.
+        val rays = 12
+        val grow = easeOutBack((t / 0.6f).coerceIn(0f, 1f), 1.8f)
+        for (i in 0 until rays) {
+            val angle = i * (2f * PI.toFloat() / rays) + t * 0.6f
+            val wave = 0.5f + 0.5f * sin(t * 4f - i * (2f * PI.toFloat() / rays) * 2f)
+            val length = (1.1f + 1.0f * wave) * r * grow
+            if (length < 1f) continue
+            sink.`alpaka$submitElement`(GlowRenderState.ray(pose, cx, cy, cos(angle), sin(angle),
+                0.2f * r, 0.2f * r + length, 0.3f * r, argb(hue(fract(i / rays.toFloat() + t * 0.1f)), light * (0.45f + 0.3f * wave))))
+        }
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.95f + 0.05f * breathe) * r, GlowRenderState.RING, 60, argb(hue(fract(t * 0.3f)), light * 0.55f)))
+
+        // Confetti raining down past the item, swaying as it falls.
+        val confetti = 28
+        for (i in 0 until confetti) {
+            val seed = AuraEffects.hash(i * 31 + 7)
+            val life = fract(t / (1.6f + 1.0f * seed) + AuraEffects.hash(i * 17 + 3))
+            val x = cx + (AuraEffects.hash(i * 13 + 1) - 0.5f) * 3.4f * r + sin(life * 6f + i) * 0.25f * r
+            val y = cy - 1.7f * r + 3.4f * r * life
+            val fade = sin(life * PI.toFloat())
+            val shape = if (i % 3 == 0) GlowRenderState.SPARKLE else GlowRenderState.GLOW
+            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (if (shape == GlowRenderState.GLOW) 0.07f else 0.12f + 0.06f * seed) * r,
+                shape, 0, argb(hue(fract(seed + t * 0.2f)), light * fade)))
+        }
+    }
+
+    /**
+     * A dungeon reward: a beam of light standing on the item, runes circling it on two tilted
+     * orbits and ripples running out.
+     */
+    private fun drawArcane(sink: AlpakaGuiElementSink, pose: Matrix3x2f, drop: Drop, cx: Float, cy: Float, r: Float, t: Float, light: Float) {
+        val pale = AuraEffects.mix(drop.accent, 0xFFFFFF, 0.45f)
+        val breathe = 0.5f + 0.5f * sin(t * 1.8f)
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (2.0f + 0.2f * breathe) * r, GlowRenderState.GLOW, 0, argb(drop.accent, light * 0.4f)))
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (1.0f + 0.1f * breathe) * r, GlowRenderState.GLOW, 0, argb(pale, light * 0.45f)))
+
+        // The beam, up to the top of the screen and a little way down, breathing in width.
+        val width = (0.8f + 0.2f * breathe) * r
+        sink.`alpaka$submitElement`(GlowRenderState.ray(pose, cx, cy, 0f, -1f, 0.2f * r, cy, width, argb(pale, light * 0.5f)))
+        sink.`alpaka$submitElement`(GlowRenderState.ray(pose, cx, cy, 0f, 1f, 0.2f * r, 1.6f * r, width, argb(pale, light * 0.25f)))
+
+        // Ripples running out, one after another.
+        for (j in 0 until 3) {
+            val phase = fract(t / 1.6f + j / 3f)
+            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.8f + 1.6f * phase) * r, GlowRenderState.RING, 40,
+                argb(if (j % 2 == 0) drop.accent else pale, light * 0.6f * (1f - phase))))
+        }
+
+        // Runes on two orbits tilted against each other, turning opposite ways; bigger in front.
+        for (orbit in 0 until 2) {
+            val tiltAngle = if (orbit == 0) 0.45f else -0.45f
+            val dir = if (orbit == 0) 1f else -1f
+            val ct = cos(tiltAngle)
+            val st = sin(tiltAngle)
+            for (i in 0 until 6) {
+                val a = i * (2f * PI.toFloat() / 6f) + dir * t * 1.2f + orbit * 0.5f
+                val ox = cos(a) * 1.4f * r
+                val oy = sin(a) * 0.4f * r
+                val x = cx + ox * ct - oy * st
+                val y = cy + ox * st + oy * ct
+                val front = 0.5f + 0.5f * sin(a)
+                sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.18f + 0.1f * front) * r, GlowRenderState.GLOW, 0, argb(drop.accent, light * 0.5f)))
+                sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.1f + 0.08f * front) * r, GlowRenderState.SPARKLE, 0, argb(pale, light * (0.5f + 0.5f * front))))
+            }
+        }
+    }
+
+    /** A pet: a soft, warm glow, a few wide rays turning slowly and bubbles floating up. */
+    private fun drawBloom(sink: AlpakaGuiElementSink, pose: Matrix3x2f, drop: Drop, cx: Float, cy: Float, r: Float, t: Float, light: Float) {
+        val pale = AuraEffects.mix(drop.accent, 0xFFFFFF, 0.55f)
+        val breathe = 0.5f + 0.5f * sin(t * 1.5f)
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (2.2f + 0.3f * breathe) * r, GlowRenderState.GLOW, 0, argb(drop.accent, light * 0.35f)))
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (1.2f + 0.2f * breathe) * r, GlowRenderState.GLOW, 0, argb(pale, light * 0.5f)))
+
+        val rays = 6
+        val grow = easeOutCubic((t / 0.8f).coerceIn(0f, 1f))
+        for (i in 0 until rays) {
+            val angle = i * (2f * PI.toFloat() / rays) - t * 0.25f
+            val length = (1.4f + 0.3f * sin(t * 1.3f + i)) * r * grow
+            if (length < 1f) continue
+            sink.`alpaka$submitElement`(GlowRenderState.ray(pose, cx, cy, cos(angle), sin(angle),
+                0.2f * r, 0.2f * r + length, 0.75f * r, argb(if (i % 2 == 0) pale else drop.accent, light * 0.3f)))
+        }
+
+        // Bubbles floating up from under the item, wobbling, growing a little as they rise.
+        val bubbles = 16
+        for (i in 0 until bubbles) {
+            val seed = AuraEffects.hash(i * 31 + 7)
+            val life = fract(t / (2.2f + 1.4f * seed) + AuraEffects.hash(i * 17 + 3))
+            val x = cx + (AuraEffects.hash(i * 13 + 1) - 0.5f) * 2.6f * r + sin(life * 5f + i) * 0.2f * r
+            val y = cy + 1.1f * r - 2.6f * r * life
+            val fade = sin(life * PI.toFloat())
+            val size = (0.08f + 0.1f * seed) * r * (0.6f + 0.4f * life)
+            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, size, GlowRenderState.RING, 30, argb(tint(drop, i, t), light * fade * 0.9f)))
+            if (i % 4 == 0) sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, size * 0.8f, GlowRenderState.SPARKLE, 0, argb(0xFFFFFF, light * fade * 0.6f)))
+        }
+    }
+
+    /**
+     * Any other valuable drop: a burst of many thin rays, long and short, shock rings beating out
+     * from it and stars twinkling round it.
+     */
+    private fun drawStarburst(sink: AlpakaGuiElementSink, pose: Matrix3x2f, drop: Drop, cx: Float, cy: Float, r: Float, t: Float, light: Float) {
+        val breathe = 0.5f + 0.5f * sin(t * 3f)
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (1.8f + 0.2f * breathe) * r, GlowRenderState.GLOW, 0, argb(drop.accent, light * 0.4f)))
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.95f + 0.1f * breathe) * r, GlowRenderState.GLOW, 0, argb(0xFFFFFF, light * 0.4f)))
+
+        val rays = 24
+        val grow = easeOutBack((t / 0.5f).coerceIn(0f, 1f), 2.2f)
+        for (i in 0 until rays) {
+            val angle = i * (2f * PI.toFloat() / rays) - t * 0.2f
+            val flicker = 0.55f + 0.45f * sin(t * 5f + i * 2.3f)
+            val length = (if (i % 2 == 0) 2.3f else 1.2f) * flicker * r * grow
+            if (length < 1f) continue
+            sink.`alpaka$submitElement`(GlowRenderState.ray(pose, cx, cy, cos(angle), sin(angle),
+                0.25f * r, 0.25f * r + length, 0.16f * r, argb(tint(drop, i, t), light * 0.6f * flicker)))
+        }
+
+        // A shock ring beating out every 1.3 s.
+        val beat = fract(t / 1.3f)
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.9f + 2.0f * easeOutCubic(beat)) * r, GlowRenderState.RING, 50,
+            argb(drop.accent, light * 0.7f * (1f - beat) * (1f - beat))))
+
+        // Stars standing round the item, each flashing up now and then.
+        val stars = 14
+        for (i in 0 until stars) {
+            val seed = AuraEffects.hash(i * 31 + 7)
+            val angle = AuraEffects.hash(i * 17 + 3) * 2f * PI.toFloat()
+            val radius = (1.0f + 1.2f * AuraEffects.hash(i * 13 + 1)) * r
+            val pulse = maxOf(0f, sin(t * (2.5f + seed) + seed * 6.28f))
+            val flash = pulse * pulse * pulse
+            if (flash < 0.02f) continue
+            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx + cos(angle) * radius, cy + sin(angle) * radius * 0.7f,
+                (0.12f + 0.12f * seed) * r * flash, GlowRenderState.SPARKLE, 0, argb(tint(drop, i, t), light * flash)))
         }
     }
 

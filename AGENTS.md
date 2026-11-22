@@ -36,7 +36,9 @@ session always win over this file.
     Prefer `@WrapOperation`, `@WrapWithCondition` and `@ModifyExpressionValue` over `@Redirect` and
     `@ModifyConstant`, and never target a generated `lambda$...` method.
   - `compliance/Outbound.java`: the only place that may send chat messages or commands to the
-    server, and only as the direct result of a key press, click or Enter.
+    server, and only as the direct result of a key press, click or Enter. A key on a Player Requests
+    or NPC Prompts notice sends what a click on that chat line would send: the command on it, or for an NPC
+    dialog its click action (`Outbound.dialogueResponse`, `skyblock:dialogue_response` only).
     `OutboundBytecodeScanTest` scans the compiled classes and fails the build if anything else
     sends to the server (packets, chat, commands, gameplay actions, method references included).
     The documented exceptions: `Outbound.latencyProbe()`, the Performance HUD's ping (at most every

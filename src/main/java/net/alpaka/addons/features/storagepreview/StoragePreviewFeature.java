@@ -94,6 +94,14 @@ public final class StoragePreviewFeature {
      */
     private static JsonObject fileData = null;
 
+    /** For the screenshot tour, which is not on SkyBlock: the pages to show instead of a profile's. */
+    private static Map<String, List<ItemStack>> devPages = null;
+
+    /** For the screenshot tour: shows these pages in any menu titled "Storage", outside SkyBlock too. */
+    public static void devPages(Map<String, List<ItemStack>> pages) {
+        devPages = pages;
+    }
+
     private static AbstractContainerScreen<?> watched = null;
     private static int watchedTicks = 0;
     private static boolean dirty = false;
@@ -231,19 +239,26 @@ public final class StoragePreviewFeature {
      */
     public static java.util.Optional<TooltipComponent> tooltipImage(AbstractContainerScreen<?> screen, ItemStack stack,
                                                                     java.util.Optional<TooltipComponent> original) {
-        if (!isEnabled() || original.isPresent() || !SkyblockUtils.isOnSkyblock()) return original;
+        if (original.isPresent()) return original;
+        StoragePreviewTooltip preview = previewFor(screen, stack);
+        return preview == null ? original : java.util.Optional.of(preview);
+    }
+
+    /** The remembered page behind a Storage menu icon, or null for any other stack or menu. */
+    static StoragePreviewTooltip previewFor(AbstractContainerScreen<?> screen, ItemStack stack) {
+        if (!isEnabled() || stack.isEmpty() || (devPages == null && !SkyblockUtils.isOnSkyblock())) return null;
         Component title = screen.getTitle();
         if (title != plainTitleOf) {
             plainTitle = SkyblockUtils.cleanColor(title.getString()).trim();
             plainTitleOf = title;
         }
-        if (!"Storage".equals(plainTitle)) return original;
+        if (!"Storage".equals(plainTitle)) return null;
         String key = iconKey(SkyblockUtils.cleanColor(stack.getHoverName().getString()).trim());
-        if (key == null) return original;
+        if (key == null) return null;
         Map<String, List<ItemStack>> profile = currentProfile();
         List<ItemStack> content = profile == null ? null : profile.get(key);
-        if (content == null || content.isEmpty()) return original;
-        return java.util.Optional.of(new StoragePreviewTooltip(content));
+        if (content == null || content.isEmpty()) return null;
+        return new StoragePreviewTooltip(content);
     }
 
     /**
@@ -259,6 +274,7 @@ public final class StoragePreviewFeature {
 
     /** The current account and profile's pages, loaded from the file the first time; null outside a world. */
     private static Map<String, List<ItemStack>> currentProfile() {
+        if (devPages != null) return devPages;
         Minecraft mc = Minecraft.getInstance();
         ClientPacketListener connection = mc.getConnection();
         String id = profileId(mc);

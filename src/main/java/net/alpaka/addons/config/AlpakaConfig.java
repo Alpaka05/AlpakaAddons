@@ -142,18 +142,34 @@ public class AlpakaConfig {
     /** How strongly the aura glows, in percent. */
     public float auraBrightness = 80.0f;
     /**
-     * A slayer's rarest drop pops up as a big spinning item in a golden glow where the boss died.
+     * A rare drop flies onto the screen as a big spinning item in a golden glow, the item alone.
      * Drawn by this client only. Off by default while it is being tried out.
      */
     public boolean rareDropAnimationEnabled = false;
+    /** Plays for a slayer's rarest drop (Judgement Core, Warden Heart, ...). */
+    public boolean rareDropAnimationSlayer = true;
+    /** Plays for a dye the player finds. */
+    public boolean rareDropAnimationDyes = true;
+    /** Plays for a dungeon chest's rare reward (Necron's Handle, master stars, ...). */
+    public boolean rareDropAnimationDungeon = true;
+    /**
+     * Plays for any other drop that is crazy rare or better, a pet, or worth at least
+     * {@link #rareDropAnimationMinValue}.
+     */
+    public boolean rareDropAnimationValuable = true;
+    /** What another drop has to be worth for the animation, in millions of coins. */
+    public float rareDropAnimationMinValue = 5.0f;
     /** How big the item and its glow are, as a factor. */
     public float rareDropAnimationSize = 1.0f;
     /** How long the animation stays, in seconds. */
     public float rareDropAnimationDuration = 6.0f;
-    /** A rising chime as the item pops up, heard only by this client. */
+    /** A rising chime as the item lands, heard only by this client. */
     public boolean rareDropAnimationSound = true;
-    /** Each slayer's own color mixed into the gold. */
-    public boolean rareDropAnimationSlayerColors = true;
+    /**
+     * The light around the item (glow, rays, sparkles, the landing's flash), a different effect for
+     * slayer drops, dyes, dungeon rewards, pets and other drops. Off shows the item alone.
+     */
+    public boolean rareDropAnimationEffects = true;
 
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.
@@ -922,22 +938,6 @@ public class AlpakaConfig {
     public boolean oldMasterStarsEnabled = false;
     /** Hovering a backpack or ender chest page in the Storage menu shows what was last seen inside. */
     public boolean storagePreviewEnabled = true;
-    /** Slots in SkyBlock menus marked the way Item Search marks what it found: ready ones in one color, missing ones in another. */
-    public boolean slotHighlightEnabled = true;
-    public boolean slotHighlightActivePet = true;
-    public boolean slotHighlightUnfinishedTasks = true;
-    public boolean slotHighlightAuctions = true;
-    public boolean slotHighlightBazaarOrders = true;
-    public boolean slotHighlightCroesus = true;
-    public boolean slotHighlightJacobContests = true;
-    public boolean slotHighlightSlayerRewards = true;
-    public boolean slotHighlightRngMeter = true;
-    public boolean slotHighlightCommissions = true;
-    public boolean slotHighlightChocolateFactory = true;
-    public boolean slotHighlightComposterUpgrades = true;
-    public boolean slotHighlightBestiary = true;
-    public int slotHighlightReadyColor = 0x5055FF55;
-    public int slotHighlightMissingColor = 0x50FF5555;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
@@ -948,8 +948,26 @@ public class AlpakaConfig {
     /** Absorption hearts: 0 a row of their own, 1 gold over the first hearts, 2 hidden. */
     public int wideHealthBarAbsorption = 0;
 
-    /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
-    public boolean partyInvitePromptEnabled = false;
+    /**
+     * A party invite or a trade, friend, guild or duel request raises a notification: Y accepts,
+     * N dismisses. Was the Party Invite Prompt's switch before the other requests joined it.
+     */
+    @SerializedName(value = "playerRequestsEnabled", alternate = "partyInvitePromptEnabled")
+    public boolean playerRequestsEnabled = false;
+    /** Which requests are raised; see PartyInviteFeature and ChatPromptsFeature. */
+    public boolean playerRequestsParty = true;
+    public boolean playerRequestsTrade = true;
+    public boolean playerRequestsFriend = true;
+    public boolean playerRequestsGuild = true;
+    public boolean playerRequestsDuel = true;
+
+    /** What an NPC or Hypixel itself asks in chat raises a notification with keys; see ChatPromptsFeature. */
+    public boolean npcPromptsEnabled = false;
+    /** Which kinds of prompt are raised. */
+    public boolean npcPromptsDialogs = true;
+    public boolean npcPromptsAbiphone = true;
+    public boolean npcPromptsRequeue = true;
+    public boolean npcPromptsGg = true;
 
     /** A party member's "!warp", "!tps"... raises a Y/N prompt to answer it; see PartyCommandsFeature. */
     public boolean partyCommandsEnabled = false;
@@ -1295,6 +1313,11 @@ public class AlpakaConfig {
         public int swingTrailColor = 0xFFFFFFFF;
         public float swingTrailDuration = 250.0f;
         public float swingTrailWidth = 1.0f;
+        /**
+         * First-Person Hand in F5. Null in presets saved before it was part of them, so loading
+         * one of those leaves the switch as it is instead of turning it off.
+         */
+        public Boolean renderHandInThirdPerson = null;
         /** What the player called it; empty for none, and it shows as "Preset n" then. */
         public String name = "";
 
@@ -1366,6 +1389,7 @@ public class AlpakaConfig {
             this.itemSwingTrailColor = preset.swingTrailColor;
             this.itemSwingTrailDuration = preset.swingTrailDuration;
             this.itemSwingTrailWidth = preset.swingTrailWidth;
+            if (preset.renderHandInThirdPerson != null) this.renderHandInThirdPerson = preset.renderHandInThirdPerson;
             this.activeItemPresetIndex = index;
             save();
         }
@@ -1473,6 +1497,7 @@ public class AlpakaConfig {
         preset.swingTrailColor = this.itemSwingTrailColor;
         preset.swingTrailDuration = this.itemSwingTrailDuration;
         preset.swingTrailWidth = this.itemSwingTrailWidth;
+        preset.renderHandInThirdPerson = this.renderHandInThirdPerson;
         return preset;
     }
 
@@ -2047,14 +2072,14 @@ public class AlpakaConfig {
         this.scrollableTooltipsEnabled = false;
         this.persistentItemNameEnabled = false;
         this.storagePreviewEnabled = false;
-        this.slotHighlightEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.itemSwingTrailEnabled = false;
         this.itemInspectEnabled = false;
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
-        this.partyInvitePromptEnabled = false;
+        this.playerRequestsEnabled = false;
+        this.npcPromptsEnabled = false;
         this.partyCommandsEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;

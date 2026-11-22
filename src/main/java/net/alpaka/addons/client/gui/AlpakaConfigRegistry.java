@@ -609,11 +609,17 @@ public class AlpakaConfigRegistry {
                 "master stars red dungeon star number revert old item name tooltip hotbar"));
 
         OPTIONS.add(new ConfigOption("storage_preview", "Storage Preview",
-                "Hovering a backpack or ender chest page in the Storage menu shows what is inside. Each one has to be opened once first.",
+                "Hovering a backpack or ender chest page in the Storage menu shows what is inside. Each one has to be opened once first. With the key below, a preview stays on screen so its items can be hovered.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.storagePreviewEnabled,
                 v -> { AlpakaConfig.instance.storagePreviewEnabled = v; AlpakaConfig.save(); },
                 "storage preview backpack ender chest enderchest page contents hover tooltip items storage menu"));
+
+        OPTIONS.add(ConfigOption.keybind("storage_preview_freeze_key", "Key",
+                "Press it while a preview is shown to keep it on screen, then hover its items to see their tooltips. Press it again to let go. Unbound by default.",
+                ConfigCategory.VISUALS,
+                () -> net.alpaka.addons.features.storagepreview.StoragePreviewFreeze.KEY,
+                "storage preview freeze hold pin lock key hotkey bind tooltip items"));
 
         OPTIONS.add(new ConfigOption("wide_health_bar", "Wide Health Bar",
                 "Hides the hunger and armor bars and joins both heart rows into one long row.",
@@ -2069,12 +2075,82 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Party", ConfigCategory.SKYBLOCK));
 
-        OPTIONS.add(new ConfigOption("party_invite_prompt", "Party Invite Prompt",
-                "Shows a Y/N prompt on screen when someone invites you to a party.",
+        OPTIONS.add(new ConfigOption("player_requests", "Player Requests",
+                "Shows what other players ask of you as a notification: Y accepts, N dismisses it without answering.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.partyInvitePromptEnabled,
-                v -> { AlpakaConfig.instance.partyInvitePromptEnabled = v; AlpakaConfig.save(); },
-                "party invite prompt accept join decline y n key popup hypixel"));
+                () -> AlpakaConfig.instance.playerRequestsEnabled,
+                v -> { AlpakaConfig.instance.playerRequestsEnabled = v; AlpakaConfig.save(); },
+                "player requests party invite prompt trade friend guild duel accept join decline y n key popup hypixel"));
+
+        OPTIONS.add(new ConfigOption("player_requests_party", "Party Invites",
+                "Y joins the party you were invited to.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.playerRequestsParty,
+                v -> { AlpakaConfig.instance.playerRequestsParty = v; AlpakaConfig.save(); },
+                "player requests party invite prompt accept join"));
+
+        OPTIONS.add(new ConfigOption("player_requests_trade", "Trade Requests",
+                "Y accepts a trade request.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.playerRequestsTrade,
+                v -> { AlpakaConfig.instance.playerRequestsTrade = v; AlpakaConfig.save(); },
+                "player requests trade request accept"));
+
+        OPTIONS.add(new ConfigOption("player_requests_friend", "Friend Requests",
+                "Y accepts a friend request.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.playerRequestsFriend,
+                v -> { AlpakaConfig.instance.playerRequestsFriend = v; AlpakaConfig.save(); },
+                "player requests friend request accept"));
+
+        OPTIONS.add(new ConfigOption("player_requests_guild", "Guild Invites",
+                "Y joins the guild you were invited to.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.playerRequestsGuild,
+                v -> { AlpakaConfig.instance.playerRequestsGuild = v; AlpakaConfig.save(); },
+                "player requests guild invite accept join"));
+
+        OPTIONS.add(new ConfigOption("player_requests_duel", "Duel Invites",
+                "Y accepts a duel invite.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.playerRequestsDuel,
+                v -> { AlpakaConfig.instance.playerRequestsDuel = v; AlpakaConfig.save(); },
+                "player requests duel invite accept"));
+
+        OPTIONS.add(new ConfigOption("npc_prompts", "NPC Prompts",
+                "Shows what an NPC asks in chat as a notification you answer with a key instead of clicking the chat line: Y and N, or 1 to 5 when there are more than two choices.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcPromptsEnabled,
+                v -> { AlpakaConfig.instance.npcPromptsEnabled = v; AlpakaConfig.save(); },
+                "npc prompts dialog dialogue option select yes no y n key answer accept chat click overlay popup hypixel"));
+
+        OPTIONS.add(new ConfigOption("npc_prompts_dialogs", "NPC Dialogs",
+                "The choices an NPC offers, such as Yes and No. While more than two are shown, the keys 1 to 5 answer instead of changing the hotbar slot.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcPromptsDialogs,
+                v -> { AlpakaConfig.instance.npcPromptsDialogs = v; AlpakaConfig.save(); },
+                "npc prompts dialog dialogue option select an option yes no trapper trevor hoppity choices"));
+
+        OPTIONS.add(new ConfigOption("npc_prompts_abiphone", "Abiphone Calls",
+                "Y picks up an incoming call.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcPromptsAbiphone,
+                v -> { AlpakaConfig.instance.npcPromptsAbiphone = v; AlpakaConfig.save(); },
+                "npc prompts abiphone call ring pick up phone"));
+
+        OPTIONS.add(new ConfigOption("npc_prompts_requeue", "Dungeon Re-Queue",
+                "Y queues for the same floor again after a run.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcPromptsRequeue,
+                v -> { AlpakaConfig.instance.npcPromptsRequeue = v; AlpakaConfig.save(); },
+                "npc prompts dungeon catacombs requeue re-queue instancerequeue again floor"));
+
+        OPTIONS.add(new ConfigOption("npc_prompts_gg", "Rare Drop GG",
+                "Y says gg when Hypixel offers it under a rare drop announcement.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.npcPromptsGg,
+                v -> { AlpakaConfig.instance.npcPromptsGg = v; AlpakaConfig.save(); },
+                "npc prompts gg good game rare drop congratulate trophy fish"));
 
         OPTIONS.add(new ConfigOption("party_commands", "Party Commands",
                 "When a party member writes a command like !warp, !tps or !pt in party chat, a Y/N prompt offers to run it for them.",
@@ -2118,111 +2194,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.ignoreFillerPanesEnabled,
                 v -> { AlpakaConfig.instance.ignoreFillerPanesEnabled = v; AlpakaConfig.save(); },
                 "ignore filler glass pane black empty menu click misclick pick up gui inventory skyblock"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight", "Slot Highlight",
-                "Marks slots in SkyBlock menus the way Item Search marks what it found: what is ready to collect or switched on in one color, what is missing or unfinished in another.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightEnabled,
-                v -> { AlpakaConfig.instance.slotHighlightEnabled = v; AlpakaConfig.save(); },
-                "slot highlight highlight mark slot outline pets skyblock level leveling tasks auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter bestiary heart of the mountain forest perks"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_active_pet", "Active Pet",
-                "Your summoned pet in the Pets menu.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightActivePet,
-                v -> { AlpakaConfig.instance.slotHighlightActivePet = v; AlpakaConfig.save(); },
-                "slot highlight pets pet summoned active current despawn"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_unfinished_tasks", "Unfinished Level Tasks",
-                "Tasks and categories you haven't finished in the SkyBlock Leveling guide (/sblevels).",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightUnfinishedTasks,
-                v -> { AlpakaConfig.instance.slotHighlightUnfinishedTasks = v; AlpakaConfig.save(); },
-                "slot highlight skyblock level leveling guide sblevels tasks unfinished incomplete missing xp"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_auctions", "Sold and Expired Auctions",
-                "In Manage Auctions: sold auctions as ready, expired ones as missing.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightAuctions,
-                v -> { AlpakaConfig.instance.slotHighlightAuctions = v; AlpakaConfig.save(); },
-                "slot highlight auction house ah manage auctions sold expired claim"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_bazaar_orders", "Filled Bazaar Orders",
-                "Buy orders and sell offers that are completely filled.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightBazaarOrders,
-                v -> { AlpakaConfig.instance.slotHighlightBazaarOrders = v; AlpakaConfig.save(); },
-                "slot highlight bazaar bz orders offers filled claim"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_croesus", "Unopened Croesus Chests",
-                "Dungeon and Kuudra runs at Croesus and Vesuvius whose chests you haven't opened.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightCroesus,
-                v -> { AlpakaConfig.instance.slotHighlightCroesus = v; AlpakaConfig.save(); },
-                "slot highlight croesus vesuvius dungeon kuudra chests unopened loot rewards"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_jacob_contests", "Unclaimed Jacob's Contests",
-                "Farming contests whose rewards you haven't claimed.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightJacobContests,
-                v -> { AlpakaConfig.instance.slotHighlightJacobContests = v; AlpakaConfig.save(); },
-                "slot highlight jacob farming contest contests claim rewards medals garden"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_slayer_rewards", "Slayer Level Rewards",
-                "Slayer level rewards you can claim.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightSlayerRewards,
-                v -> { AlpakaConfig.instance.slotHighlightSlayerRewards = v; AlpakaConfig.save(); },
-                "slot highlight slayer lvl level rewards claim maddox"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_rng_meter", "RNG Meter",
-                "The drop each RNG Meter is filling up for as ready, Catacombs floors with no drop picked as missing.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightRngMeter,
-                v -> { AlpakaConfig.instance.slotHighlightRngMeter = v; AlpakaConfig.save(); },
-                "slot highlight rng meter selected drop catacombs dungeon floor slayer nucleus experimentation"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_commissions", "Completed Commissions",
-                "Commissions you have finished and can turn in.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightCommissions,
-                v -> { AlpakaConfig.instance.slotHighlightCommissions = v; AlpakaConfig.save(); },
-                "slot highlight commissions completed mining dwarven mines forge claim"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_chocolate_factory", "Chocolate Factory Rewards",
-                "Chocolate Factory milestones with rewards to claim.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightChocolateFactory,
-                v -> { AlpakaConfig.instance.slotHighlightChocolateFactory = v; AlpakaConfig.save(); },
-                "slot highlight chocolate factory hoppity milestones unclaimed rewards"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_composter_upgrades", "Composter Upgrades",
-                "Composter upgrades you can buy now.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightComposterUpgrades,
-                v -> { AlpakaConfig.instance.slotHighlightComposterUpgrades = v; AlpakaConfig.save(); },
-                "slot highlight composter upgrades garden upgrade"));
-
-        OPTIONS.add(new ConfigOption("slot_highlight_bestiary", "Unfinished Bestiary",
-                "Bestiary islands and mob families you haven't completed yet.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slotHighlightBestiary,
-                v -> { AlpakaConfig.instance.slotHighlightBestiary = v; AlpakaConfig.save(); },
-                "slot highlight bestiary be families family mobs islands unfinished incomplete maxed tier kills"));
-
-        OPTIONS.add(ConfigOption.color("slot_highlight_ready_color", "Ready Color",
-                "Things to collect, finished, or switched on.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.slotHighlightReadyColor,
-                v -> { AlpakaConfig.instance.slotHighlightReadyColor = v; AlpakaConfig.save(); },
-                "slot highlight ready claim done active color colour picker green"));
-
-        OPTIONS.add(ConfigOption.color("slot_highlight_missing_color", "Missing Color",
-                "Things missing, unfinished, expired or switched off.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.slotHighlightMissingColor,
-                v -> { AlpakaConfig.instance.slotHighlightMissingColor = v; AlpakaConfig.save(); },
-                "slot highlight missing unfinished expired disabled color colour picker red"));
 
         OPTIONS.add(new ConfigOption("Resource Pack", ConfigCategory.SKYBLOCK));
 
@@ -2830,18 +2801,54 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Rare Drop Animation", ConfigCategory.COSMETICS));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation", "Rare Drop Animation",
-                "A slayer's rarest drop pops up big and spinning in a golden glow where the boss died. Only you can see it.",
+                "A rare drop flies onto your screen, tumbling into place and spinning in a golden glow. Only you can see it.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.rareDropAnimationEnabled,
                 v -> { AlpakaConfig.instance.rareDropAnimationEnabled = v; AlpakaConfig.save(); },
-                "rare drop animation rng slayer archfiend dice warden heart judgement core overflux primordial eye gold glow spin pop cosmetic"));
+                "rare drop animation rng slayer dye dungeon chest pet archfiend dice warden heart judgement core necron handle gold glow spin pop price value cosmetic"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_test", "Test Animation",
-                "Closes the menu and plays the animation in front of you, with each slayer's drop in turn. Nothing is sent to the server.",
+                "Plays the animation with a sample drop: a slayer drop, a dye, a dungeon reward and a pet in turn. Nothing is sent to the server.",
                 ConfigCategory.COSMETICS,
                 "Test Animation",
                 parent -> net.alpaka.addons.features.cosmetics.RareDropAnimation.test(),
                 "rare drop animation test preview try play"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_slayer", "Slayer Drops",
+                "Plays for a slayer's rarest drop, like Judgement Core or Warden Heart.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationSlayer,
+                v -> { AlpakaConfig.instance.rareDropAnimationSlayer = v; AlpakaConfig.save(); },
+                "rare drop animation slayer rng boss drop"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_dyes", "Dyes",
+                "Plays when you find a dye.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationDyes,
+                v -> { AlpakaConfig.instance.rareDropAnimationDyes = v; AlpakaConfig.save(); },
+                "rare drop animation dye wow found"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_dungeon", "Dungeon Rewards",
+                "Plays for a dungeon chest's rare reward, like Necron's Handle or a master star.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationDungeon,
+                v -> { AlpakaConfig.instance.rareDropAnimationDungeon = v; AlpakaConfig.save(); },
+                "rare drop animation dungeon chest reward bedrock necron handle master star"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_valuable", "Other Valuable Drops",
+                "Plays for any other drop that is crazy rare or better, a pet, or worth at least the minimum value below.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationValuable,
+                v -> { AlpakaConfig.instance.rareDropAnimationValuable = v; AlpakaConfig.save(); },
+                "rare drop animation valuable expensive crazy rare insane pet drop worth"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_min_value", "Minimum Value",
+                "What another drop has to be worth for the animation. Needs Network Features for prices.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationMinValue,
+                v -> { AlpakaConfig.instance.rareDropAnimationMinValue = v; AlpakaConfig.save(); },
+                0.5f, 100.0f, val -> String.format(Locale.ROOT, "%.1fM", val),
+                "rare drop animation minimum value price worth coins threshold"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_size", "Size",
                 "How big the item and its glow are.",
@@ -2860,18 +2867,18 @@ public class AlpakaConfigRegistry {
                 "rare drop animation duration time long short seconds"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_sound", "Sound",
-                "Plays a rising chime as the item pops up. Only you hear it.",
+                "Plays a rising chime as the item lands. Only you hear it.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.rareDropAnimationSound,
                 v -> { AlpakaConfig.instance.rareDropAnimationSound = v; AlpakaConfig.save(); },
                 "rare drop animation sound chime bell ding audio"));
 
-        OPTIONS.add(new ConfigOption("rare_drop_animation_slayer_colors", "Slayer Colors",
-                "Mixes each slayer's own color into the gold, like purple for Enderman and green for Zombie.",
+        OPTIONS.add(new ConfigOption("rare_drop_animation_effects", "Special Effects",
+                "The light around the item: glow, rays, sparkles and a flash when it lands. Each kind of drop has its own: gold in the slayer's color for slayer drops, a rainbow for dyes, a beam of light for dungeon rewards, a soft glow for pets and a starburst for other drops. Off shows only the item.",
                 ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.rareDropAnimationSlayerColors,
-                v -> { AlpakaConfig.instance.rareDropAnimationSlayerColors = v; AlpakaConfig.save(); },
-                "rare drop animation slayer colors colour accent tint purple green red orange"));
+                () -> AlpakaConfig.instance.rareDropAnimationEffects,
+                v -> { AlpakaConfig.instance.rareDropAnimationEffects = v; AlpakaConfig.save(); },
+                "rare drop animation special effects glow rays sparkles light rainbow beam slayer colors off"));
 
         OPTIONS.add(new ConfigOption("Damage Tags", ConfigCategory.COSMETICS));
 

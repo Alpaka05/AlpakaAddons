@@ -3,6 +3,7 @@ package net.alpaka.addons.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
+import net.alpaka.addons.features.viewmodel.HandInThirdPerson;
 import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
@@ -10,7 +11,6 @@ import net.minecraft.client.CameraType;
 import org.joml.Matrix4fc;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import net.alpaka.addons.config.AlpakaConfig;
 
 @Mixin(GameRenderer.class)
 public class GameRendererMixin {
@@ -27,10 +27,7 @@ public class GameRendererMixin {
         )
     )
     private boolean alpaka$handInThirdPerson(CameraType cameraType, Operation<Boolean> original) {
-        // The back view only. In the front view the hand would float in front of your own face.
-        if (AlpakaConfig.instance.renderHandInThirdPerson && cameraType == CameraType.THIRD_PERSON_BACK) {
-            return true;
-        }
+        if (HandInThirdPerson.addsHand(cameraType)) return true;
         return original.call(cameraType);
     }
 

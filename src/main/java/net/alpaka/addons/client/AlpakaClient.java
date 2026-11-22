@@ -87,6 +87,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.shortcuts.CommandShortcuts.register();
         net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.register();
         InventoryHudFeature.register();
+        net.alpaka.addons.features.storagepreview.StoragePreviewFreeze.register();
         // After the last of the mod's keys above; see AlpakaKeyBinds.
         AlpakaKeyBinds.finishRegistration();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
@@ -104,6 +105,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.dungeonmap.DoorHighlight.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
+        net.alpaka.addons.features.prompts.ChatPromptsFeature.register();
         net.alpaka.addons.features.quickjoin.QuickJoin.register();
         net.alpaka.addons.features.party.PartyCommandsFeature.register();
         net.alpaka.addons.features.chat.MessageFilterFeature.register();

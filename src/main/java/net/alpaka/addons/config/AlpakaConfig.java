@@ -165,8 +165,11 @@ public class AlpakaConfig {
     public float rareDropAnimationDuration = 6.0f;
     /** A rising chime as the item lands, heard only by this client. */
     public boolean rareDropAnimationSound = true;
-    /** Each slayer's own color mixed into the gold. */
-    public boolean rareDropAnimationSlayerColors = true;
+    /**
+     * The light around the item (glow, rays, sparkles, the landing's flash), a different effect for
+     * slayer drops, dyes, dungeon rewards, pets and other drops. Off shows the item alone.
+     */
+    public boolean rareDropAnimationEffects = true;
 
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.

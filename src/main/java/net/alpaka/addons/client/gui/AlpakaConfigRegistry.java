@@ -2832,12 +2832,12 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.rareDropAnimationSound = v; AlpakaConfig.save(); },
                 "rare drop animation sound chime bell ding audio"));
 
-        OPTIONS.add(new ConfigOption("rare_drop_animation_slayer_colors", "Slayer Colors",
-                "Mixes each slayer's own color into the gold for its drops, like purple for Enderman and green for Zombie. Other drops glow in their rarity's color.",
+        OPTIONS.add(new ConfigOption("rare_drop_animation_effects", "Special Effects",
+                "The light around the item: glow, rays, sparkles and a flash when it lands. Each kind of drop has its own: gold in the slayer's color for slayer drops, a rainbow for dyes, a beam of light for dungeon rewards, a soft glow for pets and a starburst for other drops. Off shows only the item.",
                 ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.rareDropAnimationSlayerColors,
-                v -> { AlpakaConfig.instance.rareDropAnimationSlayerColors = v; AlpakaConfig.save(); },
-                "rare drop animation slayer colors colour accent tint purple green red orange"));
+                () -> AlpakaConfig.instance.rareDropAnimationEffects,
+                v -> { AlpakaConfig.instance.rareDropAnimationEffects = v; AlpakaConfig.save(); },
+                "rare drop animation special effects glow rays sparkles light rainbow beam slayer colors off"));
 
         OPTIONS.add(new ConfigOption("Damage Tags", ConfigCategory.COSMETICS));
 

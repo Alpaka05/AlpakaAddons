@@ -28,8 +28,8 @@ public final class SearchSuggestions {
     public static List<Match> rank(String query, Collection<String> names, int limit) {
         String q = normalize(query);
         if (q.isEmpty() || limit <= 0) return List.of();
-        String[] tokens = q.split(" ");
-        String compact = q.replace(" ", "");
+        // Levels are written in Roman numerals (Chimera IV, Tidal Rune III); "chimera 4" means the same.
+        String roman = romanLevels(q);
 
         record Scored(Match match, int score) {}
         List<Scored> scored = new ArrayList<>();
@@ -38,25 +38,13 @@ public final class SearchSuggestions {
             if (name == null || name.isBlank()) continue;
             String n = name.toLowerCase(Locale.ROOT);
             if (!seen.add(n)) continue;
-            int score;
-            int[] ranges;
-            int at = n.indexOf(q);
-            if (n.equals(q) || at == 0) {
-                score = n.equals(q) ? 0 : 1;
-                ranges = new int[] {0, q.length()};
-            } else if (wordPrefixes(n, tokens)) {
-                score = 2;
-                ranges = tokenRanges(n, tokens);
-            } else if (compact.length() >= 2 && initials(n).startsWith(compact)) {
-                score = 3;
-                ranges = initialRanges(n, compact.length());
-            } else if (at > 0) {
-                score = 4;
-                ranges = new int[] {at, at + q.length()};
-            } else {
-                continue;
+            int[] best = score(n, q);
+            if (!roman.equals(q)) {
+                int[] other = score(n, roman);
+                if (other != null && (best == null || other[0] < best[0])) best = other;
             }
-            scored.add(new Scored(new Match(name, ranges), score));
+            if (best == null) continue;
+            scored.add(new Scored(new Match(name, java.util.Arrays.copyOfRange(best, 1, best.length)), best[0]));
         }
         scored.sort(Comparator.comparingInt(Scored::score)
                 .thenComparingInt(s -> s.match().name().length())
@@ -64,6 +52,43 @@ public final class SearchSuggestions {
         List<Match> out = new ArrayList<>();
         for (int i = 0; i < Math.min(limit, scored.size()); i++) out.add(scored.get(i).match());
         return out;
+    }
+
+    /** How well a lowercase name matches the query: the score, then the matched ranges; null for no match. */
+    private static int[] score(String n, String q) {
+        String[] tokens = q.split(" ");
+        String compact = q.replace(" ", "");
+        int score;
+        int[] ranges;
+        int at = n.indexOf(q);
+        if (n.equals(q) || at == 0) {
+            score = n.equals(q) ? 0 : 1;
+            ranges = new int[] {0, q.length()};
+        } else if (wordPrefixes(n, tokens)) {
+            score = 2;
+            ranges = tokenRanges(n, tokens);
+        } else if (compact.length() >= 2 && initials(n).startsWith(compact)) {
+            score = 3;
+            ranges = initialRanges(n, compact.length());
+        } else if (at > 0) {
+            score = 4;
+            ranges = new int[] {at, at + q.length()};
+        } else {
+            return null;
+        }
+        int[] out = new int[ranges.length + 1];
+        out[0] = score;
+        System.arraycopy(ranges, 0, out, 1, ranges.length);
+        return out;
+    }
+
+    /** The query with every number after the first word as a lowercase Roman numeral: "chimera 4" is "chimera iv". */
+    static String romanLevels(String q) {
+        String[] words = q.split(" ");
+        for (int i = 1; i < words.length; i++) {
+            if (words[i].matches("[1-9][0-9]?")) words[i] = ItemTags.roman(Integer.parseInt(words[i])).toLowerCase(Locale.ROOT);
+        }
+        return String.join(" ", words);
     }
 
     static String normalize(String text) {

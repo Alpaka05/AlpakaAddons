@@ -7,7 +7,6 @@
     "AbstractArrowClutterMixin",
     "ArrowLayerClutterMixin",
     "AbstractContainerScreenStoragePreviewMixin",
-    "AbstractContainerScreenSlotHighlightMixin",
     "AvatarRendererMixin",
     "BlazeModelMixin",
     "CameraMixin",

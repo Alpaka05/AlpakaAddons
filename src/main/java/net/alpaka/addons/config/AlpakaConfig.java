@@ -922,22 +922,6 @@ public class AlpakaConfig {
     public boolean oldMasterStarsEnabled = false;
     /** Hovering a backpack or ender chest page in the Storage menu shows what was last seen inside. */
     public boolean storagePreviewEnabled = true;
-    /** Slots in SkyBlock menus marked the way Item Search marks what it found: ready ones in one color, missing ones in another. */
-    public boolean slotHighlightEnabled = true;
-    public boolean slotHighlightActivePet = true;
-    public boolean slotHighlightUnfinishedTasks = true;
-    public boolean slotHighlightAuctions = true;
-    public boolean slotHighlightBazaarOrders = true;
-    public boolean slotHighlightCroesus = true;
-    public boolean slotHighlightJacobContests = true;
-    public boolean slotHighlightSlayerRewards = true;
-    public boolean slotHighlightRngMeter = true;
-    public boolean slotHighlightCommissions = true;
-    public boolean slotHighlightChocolateFactory = true;
-    public boolean slotHighlightComposterUpgrades = true;
-    public boolean slotHighlightBestiary = true;
-    public int slotHighlightReadyColor = 0x5055FF55;
-    public int slotHighlightMissingColor = 0x50FF5555;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
@@ -2048,7 +2032,6 @@ public class AlpakaConfig {
         this.scrollableTooltipsEnabled = false;
         this.persistentItemNameEnabled = false;
         this.storagePreviewEnabled = false;
-        this.slotHighlightEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.itemInspectEnabled = false;

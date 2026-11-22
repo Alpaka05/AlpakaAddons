@@ -21,7 +21,9 @@ public final class TextInputFocus {
     private TextInputFocus() {}
 
     public static boolean isTyping(Screen screen) {
-        return screen != null && typingIn(screen, 0);
+        if (screen == null) return false;
+        // Item Search's bar beside a menu is drawn, not a widget, so it is asked on its own.
+        return net.alpaka.addons.features.itemsearch.ItemListOverlay.typing(screen) || typingIn(screen, 0);
     }
 
     private static boolean typingIn(ContainerEventHandler container, int depth) {

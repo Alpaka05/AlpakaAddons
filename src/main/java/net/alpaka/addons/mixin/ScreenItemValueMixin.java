@@ -25,6 +25,7 @@ public abstract class ScreenItemValueMixin {
     )
     private void alpaka$itemValueOverMenu(GuiGraphicsExtractor graphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         ChestValuePanel.render(graphicsExtractor, (Screen) (Object) this);
+        net.alpaka.addons.features.itemsearch.ItemListOverlay.render(graphicsExtractor, (Screen) (Object) this);
         ItemValuePopup.render(graphicsExtractor);
     }
 

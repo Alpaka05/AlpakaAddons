@@ -1418,6 +1418,12 @@ public final class ChestValuePanel {
 
     // ---- Input ----------------------------------------------------------------------------------
 
+    /** Where the panel ends on the right in this menu, so the item list starts after it; MIN_VALUE when it is not there. */
+    public static int rightEdge(Screen in) {
+        if (screen == null || in != screen || panelW <= 0) return Integer.MIN_VALUE;
+        return panelX + panelW;
+    }
+
     /** Whether the mouse is over the panel in this menu, which then hides what is under it. */
     public static boolean coversMouse(Screen in) {
         if (screen == null || in != screen || panelW <= 0) return false;

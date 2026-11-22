@@ -2339,20 +2339,20 @@ public class AlpakaConfigRegistry {
                 "item value bazaar price instant buy sell side order offer").choices(net.alpaka.addons.features.itemvalue.ItemPrices.SIDES));
 
         OPTIONS.add(new ConfigOption("item_search", "Item Search",
-                "A window with a search bar over everything you own: your inventory, Ender Chest, backpacks, sacks, wardrobe, Accessory Bag, Personal Vault and the chests on your island. Each place is known from the last time you opened it. Open it with its key or /alpakasearch; the key over an item in a menu searches for that item.",
+                "A search bar under every menu, with the items that match beside it. All searches every SkyBlock item: click one for how it is made (crafting, Forge, NPC shops, Kat, mob drops) and what it is used in, right-click for its wiki page. Mine searches everything you own: your inventory, Ender Chest, backpacks, sacks, wardrobe, Accessory Bag, Personal Vault and the chests on your island, each known from the last time you opened it. A sum typed into the bar is worked out.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.itemSearchEnabled,
                 v -> { AlpakaConfig.instance.itemSearchEnabled = v; AlpakaConfig.save(); },
-                "item search find where storage ender chest echest backpack sack sacks wardrobe accessory bag vault island chest inventory lookup locate"));
+                "item search find where storage ender chest echest backpack sack sacks wardrobe accessory bag vault island chest inventory lookup locate item list recipe recipes used in wiki neu drops kat calculator math"));
 
         OPTIONS.add(ConfigOption.keybind("item_search_key", "Key",
-                "Opens Item Search. In a menu, it searches for the item under the mouse. Unbound by default.",
+                "In a menu, puts the caret in the item list's search bar; over an item, it searches your items for it. Elsewhere it opens your inventory with the bar ready. Unbound by default.",
                 ConfigCategory.SKYBLOCK,
                 () -> net.alpaka.addons.features.itemsearch.ItemSearchFeature.KEY,
                 "item search find"));
 
         OPTIONS.add(new ConfigOption("item_search_open", "Open Item Search",
-                "Opens the search window. Works on SkyBlock only.",
+                "Opens your inventory with the search bar ready. Works on SkyBlock only.",
                 ConfigCategory.SKYBLOCK,
                 "Open",
                 parent -> net.alpaka.addons.features.itemsearch.ItemSearchFeature.open(null, parent),

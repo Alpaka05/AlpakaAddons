@@ -5,7 +5,6 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.blockoverlay.BlockOverlayFeature;
 import net.alpaka.addons.features.etherwarp.EtherwarpDetector;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
-import net.alpaka.addons.features.garden.PestFinder;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -23,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class LevelRendererMixin {
 
     /**
-     * Adds the Etherwarp target and Pest Finder's waypoint and lines to the frame's gizmos. RETURN of collectPerFrameRenderThreadGizmos
+     * Adds the Etherwarp target to the frame's gizmos. RETURN of collectPerFrameRenderThreadGizmos
      * (26.2's name for the per-frame collection; 26.1 calls it collectPerFrameGizmos): the method has
      * just installed the level renderer's collector as the one {@code Gizmos} adds to, and the caller
      * keeps it open while vanilla's own debug renderers contribute theirs, so anything added here is
@@ -31,13 +30,10 @@ public class LevelRendererMixin {
      */
     @Inject(method = "collectPerFrameRenderThreadGizmos", at = @At("RETURN"))
     private void alpaka$collectEtherwarpGizmos(CallbackInfoReturnable<Gizmos.TemporaryCollection> cir) {
-        boolean etherwarp = EtherwarpOverlayFeature.isEnabled();
-        boolean pests = PestFinder.hasGizmos();
-        if (!etherwarp && !pests) return;
+        if (!EtherwarpOverlayFeature.isEnabled()) return;
         long t = AlpakaPerf.begin(AlpakaPerf.Section.LEVEL_OVERLAYS);
         try {
-            if (etherwarp) EtherwarpOverlayFeature.collectGizmos();
-            if (pests) PestFinder.collectGizmos();
+            EtherwarpOverlayFeature.collectGizmos();
         } finally {
             AlpakaPerf.end(AlpakaPerf.Section.LEVEL_OVERLAYS, t);
         }

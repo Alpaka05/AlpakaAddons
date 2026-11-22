@@ -27,10 +27,6 @@ public class GameRendererMixin {
         )
     )
     private boolean alpaka$handInThirdPerson(CameraType cameraType, Operation<Boolean> original) {
-        // Gliding back into first person: the camera is still behind the player for a moment.
-        if (net.alpaka.addons.features.perspective.SmoothPerspectiveFeature.hidesHand()) {
-            return false;
-        }
         // The back view only. In the front view the hand would float in front of your own face.
         if (AlpakaConfig.instance.renderHandInThirdPerson && cameraType == CameraType.THIRD_PERSON_BACK) {
             return true;

@@ -285,9 +285,7 @@ public class AlpakaConfig {
     public float firstPersonFireHeight = 1.0f;
     /** Draws that fire as one still frame instead of the flickering animation. */
     public boolean firstPersonFireStatic = false;
-    public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
-    public int smoothPerspectiveDurationMs = 350;
     public boolean customSoundsEnabled = false;
     public float customSoundsVolume = 1.0f;
     public boolean customSoundButtonClick = true;
@@ -1965,7 +1963,6 @@ public class AlpakaConfig {
         this.hideEntityFire = false;
         this.firstPersonFireStatic = false;
         this.wideHealthBarEnabled = false;
-        this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;
         this.customSoundsEnabled = false;
         this.customSoundButtonClick = false;

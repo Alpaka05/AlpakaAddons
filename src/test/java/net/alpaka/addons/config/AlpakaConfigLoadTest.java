@@ -288,4 +288,22 @@ class AlpakaConfigLoadTest {
         assertNotNull(notice);
         assertTrue(notice.contains("reset"));
     }
+
+    @Test
+    void presetsCarryTheF5HandButOldOnesLeaveItAlone() throws IOException {
+        AlpakaConfig config = load("{\"configVersion\": " + AlpakaConfig.CONFIG_VERSION
+                + ", \"renderHandInThirdPerson\": true"
+                + ", \"itemPresets\": [{\"scale\": 1.5}]}");
+
+        // A preset from before the F5 hand was part of presets keeps the current switch.
+        assertNull(config.itemPresets.get(0).renderHandInThirdPerson);
+        config.loadPreset(0);
+        assertTrue(config.renderHandInThirdPerson);
+
+        config.savePreset(0);
+        config.renderHandInThirdPerson = false;
+        config.loadPreset(0);
+        assertTrue(config.renderHandInThirdPerson);
+        assertTrue(saved().contains("\"renderHandInThirdPerson\": true"));
+    }
 }

@@ -608,11 +608,17 @@ public class AlpakaConfigRegistry {
                 "master stars red dungeon star number revert old item name tooltip hotbar"));
 
         OPTIONS.add(new ConfigOption("storage_preview", "Storage Preview",
-                "Hovering a backpack or ender chest page in the Storage menu shows what is inside. Each one has to be opened once first.",
+                "Hovering a backpack or ender chest page in the Storage menu shows what is inside. Each one has to be opened once first. With the key below, a preview stays on screen so its items can be hovered.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.storagePreviewEnabled,
                 v -> { AlpakaConfig.instance.storagePreviewEnabled = v; AlpakaConfig.save(); },
                 "storage preview backpack ender chest enderchest page contents hover tooltip items storage menu"));
+
+        OPTIONS.add(ConfigOption.keybind("storage_preview_freeze_key", "Key",
+                "Press it while a preview is shown to keep it on screen, then hover its items to see their tooltips. Press it again to let go. Unbound by default.",
+                ConfigCategory.VISUALS,
+                () -> net.alpaka.addons.features.storagepreview.StoragePreviewFreeze.KEY,
+                "storage preview freeze hold pin lock key hotkey bind tooltip items"));
 
         OPTIONS.add(new ConfigOption("wide_health_bar", "Wide Health Bar",
                 "Hides the hunger and armor bars and joins both heart rows into one long row.",

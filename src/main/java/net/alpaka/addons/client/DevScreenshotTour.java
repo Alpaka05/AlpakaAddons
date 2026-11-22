@@ -16,6 +16,7 @@ import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 import java.util.function.BooleanSupplier;
@@ -63,6 +64,29 @@ public final class DevScreenshotTour {
             screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
             screen("leap-menu-map", () -> leapMenuPreview(true)),
             screen("leap-menu-buttons", () -> leapMenuPreview(false))
+    ) : "storage-freeze".equals(System.getenv(ENV)) ? List.of(
+            // Storage Preview's freeze key, pressed through the keyboard handler as a real key is:
+            // a backpack's preview, pinned, another page's icon hovered (its tooltip stays hidden),
+            // items in the pinned preview hovered, a held key's repeat, and the key again letting go.
+            screen("storage-freeze-0-config", () -> AlpakaConfigScreen.openOnOption(null, "storage_preview")),
+            new Stop(null, DevScreenshotTour::enterWorld,
+                    () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
+            new Stop("storage-freeze-1-hover", () -> {
+                storageFreezeKey();
+                Minecraft.getInstance().gui.setScreen(storageMenu());
+                placeMouseAt(storageSlotCenter(27));
+            }, () -> true, 20),
+            new Stop("storage-freeze-2-pinned", () -> storageFreezePress(GLFW.GLFW_PRESS), () -> true, 10),
+            new Stop("storage-freeze-3-other-icon", () -> placeMouseAt(storageSlotCenter(9)), () -> true, 10),
+            new Stop("storage-freeze-4-item", () -> placeMouseAt(
+                    net.alpaka.addons.features.storagepreview.StoragePreviewFreeze.devSlotCenter(3)), () -> true, 10),
+            new Stop("storage-freeze-5-item", () -> placeMouseAt(
+                    net.alpaka.addons.features.storagepreview.StoragePreviewFreeze.devSlotCenter(31)), () -> true, 10),
+            new Stop("storage-freeze-6-released", () -> storageFreezePress(GLFW.GLFW_PRESS), () -> true, 10),
+            new Stop(null, () -> placeMouseAt(storageSlotCenter(28)), () -> true, 5),
+            new Stop("storage-freeze-7-other-pinned", () -> storageFreezePress(GLFW.GLFW_PRESS), () -> true, 10),
+            new Stop("storage-freeze-8-repeat", () -> storageFreezePress(GLFW.GLFW_REPEAT), () -> true, 10),
+            new Stop("storage-freeze-9-closed", () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 10)
     ) : "sack-value".equals(System.getenv(ENV)) ? List.of(
             // Chest Value in the Sack of Sacks: what the sacks hold, from Item Search's made-up sacks,
             // with the two never opened named above the list; a line pointed at, lighting up its sack;
@@ -1049,6 +1073,86 @@ public final class DevScreenshotTour {
         AlpakaConfig.instance.dungeonMapSmoothFont = true;
         AlpakaConfig.instance.dungeonMapCustomColors = true;
         return new HudEditorScreen(null);
+    }
+
+    /** The Storage menu with three pages whose content is known, for the freeze key. */
+    private static net.minecraft.client.gui.screens.Screen storageMenu() {
+        var player = Minecraft.getInstance().player;
+        var chest = new net.minecraft.world.SimpleContainer(54);
+        chest.setItem(9, storageIcon(net.minecraft.world.item.Items.ENDER_CHEST, "§aEnder Chest Page 1"));
+        chest.setItem(27, storageIcon(net.minecraft.world.item.Items.CHEST, "§6Backpack Slot 1"));
+        chest.setItem(28, storageIcon(net.minecraft.world.item.Items.CHEST, "§6Backpack Slot 2"));
+        net.minecraft.world.item.Item[] kinds = {net.minecraft.world.item.Items.DIAMOND_SWORD, net.minecraft.world.item.Items.ENCHANTED_BOOK,
+                net.minecraft.world.item.Items.GOLDEN_PICKAXE, net.minecraft.world.item.Items.EMERALD, net.minecraft.world.item.Items.BONE,
+                net.minecraft.world.item.Items.LEATHER_CHESTPLATE, net.minecraft.world.item.Items.ENDER_PEARL};
+        java.util.Map<String, List<net.minecraft.world.item.ItemStack>> pages = new java.util.HashMap<>();
+        for (String page : new String[] {"bp1", "bp2", "ec1"}) {
+            List<net.minecraft.world.item.ItemStack> content = new java.util.ArrayList<>();
+            int size = page.equals("bp2") ? 27 : 45;
+            for (int i = 0; i < size; i++) {
+                if (i % 11 == 10) {
+                    content.add(net.minecraft.world.item.ItemStack.EMPTY);
+                    continue;
+                }
+                var stack = new net.minecraft.world.item.ItemStack(kinds[(i + page.length()) % kinds.length], 1 + i % 3);
+                stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                        net.minecraft.network.chat.Component.literal("§9Test Item " + page + "#" + i));
+                stack.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+                        net.minecraft.network.chat.Component.literal("§7Slot " + i + " of " + page),
+                        net.minecraft.network.chat.Component.literal("§9§lRARE"))));
+                content.add(stack);
+            }
+            pages.put(page, content);
+        }
+        net.alpaka.addons.features.storagepreview.StoragePreviewFeature.devPages(pages);
+        var menu = net.minecraft.world.inventory.ChestMenu.sixRows(0, player.getInventory(), chest);
+        return new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, player.getInventory(),
+                net.minecraft.network.chat.Component.literal("Storage"));
+    }
+
+    private static net.minecraft.world.item.ItemStack storageIcon(net.minecraft.world.item.Item item, String name) {
+        var stack = new net.minecraft.world.item.ItemStack(item);
+        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(name));
+        stack.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+                net.minecraft.network.chat.Component.literal("§7This backpack has §a45 §7slots."),
+                net.minecraft.network.chat.Component.literal(""),
+                net.minecraft.network.chat.Component.literal("§eLeft-click to open!"))));
+        return stack;
+    }
+
+    /** The middle of a slot of the six-row Storage menu, which is 176 by 222 and centred. */
+    private static int[] storageSlotCenter(int slot) {
+        Minecraft mc = Minecraft.getInstance();
+        int left = (mc.getWindow().getGuiScaledWidth() - 176) / 2;
+        int top = (mc.getWindow().getGuiScaledHeight() - 222) / 2;
+        return new int[] {left + 8 + (slot % 9) * 18 + 8, top + 18 + (slot / 9) * 18 + 8};
+    }
+
+    /** Binds the freeze key to F8 for the tour. */
+    private static void storageFreezeKey() {
+        net.alpaka.addons.features.storagepreview.StoragePreviewFreeze.KEY.setKey(
+                com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_F8));
+        net.minecraft.client.KeyMapping.resetMapping();
+    }
+
+    /** F8 pressed (or repeating) through the keyboard handler, as GLFW hands a key to it; dev only. */
+    private static void storageFreezePress(int action) {
+        Minecraft mc = Minecraft.getInstance();
+        try {
+            java.lang.reflect.Method keyPress = net.minecraft.client.KeyboardHandler.class.getDeclaredMethod("keyPress",
+                    long.class, int.class, net.minecraft.client.input.KeyEvent.class);
+            keyPress.setAccessible(true);
+            keyPress.invoke(mc.keyboardHandler, mc.getWindow().handle(), action,
+                    new net.minecraft.client.input.KeyEvent(GLFW.GLFW_KEY_F8, 0, 0));
+            if (action == GLFW.GLFW_PRESS) {
+                keyPress.invoke(mc.keyboardHandler, mc.getWindow().handle(), GLFW.GLFW_RELEASE,
+                        new net.minecraft.client.input.KeyEvent(GLFW.GLFW_KEY_F8, 0, 0));
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+        AlpakaAddons.LOGGER.info("Screenshot tour: storage freeze pinned={}",
+                net.alpaka.addons.features.storagepreview.StoragePreviewFreeze.devPinned());
     }
 
     /** A Spirit Leap chest with four teammates, one of them dead, as Hypixel sends it. */

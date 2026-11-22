@@ -14,9 +14,9 @@ import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
 
 /**
- * Hides effects that cost frames and tell the player nothing: explosions, falling blocks, the
- * terrain particles of broken blocks, the sparks of critical hits, firework bursts, experience
- * orbs, the Ender Dragon's death, arrows stuck in players and blocks, and lightning. Each has its own switch under the feature's master switch.
+ * Hides effects that cost frames and tell the player nothing: falling blocks, the sparks of
+ * critical hits, firework bursts, experience orbs, the Ender Dragon's death, arrows stuck in
+ * players and blocks, and lightning. Each has its own switch under the feature's master switch.
  * It started as Hide Explosions, which is why its master field still reads that name from older
  * files.
  *
@@ -27,7 +27,7 @@ import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
  *
  * What stays on purpose, because other features or the game itself read it:
  * <ul>
- *   <li>Particles the server sends by type are only filtered for explosions. Crit, enchanted hit,
+ *   <li>Particles the server sends are never filtered, explosions included. Crit, enchanted hit,
  *       firework, lava drip and happy villager particles from the server are how Hypixel shows
  *       Diana burrows, Precision Mining spots, Invisibugs, the Mage beam and pests, so the hit
  *       sparks and firework bursts are hidden at their client-side source instead
@@ -48,30 +48,6 @@ public final class HideVisualClutterFeature {
         return config.hideVisualClutter && part;
     }
 
-    // Explosions -------------------------------------------------------------------------------
-
-    /**
-     * A particle packet with explosion, explosion emitter or poof particles (poof is what the old
-     * 1.8 "explode" particle became): how Hypixel shows Hyperion, Bonzo's Staff, TNT, creepers.
-     * The whole packet is dropped before vanilla's loop rolls positions and builds one particle per
-     * count. Same three types as SkyHanni's Explosions Hider. Only server-sent poofs go: the smoke
-     * vanilla makes itself when a mob dies is left to Hide Death Smoke.
-     */
-    public static boolean shouldHideParticlePacket(ParticleOptions options) {
-        if (!on(AlpakaConfig.instance.clutterExplosions)) return false;
-        ParticleType<?> type = options.getType();
-        return type == ParticleTypes.EXPLOSION || type == ParticleTypes.EXPLOSION_EMITTER || type == ParticleTypes.POOF;
-    }
-
-    /**
-     * An explode packet: its flash particle is skipped, and it is never handed to the explosion
-     * tracker, which would otherwise look up blocks and spawn smoke and dust around it for the
-     * next ticks.
-     */
-    public static boolean shouldHideExplodePacket() {
-        return on(AlpakaConfig.instance.clutterExplosions);
-    }
-
     // Entities that are never added ------------------------------------------------------------
 
     /**
@@ -87,17 +63,6 @@ public final class HideVisualClutterFeature {
         if (type == EntityTypes.FALLING_BLOCK) return config.clutterFallingBlocks;
         if (type == EntityTypes.EXPERIENCE_ORB) return config.clutterExperienceOrbs;
         return false;
-    }
-
-    // Block particles --------------------------------------------------------------------------
-
-    /**
-     * The terrain particles of a broken block (up to 64 per block, from every block anyone breaks
-     * nearby, farming included) and the small ones while a block is being mined. The crack overlay
-     * on the block being mined stays.
-     */
-    public static boolean shouldHideBlockParticles() {
-        return on(AlpakaConfig.instance.clutterBlockBreak);
     }
 
     // Hit particles ----------------------------------------------------------------------------

@@ -328,29 +328,17 @@ public class AlpakaConfigRegistry {
                 "hide mob death smoke poof particles cloud puff"));
 
         OPTIONS.add(new ConfigOption("hide_visual_clutter", "Hide Visual Clutter",
-                "Hides effects that only cost frames: explosions, falling blocks, block particles, hit sparks, fireworks, experience orbs, dying dragons, stuck arrows and lightning.",
+                "Hides effects that only cost frames: falling blocks, hit sparks, fireworks, experience orbs, dying dragons, stuck arrows and lightning.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideVisualClutter,
                 v -> { AlpakaConfig.instance.hideVisualClutter = v; AlpakaConfig.save(); },
-                "hide visual clutter performance fps lag particles effects explosions falling blocks fireworks orbs dragon arrows lightning"));
-        OPTIONS.add(new ConfigOption("hide_clutter_explosions", "Explosions",
-                "The flash, smoke and debris of explosions, like Hyperion, Bonzo's Staff, TNT and creepers.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.clutterExplosions,
-                v -> { AlpakaConfig.instance.clutterExplosions = v; AlpakaConfig.save(); },
-                "hide explosion explosions explode tnt creeper hyperion wither impact implosion bonzo particles flash cloud smoke"));
+                "hide visual clutter performance fps lag particles effects falling blocks fireworks orbs dragon arrows lightning"));
         OPTIONS.add(new ConfigOption("hide_clutter_falling_blocks", "Falling Blocks",
                 "Blocks flying through the air, like the gold of Molten Wave. What they hit is decided by the server either way.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.clutterFallingBlocks,
                 v -> { AlpakaConfig.instance.clutterFallingBlocks = v; AlpakaConfig.save(); },
                 "hide falling blocks block entity sand gravel molten wave midas staff seismic wave debris"));
-        OPTIONS.add(new ConfigOption("hide_clutter_block_break", "Block Break Particles",
-                "The bits that fly off broken and mined blocks, yours and everyone else's. The cracks on the block stay.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.clutterBlockBreak,
-                v -> { AlpakaConfig.instance.clutterBlockBreak = v; AlpakaConfig.save(); },
-                "hide block break breaking particles mining farming garden crops terrain dig destroy"));
         OPTIONS.add(new ConfigOption("hide_clutter_hit_particles", "Hit Particles",
                 "The sparks of critical and enchanted hits, and the sparkle trail behind fully drawn arrows.",
                 ConfigCategory.VISUALS,

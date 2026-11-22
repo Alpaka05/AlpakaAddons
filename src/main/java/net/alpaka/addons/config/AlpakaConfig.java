@@ -253,18 +253,14 @@ public class AlpakaConfig {
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
     /**
-     * Hide Visual Clutter, the master switch over the effects below. It was Hide Explosions, so an
-     * older file's value still turns it on (and {@link #migrateTo4} keeps such a file to explosions).
+     * Hide Visual Clutter, the master switch over the effects below. It was Hide Explosions, whose
+     * effect is gone since, so {@link #migrateTo4} switches an older file's value off again.
      * Cosmetic only.
      */
     @SerializedName(value = "hideVisualClutter", alternate = "hideExplosions")
     public boolean hideVisualClutter = false;
-    /** Explosion particles, server smoke puffs and explosion debris. */
-    public boolean clutterExplosions = true;
     /** Falling block entities are never added. */
     public boolean clutterFallingBlocks = true;
-    /** The particles of broken and mined blocks. */
-    public boolean clutterBlockBreak = true;
     /** Critical and enchanted hit sparks, and the crit trail of arrows. */
     public boolean clutterHitParticles = true;
     /** Firework rocket bursts. */
@@ -1725,14 +1721,14 @@ public class AlpakaConfig {
     }
 
     /**
-     * Layout 3 to 4: Hide Explosions became Hide Visual Clutter, with more effects than explosions.
-     * Whoever had Hide Explosions on keeps exactly that; the new effects wait to be switched on.
+     * Layout 3 to 4: Hide Explosions became Hide Visual Clutter, with other effects. Explosions are
+     * no longer hidden, so nothing of what Hide Explosions did is left: the switch goes off, and the
+     * effects wait to be switched on, so nothing hides that was not hidden before.
      */
     private void migrateTo4() {
         if (!hideVisualClutter) return;
-        clutterExplosions = true;
+        hideVisualClutter = false;
         clutterFallingBlocks = false;
-        clutterBlockBreak = false;
         clutterHitParticles = false;
         clutterFireworks = false;
         clutterExperienceOrbs = false;

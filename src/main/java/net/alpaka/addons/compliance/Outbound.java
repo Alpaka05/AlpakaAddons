@@ -124,7 +124,7 @@ public final class Outbound {
 
     /**
      * Answers an NPC dialog with one of the choices Hypixel offered in chat, for a key the player
-     * just pressed on the prompt that shows those choices (NpcPromptsFeature). Returns whether it
+     * just pressed on the prompt that shows those choices (ChatPromptsFeature). Returns whether it
      * went out.
      *
      * It is the packet vanilla sends when that choice is clicked in chat - the click action's own

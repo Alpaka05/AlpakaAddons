@@ -67,8 +67,8 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Performance HUD:** the server's day, FPS, ping and TPS on one line, each part optional.
 - **World Age on Join:** a chat message with the server's age and when you last visited.
 - **Notifications** for mentions, boss spawns and party invites, in any corner or at the top centre.
-- **Party Invite Prompt:** accept with Y or dismiss with N.
-- **NPC Prompts:** answer NPC dialogs, Abiphone calls and trade, friend, guild and duel requests with a key.
+- **Player Requests:** accept a party invite or a trade, friend, guild or duel request with Y, or dismiss it with N.
+- **NPC Prompts:** answer NPC dialogs and Abiphone calls with a key instead of clicking the chat line.
 - **Scrollable Tooltips**, **Keep Item Name Visible** and adjustable container background opacity.
 - **Custom Main Menu** with a live Hypixel player count, and a **Custom Pause Menu**.
 

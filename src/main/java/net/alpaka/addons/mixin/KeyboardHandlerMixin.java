@@ -43,7 +43,7 @@ public class KeyboardHandlerMixin {
             ci.cancel();
             return;
         }
-        if (net.alpaka.addons.features.prompts.NpcPromptsFeature.onKey(event.key(), event.scancode(), repeat)) {
+        if (net.alpaka.addons.features.prompts.ChatPromptsFeature.onKey(event.key(), event.scancode(), repeat)) {
             ci.cancel();
             return;
         }

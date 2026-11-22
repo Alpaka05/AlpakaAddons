@@ -67,7 +67,7 @@ public final class PartyInviteFeature {
     private static long noticeId = 0L;
 
     public static boolean isEnabled() {
-        return AlpakaConfig.instance.partyInvitePromptEnabled;
+        return AlpakaConfig.instance.playerRequestsEnabled && AlpakaConfig.instance.playerRequestsParty;
     }
 
     public static void register() {

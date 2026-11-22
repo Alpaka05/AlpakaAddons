@@ -20,8 +20,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Key prompts for what Hypixel asks in chat: an NPC's dialog choices, an Abiphone call, a trade,
- * friend, guild or duel request, the re-queue after a dungeon run and the gg under a rare drop.
+ * Key prompts for what Hypixel asks in chat. Two features in the config share this class:
+ * Player Requests for a trade, friend, guild or duel request (party invites, its fifth kind, have
+ * {@link PartyInviteFeature}), and NPC Prompts for an NPC's dialog choices, an Abiphone call, the
+ * re-queue after a dungeon run and the gg under a rare drop.
  *
  * Hypixel writes these as chat lines with clickable words, which means opening the chat and
  * hitting a word before the offer runs out. With this on, such a line raises one of the mod's
@@ -37,9 +39,9 @@ import java.util.regex.Pattern;
  *
  * The idea and the message formats are Prompt Overlay's (dungeon-hub); see {@link ChatPromptParser}.
  */
-public final class NpcPromptsFeature {
+public final class ChatPromptsFeature {
 
-    private NpcPromptsFeature() {
+    private ChatPromptsFeature() {
     }
 
     /** {@code [NPC] Trevor: You can find your animal near the Desert Settlement.} */
@@ -74,21 +76,23 @@ public final class NpcPromptsFeature {
     private static String caller = null;
     private static long callerAtMs = 0L;
 
+    /** Whether either of the two features is on; which prompts are raised is up to {@link #isKindEnabled}. */
     public static boolean isEnabled() {
-        return AlpakaConfig.instance.npcPromptsEnabled;
+        return AlpakaConfig.instance.npcPromptsEnabled || AlpakaConfig.instance.playerRequestsEnabled;
     }
 
-    private static boolean isKindEnabled(ChatPrompt.Kind kind) {
+    /** A kind is raised when its feature is on - Player Requests or NPC Prompts - and its own switch is. */
+    static boolean isKindEnabled(ChatPrompt.Kind kind) {
         AlpakaConfig config = AlpakaConfig.instance;
         return switch (kind) {
-            case DIALOG -> config.npcPromptsDialogs;
-            case ABIPHONE -> config.npcPromptsAbiphone;
-            case TRADE -> config.npcPromptsTrade;
-            case FRIEND -> config.npcPromptsFriend;
-            case GUILD -> config.npcPromptsGuild;
-            case DUEL -> config.npcPromptsDuel;
-            case REQUEUE -> config.npcPromptsRequeue;
-            case GG -> config.npcPromptsGg;
+            case TRADE -> config.playerRequestsEnabled && config.playerRequestsTrade;
+            case FRIEND -> config.playerRequestsEnabled && config.playerRequestsFriend;
+            case GUILD -> config.playerRequestsEnabled && config.playerRequestsGuild;
+            case DUEL -> config.playerRequestsEnabled && config.playerRequestsDuel;
+            case DIALOG -> config.npcPromptsEnabled && config.npcPromptsDialogs;
+            case ABIPHONE -> config.npcPromptsEnabled && config.npcPromptsAbiphone;
+            case REQUEUE -> config.npcPromptsEnabled && config.npcPromptsRequeue;
+            case GG -> config.npcPromptsEnabled && config.npcPromptsGg;
         };
     }
 
@@ -182,7 +186,7 @@ public final class NpcPromptsFeature {
     /** Whether a prompt is up and its keys should answer. Clears one whose notice has gone. */
     public static boolean isShowing() {
         if (current == null) return false;
-        if (!isEnabled() || !AlpakaNotifications.isShowing(noticeId)) {
+        if (!isKindEnabled(current.kind()) || !AlpakaNotifications.isShowing(noticeId)) {
             current = null;
             noticeId = 0L;
             return false;

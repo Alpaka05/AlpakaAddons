@@ -49,7 +49,10 @@ public final class RareDropItemRenderer extends PictureInPictureRenderer<RareDro
         poseStack.translate(state.offsetX() / state.scale(), state.offsetY() / state.scale(), 0.0f);
         // The texture's y runs down, as the screen's does; the item's model has it up.
         poseStack.scale(1.0f, -1.0f, -1.0f);
-        poseStack.mulPose(new Quaternionf().rotateZ(state.roll()).rotateX(state.tilt()).rotateY(state.spin()));
+        // The item frame's view (FIXED) faces the item away from whoever looks at it, as the frame
+        // turns it round again: half a turn more shows its front, a head's face and a flat item the
+        // way round it is in the inventory.
+        poseStack.mulPose(new Quaternionf().rotateZ(state.roll()).rotateX(state.tilt()).rotateY(state.spin() + (float) Math.PI));
         Minecraft.getInstance().gameRenderer.lighting().setupFor(
                 state.item().usesBlockLight() ? Lighting.Entry.ITEMS_3D : Lighting.Entry.ITEMS_FLAT);
         state.item().submit(poseStack, collector, FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0);

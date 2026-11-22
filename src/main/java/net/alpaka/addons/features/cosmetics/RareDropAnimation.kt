@@ -49,7 +49,7 @@ import kotlin.random.Random
  * A rare drop flies onto the screen: the item alone, no text, big and in 3D. It shoots up from below
  * the screen's edge, tumbling end over end, lands in the middle with a flash and a shock wave,
  * whirls round and settles facing the player, then turns on show in its light until it spins up
- * and vanishes in a sparkle. The light is the drop's own ([Effect]): a vortex in the slayer's color
+ * and vanishes in a sparkle. The light is the drop's own ([Effect]): god rays in the slayer's color
  * for a slayer drop, a rainbow behind the item for a dye, a beam for a dungeon reward, a flower
  * and fireflies for a pet, a constellation for the rest; Special Effects off leaves the item alone. Bound to the screen, not the
  * world, so it stays where it is while the player turns, and it is drawn over an open menu too.
@@ -132,7 +132,7 @@ object RareDropAnimation {
 
     /** Which light a drop gets, by what it is: a dye does not look like a slayer drop. */
     private enum class Effect {
-        /** A slayer's headline drop: a vortex of sparks in gold and the slayer's color, a beating heart. */
+        /** A slayer's headline drop: gold and the slayer's color, god rays, a beating heart, sparkles. */
         GOLDEN,
         /** A dye: a broad rainbow drawing itself over the item, glittering; confetti raining down. */
         PRISM,
@@ -691,9 +691,9 @@ object RareDropAnimation {
     }
 
     /**
-     * A slayer's headline drop: a vortex. Sparks in gold and the slayer's color stream round on
-     * three spiral arms into the item, its heart beats out in double rings of the slayer's color, and
-     * a few broad rays turn slowly behind it all.
+     * A slayer's headline drop: gold and the slayer's color. A halo swelling with each beat of a
+     * heart that sends out double rings of the slayer's color, god rays turning slowly and
+     * flickering, a ring of light round the item and sparkles drifting up.
      */
     private fun drawGolden(sink: AlpakaGuiElementSink, pose: Matrix3x2f, drop: Drop, cx: Float, cy: Float, r: Float, t: Float, light: Float) {
         val outer = AuraEffects.mix(GOLD_DEEP, drop.accent, 0.6f)
@@ -701,43 +701,44 @@ object RareDropAnimation {
 
         // The heart: lub-dub every 1.4 s, the halo swelling with each beat.
         val beat = t % 1.4f
-        val swell = exp(-beat * 9f) + 0.7f * exp(-maxOf(0f, beat - 0.22f) * 9f) * (if (beat > 0.22f) 1f else 0f)
-        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (1.9f + 0.3f * swell) * r, GlowRenderState.GLOW, 0, argb(outer, light * (0.4f + 0.2f * swell))))
-        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (1.0f + 0.2f * swell) * r, GlowRenderState.GLOW, 0, argb(GOLD, light * 0.5f)))
+        val swell = exp(-beat * 9f) + (if (beat > 0.22f) 0.7f * exp(-(beat - 0.22f) * 9f) else 0f)
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (1.9f + 0.3f * swell) * r, GlowRenderState.GLOW, 0, argb(outer, light * (0.42f + 0.15f * swell))))
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (1.05f + 0.2f * swell) * r, GlowRenderState.GLOW, 0, argb(GOLD, light * 0.5f)))
         for (offset in floatArrayOf(0f, 0.22f)) {
             val p = (beat - offset) / 0.8f
             if (p < 0f || p > 1f) continue
             sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.9f + 1.6f * easeOutCubic(p)) * r, GlowRenderState.RING, 70,
-                argb(rayAccent, light * 0.85f * (1f - p) * (1f - p))))
+                argb(rayAccent, light * 0.8f * (1f - p) * (1f - p))))
         }
 
-        // Broad rays turning slowly behind the vortex.
+        // God rays, shooting out at the landing, then turning slowly and flickering.
+        val rays = 14
         val grow = easeOutBack((t / 0.6f).coerceIn(0f, 1f), 1.8f)
-        for (i in 0 until 6) {
-            val angle = i * (2f * PI.toFloat() / 6f) + t * 0.25f
-            val length = (1.8f + 0.3f * sin(t * 2f + i)) * r * grow
+        for (i in 0 until rays) {
+            val angle = i * (2f * PI.toFloat() / rays) + t * 0.35f
+            val flicker = 0.6f + 0.4f * sin(t * 3.1f + i * 1.7f)
+            val length = (1.3f + 0.9f * flicker) * r * grow
             if (length < 1f) continue
+            val color = if (i % 2 == 0) GOLD else rayAccent
             sink.`alpaka$submitElement`(GlowRenderState.ray(pose, cx, cy, cos(angle), sin(angle),
-                0.2f * r, 0.2f * r + length, 0.6f * r, argb(if (i % 2 == 0) GOLD else rayAccent, light * 0.3f)))
+                0.2f * r, 0.2f * r + length, 0.34f * r, argb(color, light * 0.5f * flicker)))
         }
 
-        // The vortex: three arms of sparks, each spark swept round and in until it sinks into the item.
-        val arms = 3
-        val per = 12
-        val gather = easeOutCubic((t / 0.8f).coerceIn(0f, 1f))
-        for (a in 0 until arms) {
-            for (j in 0 until per) {
-                val life = fract(t * 0.4f + j / per.toFloat() + a * 0.11f)
-                val radius = (2.4f - 2.0f * life) * r * gather
-                val angle = a * (2f * PI.toFloat() / arms) + life * 3.4f + t * 0.9f
-                val x = cx + cos(angle) * radius
-                val y = cy + sin(angle) * radius * 0.85f
-                val fade = sin(life * PI.toFloat())
-                val color = if ((j + a) % 2 == 0) GOLD_PALE else drop.accent
-                sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.14f + 0.16f * (1f - life)) * r, GlowRenderState.GLOW, 0, argb(color, light * fade)))
-                if (j % 2 == 0) sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.16f + 0.14f * (1f - life)) * r,
-                    GlowRenderState.SPARKLE, 0, argb(GOLD_PALE, light * fade)))
-            }
+        // A ring of light round the item, pulsing with the heart.
+        sink.`alpaka$submitElement`(GlowRenderState.disc(pose, cx, cy, (0.95f + 0.06f * swell) * r, GlowRenderState.RING, 60, argb(rayAccent, light * 0.55f)))
+
+        // Sparkles drifting up around the item, each born again at the bottom when it fades out.
+        val sparkles = 22
+        for (i in 0 until sparkles) {
+            val seed = AuraEffects.hash(i * 31 + 7)
+            val period = 1.8f + 1.2f * seed
+            val life = fract(t / period + AuraEffects.hash(i * 17 + 3))
+            val angle = i * 2.39996f + t * (0.5f + 0.4f * seed)
+            val radius = (0.75f + 0.75f * AuraEffects.hash(i * 13 + 1)) * r
+            val x = cx + cos(angle) * radius
+            val y = cy + sin(angle) * radius * 0.6f + (0.6f - 1.3f * life) * r
+            val twinkle = sin(life * PI.toFloat())
+            sink.`alpaka$submitElement`(GlowRenderState.disc(pose, x, y, (0.1f + 0.1f * seed) * r, GlowRenderState.SPARKLE, 0, argb(tint(drop, i, t), light * twinkle)))
         }
     }
 

@@ -116,7 +116,7 @@ public final class ConfigTree {
             "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_join_message_enabled", "player_requests", "npc_prompts", "party_commands",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
-            "ignore_filler_panes", "slot_highlight",
+            "ignore_filler_panes",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value", "price_tooltip",
             "profile_dashboard",
             // SkyBlock: dungeon
@@ -207,7 +207,7 @@ public final class ConfigTree {
                             "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "clean_blaze", "blaze_fire_pits"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "ignore_filler_panes", "slot_highlight", "cache_resource_pack",
+                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "ignore_filler_panes", "cache_resource_pack",
                             "profile_dashboard"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
                             "item_search",

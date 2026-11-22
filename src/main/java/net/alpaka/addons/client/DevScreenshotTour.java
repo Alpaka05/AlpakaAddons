@@ -866,15 +866,21 @@ public final class DevScreenshotTour {
                 AlpakaConfig.instance.auraColorMode = 0;
                 Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
             }, () -> true, 1),
-            // The rare drop animation on the screen, still at night, from the pop to the slow turn;
-            // then by day, then each sample drop in turn, and once over an open menu.
+            // The rare drop animation on the screen, still at night, from the flight up to the slow
+            // turn and the end; then by day, then each sample drop in turn, and once over an open menu.
             new Stop(null, () -> {
                 Minecraft.getInstance().player.setXRot(-8.0f);
                 net.alpaka.addons.features.cosmetics.RareDropAnimation.test();
-            }, () -> true, 4),
-            new Stop("rare-drop-pop", () -> {}, () -> true, 6),
-            new Stop("rare-drop-spin", () -> {}, () -> true, 30),
-            new Stop("rare-drop-hover", () -> {}, () -> true, 30),
+            }, () -> true, 2),
+            new Stop("rare-drop-fly", () -> {}, () -> true, 1),
+            new Stop("rare-drop-fly-2", () -> {}, () -> true, 2),
+            new Stop("rare-drop-land", () -> {}, () -> true, 2),
+            new Stop("rare-drop-land-2", () -> {}, () -> true, 3),
+            new Stop("rare-drop-settle", () -> {}, () -> true, 8),
+            new Stop("rare-drop-show", () -> {}, () -> true, 30),
+            new Stop("rare-drop-turn", () -> {}, () -> true, 30),
+            new Stop("rare-drop-end", () -> {}, () -> true, 30),
+            new Stop("rare-drop-end-2", () -> {}, () -> true, 6),
             new Stop(null, () -> {
                 net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
                 if (server != null) server.execute(() -> server.getCommands().performPrefixedCommand(

@@ -3146,7 +3146,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Rare Drop Animation", ConfigCategory.COSMETICS));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation", "Rare Drop Animation",
-                "A rare drop pops up on your screen, big and spinning in a golden glow, with its name and price. Only you can see it.",
+                "A rare drop flies onto your screen, tumbling into place and spinning in a golden glow. Only you can see it.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.rareDropAnimationEnabled,
                 v -> { AlpakaConfig.instance.rareDropAnimationEnabled = v; AlpakaConfig.save(); },
@@ -3195,13 +3195,6 @@ public class AlpakaConfigRegistry {
                 0.5f, 100.0f, val -> String.format(Locale.ROOT, "%.1fM", val),
                 "rare drop animation minimum value price worth coins threshold"));
 
-        OPTIONS.add(new ConfigOption("rare_drop_animation_price", "Show Price",
-                "Shows what the item sells for under its name: its Bazaar price or lowest BIN. Needs Network Features.",
-                ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.rareDropAnimationPrice,
-                v -> { AlpakaConfig.instance.rareDropAnimationPrice = v; AlpakaConfig.save(); },
-                "rare drop animation price value coins bazaar lowest bin worth"));
-
         OPTIONS.add(new ConfigOption("rare_drop_animation_size", "Size",
                 "How big the item and its glow are.",
                 ConfigCategory.COSMETICS,
@@ -3219,7 +3212,7 @@ public class AlpakaConfigRegistry {
                 "rare drop animation duration time long short seconds"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_sound", "Sound",
-                "Plays a rising chime as the item pops up. Only you hear it.",
+                "Plays a rising chime as the item lands. Only you hear it.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.rareDropAnimationSound,
                 v -> { AlpakaConfig.instance.rareDropAnimationSound = v; AlpakaConfig.save(); },

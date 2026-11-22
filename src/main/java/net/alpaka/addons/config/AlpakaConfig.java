@@ -142,8 +142,8 @@ public class AlpakaConfig {
     /** How strongly the aura glows, in percent. */
     public float auraBrightness = 80.0f;
     /**
-     * A rare drop pops up on the screen as a big spinning item in a golden glow, with its name and
-     * price. Drawn by this client only. Off by default while it is being tried out.
+     * A rare drop flies onto the screen as a big spinning item in a golden glow, the item alone.
+     * Drawn by this client only. Off by default while it is being tried out.
      */
     public boolean rareDropAnimationEnabled = false;
     /** Plays for a slayer's rarest drop (Judgement Core, Warden Heart, ...). */
@@ -159,13 +159,11 @@ public class AlpakaConfig {
     public boolean rareDropAnimationValuable = true;
     /** What another drop has to be worth for the animation, in millions of coins. */
     public float rareDropAnimationMinValue = 5.0f;
-    /** The item's price under its name. */
-    public boolean rareDropAnimationPrice = true;
     /** How big the item and its glow are, as a factor. */
     public float rareDropAnimationSize = 1.0f;
     /** How long the animation stays, in seconds. */
     public float rareDropAnimationDuration = 6.0f;
-    /** A rising chime as the item pops up, heard only by this client. */
+    /** A rising chime as the item lands, heard only by this client. */
     public boolean rareDropAnimationSound = true;
     /** Each slayer's own color mixed into the gold. */
     public boolean rareDropAnimationSlayerColors = true;

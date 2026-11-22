@@ -8,10 +8,10 @@ import net.minecraft.world.item.ItemStack;
 /** Draws a {@link StoragePreviewTooltip} as a chest-like grid of slots under the item's name. */
 public final class ClientStoragePreviewTooltip implements ClientTooltipComponent {
 
-    private static final int COLUMNS = 9;
-    private static final int SLOT = 18;
+    static final int COLUMNS = 9;
+    static final int SLOT = 18;
     /** Space between the name line above and the grid, and below the grid before any lore. */
-    private static final int MARGIN = 2;
+    static final int MARGIN = 2;
 
     private static final int SLOT_COLOR = 0x40000000;
 

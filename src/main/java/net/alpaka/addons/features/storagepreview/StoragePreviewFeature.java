@@ -231,19 +231,26 @@ public final class StoragePreviewFeature {
      */
     public static java.util.Optional<TooltipComponent> tooltipImage(AbstractContainerScreen<?> screen, ItemStack stack,
                                                                     java.util.Optional<TooltipComponent> original) {
-        if (!isEnabled() || original.isPresent() || !SkyblockUtils.isOnSkyblock()) return original;
+        if (original.isPresent()) return original;
+        StoragePreviewTooltip preview = previewFor(screen, stack);
+        return preview == null ? original : java.util.Optional.of(preview);
+    }
+
+    /** The remembered page behind a Storage menu icon, or null for any other stack or menu. */
+    static StoragePreviewTooltip previewFor(AbstractContainerScreen<?> screen, ItemStack stack) {
+        if (!isEnabled() || !SkyblockUtils.isOnSkyblock() || stack.isEmpty()) return null;
         Component title = screen.getTitle();
         if (title != plainTitleOf) {
             plainTitle = SkyblockUtils.cleanColor(title.getString()).trim();
             plainTitleOf = title;
         }
-        if (!"Storage".equals(plainTitle)) return original;
+        if (!"Storage".equals(plainTitle)) return null;
         String key = iconKey(SkyblockUtils.cleanColor(stack.getHoverName().getString()).trim());
-        if (key == null) return original;
+        if (key == null) return null;
         Map<String, List<ItemStack>> profile = currentProfile();
         List<ItemStack> content = profile == null ? null : profile.get(key);
-        if (content == null || content.isEmpty()) return original;
-        return java.util.Optional.of(new StoragePreviewTooltip(content));
+        if (content == null || content.isEmpty()) return null;
+        return new StoragePreviewTooltip(content);
     }
 
     /**

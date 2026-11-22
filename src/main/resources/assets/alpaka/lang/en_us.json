@@ -18,6 +18,7 @@
   "key.alpaka.inventory_hud": "Inventory HUD",
   "key.alpaka.item_value": "Item Value",
   "key.alpaka.chest_value": "Chest Value",
+  "key.alpaka.storage_preview_freeze": "Freeze Storage Preview",
   "key.alpaka.price_tooltip": "Price Tooltip",
   "key.alpaka.item_search": "Item Search"
 }

@@ -335,7 +335,7 @@ object SlayerTimer {
         if (isBest) {
             val suffix = if (previousBest == null) "" else " §7(was §e${format(previousBest)}§7)"
             SlayerDropTracker.sendModMessage(
-                "§7$boss boss killed in §a$time §7- §6new personal best!$suffix",
+                "§7$boss boss killed in §a$time §7- §6New PB!$suffix",
             )
         } else {
             SlayerDropTracker.sendModMessage(

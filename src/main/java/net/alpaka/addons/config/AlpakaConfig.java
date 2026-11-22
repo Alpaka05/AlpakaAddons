@@ -1359,6 +1359,11 @@ public class AlpakaConfig {
         public float motionBlurLength = 80.0f;
         public float motionBlurOpacity = 0.35f;
         public float motionBlurSteps = 8.0f;
+        /**
+         * First-Person Hand in F5. Null in presets saved before it was part of them, so loading
+         * one of those leaves the switch as it is instead of turning it off.
+         */
+        public Boolean renderHandInThirdPerson = null;
         /** What the player called it; empty for none, and it shows as "Preset n" then. */
         public String name = "";
 
@@ -1426,6 +1431,7 @@ public class AlpakaConfig {
             this.itemMotionBlurLength = preset.motionBlurLength;
             this.itemMotionBlurOpacity = preset.motionBlurOpacity;
             this.itemMotionBlurSteps = preset.motionBlurSteps;
+            if (preset.renderHandInThirdPerson != null) this.renderHandInThirdPerson = preset.renderHandInThirdPerson;
             this.activeItemPresetIndex = index;
             save();
         }
@@ -1525,6 +1531,7 @@ public class AlpakaConfig {
         preset.motionBlurLength = this.itemMotionBlurLength;
         preset.motionBlurOpacity = this.itemMotionBlurOpacity;
         preset.motionBlurSteps = this.itemMotionBlurSteps;
+        preset.renderHandInThirdPerson = this.renderHandInThirdPerson;
         return preset;
     }
 

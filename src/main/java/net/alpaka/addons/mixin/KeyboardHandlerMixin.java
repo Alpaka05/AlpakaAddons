@@ -13,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Key presses the mod answers before the game sees them: the party prompts' Y and N, and Tab
- * cycling the chat tabs while the chat is held open with Peek Chat.
+ * Key presses the mod answers before the game sees them: the party prompts' Y and N, the keys of
+ * an NPC prompt, and Tab cycling the chat tabs while the chat is held open with Peek Chat.
  *
  * Taken at the very front of the keyboard handler, so a consumed press never reaches a key mapping
  * or the open screen - which is what keeps Tab from also bringing up the player list, and Y or N
@@ -40,6 +40,10 @@ public class KeyboardHandlerMixin {
             return;
         }
         if (net.alpaka.addons.features.party.PartyCommandsFeature.onKey(event.key(), event.scancode(), repeat)) {
+            ci.cancel();
+            return;
+        }
+        if (net.alpaka.addons.features.prompts.NpcPromptsFeature.onKey(event.key(), event.scancode(), repeat)) {
             ci.cancel();
             return;
         }

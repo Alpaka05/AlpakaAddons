@@ -52,7 +52,7 @@ class DisableAllFeaturesTest {
             // SkyBlock
             "slayerDropTrackerEnabled", "slayerRngDropGuildChatEnabled",
             "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
-            "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
+            "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled", "npcPromptsEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "ignoreFillerPanesEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
@@ -112,6 +112,9 @@ class DisableAllFeaturesTest {
             "solveStartsWithTerminal", "solveSelectAllTerminal", "solveMelodyTerminal", "terminalHideOtherItems",
             "terminalPredictClicks", "terminalBlockWrongClicks", "terminalFirstClickGuard", "terminalRateGuard",
             "solveSimonSays", "solveArrowAlign", "solveLightsDevice", "solveSharpshooter",
+            // NPC Prompts: which kinds of prompt are raised
+            "npcPromptsDialogs", "npcPromptsAbiphone", "npcPromptsTrade", "npcPromptsFriend",
+            "npcPromptsGuild", "npcPromptsDuel", "npcPromptsRequeue", "npcPromptsGg",
             // HUD style: how things look, like the fonts and colors
             "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "slayerTimerHudBlur",
             "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",

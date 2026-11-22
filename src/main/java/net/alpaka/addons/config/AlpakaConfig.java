@@ -955,6 +955,18 @@ public class AlpakaConfig {
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = false;
 
+    /** What Hypixel asks in chat with a clickable answer raises a notification with keys; see NpcPromptsFeature. */
+    public boolean npcPromptsEnabled = false;
+    /** Which kinds of prompt are raised. */
+    public boolean npcPromptsDialogs = true;
+    public boolean npcPromptsAbiphone = true;
+    public boolean npcPromptsTrade = true;
+    public boolean npcPromptsFriend = true;
+    public boolean npcPromptsGuild = true;
+    public boolean npcPromptsDuel = true;
+    public boolean npcPromptsRequeue = true;
+    public boolean npcPromptsGg = true;
+
     /** "/isle" is sent as "/warp isle"; see WarpShortcut. */
     public boolean shortenWarpEnabled = false;
     /** A warp typed in the first seconds on a server waits for Hypixel's cooldown; see WarpCooldownQueue. */
@@ -2038,6 +2050,7 @@ public class AlpakaConfig {
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;
+        this.npcPromptsEnabled = false;
         this.shortenWarpEnabled = false;
         this.warpCooldownQueueEnabled = false;
         this.partyCommandsEnabled = false;

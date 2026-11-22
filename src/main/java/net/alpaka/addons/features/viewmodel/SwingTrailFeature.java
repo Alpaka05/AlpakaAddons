@@ -23,18 +23,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Swing trail: a slash drawn in the air behind the tip of the first-person held item while it
- * strikes, like the stroke of a sword in a comic.
+ * Swing trail: a sweep drawn in the air behind the tip of the first-person held item while it
+ * strikes, a solid crescent of pixels like Minecraft's sweep attack particle.
  *
  * The hand item's submits are captured the way {@link ItemMotionBlurFeature} does it. Each carries
  * the item's final pose - the model's own display transform, the swing, and everything the
  * viewmodel settings add - and its quads. {@link SwingTrailTip} finds the tip and the grip end in
  * the quads, the pose takes both to where they are drawn, and {@link SwingTrailRibbon} draws the
- * slash along the way the tip takes. Because the tip comes from the model and goes through the
- * same pose as the item, the slash hangs on the tip at any size, offset and rotation, and is as
- * wide as the item is long.
+ * sweep along the way the tip takes. Because the tip comes from the model and goes through the
+ * same pose as the item, the sweep hangs on the tip at any size, offset and rotation, and its
+ * pixels are the size the item's are drawn at.
  *
- * The slash is submitted as plain colored quads in the space the item's pose ends in, so it stays
+ * The sweep is submitted as plain colored quads in the space the item's pose ends in, so it stays
  * where it was on screen while the camera turns, like the hand itself. It tests against the hand
  * item's depth but writes none: the item covers the part behind it.
  *
@@ -67,7 +67,7 @@ public final class SwingTrailFeature {
     /** The tip each hand's trail was last recorded for; another one means another item. */
     private static final SwingTrailTip[] lastTips = new SwingTrailTip[2];
 
-    /** The slash is already where it is drawn, so it is submitted without a pose of its own. */
+    /** The sweep is already where it is drawn, so it is submitted without a pose of its own. */
     private static final PoseStack NO_POSE = new PoseStack();
 
     private static final float[] quads = new float[SwingTrailRibbon.MAX_FLOATS];
@@ -108,7 +108,7 @@ public final class SwingTrailFeature {
 
     /**
      * Called right after the real submit returns, before any motion blur ghost is submitted.
-     * Records where the tip is this frame and submits the slash through the same collector.
+     * Records where the tip is this frame and submits the sweep through the same collector.
      */
     public static void endHandItem(SubmitNodeCollector collector) {
         if (!capturing) {
@@ -141,12 +141,13 @@ public final class SwingTrailFeature {
             // The quads are drawn after this method returns, when the other hand or the next frame
             // may have written its own already; they get a copy of their own.
             float[] vertices = Arrays.copyOf(quads, floats);
-            int rgb = config.itemSwingTrailColor & 0xFFFFFF;
-            float opacity = Mth.clamp(config.itemSwingTrailOpacity, 0.0f, 1.0f);
+            // Solid, whatever the color's alpha: the sweep is a particle, not a glow.
+            int color = ARGB.opaque(config.itemSwingTrailColor);
+            int edge = ARGB.scaleRGB(color, SwingTrailRibbon.EDGE_SHADE);
             collector.submitCustomGeometry(NO_POSE, RenderTypes.debugQuads(), (pose, buffer) -> {
                 for (int i = 0; i < vertices.length; i += SwingTrailRibbon.VERTEX_FLOATS) {
-                    int alpha = Math.round(vertices[i + 3] * opacity * 255.0f);
-                    buffer.addVertex(pose, vertices[i], vertices[i + 1], vertices[i + 2]).setColor(ARGB.color(alpha, rgb));
+                    buffer.addVertex(pose, vertices[i], vertices[i + 1], vertices[i + 2])
+                            .setColor(vertices[i + 3] < 1.0f ? edge : color);
                 }
             });
         } finally {

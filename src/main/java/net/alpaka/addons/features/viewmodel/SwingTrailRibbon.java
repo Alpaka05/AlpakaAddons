@@ -1,26 +1,27 @@
 package net.alpaka.addons.features.viewmodel;
 
 /**
- * The swing trail of one hand: a slash drawn in the air behind the item's tip, the way a comic
- * draws a sword stroke - a band that is as wide as the outer part of the blade where the blade is
- * now and runs out to a point where the stroke began.
+ * The swing trail of one hand: a sweep drawn in the air behind the item's tip, in the manner of
+ * Minecraft's sweep attack particle - a solid crescent of pixels, pointed at both ends, with a
+ * shaded row along its inner edge. Nothing of it is see-through.
  *
  * A swing has two halves - the strike, when the item leaves its resting place, and the way back.
- * Only the strike draws a slash: on the way back the item passes through the one it just drew.
+ * Only the strike draws a sweep: on the way back the item passes through the one it just drew.
  * The strike is told from the way back by distance alone: as long as the tip keeps getting
  * further from where it rests, it is striking. That holds for every swing the viewmodel settings
  * can produce, whatever its drift, arc and speed.
  *
- * While the strike lasts the slash hangs on the blade. When it is over the slash stays where it
- * is, closes at the front too - a crescent now - and is used up from its tail as its time runs
- * out. A swing chained onto the last one draws a slash of its own while the old one fades, so a
- * few are kept.
+ * While the strike lasts the sweep grows with it, its front point on the tip. When the strike is
+ * over the sweep stays where it is and is used up from the end it began at, getting thinner as it
+ * gets shorter, the way the particle's frames do. A swing chained onto the last one draws a sweep
+ * of its own while the old one is used up, so a few are kept.
  *
- * The outer edge of the slash is the way the tip went; the inner edge lies on the blade, some of
- * the way to the grip end. The few frames a strike takes are joined by a curve, not by straight
- * lines, or the slash would show every frame as a corner.
+ * The outer edge of the sweep is the way the tip went; from there it is built towards the side
+ * the item is on, in pixels the size of the item's own that face the viewer like a particle's.
+ * The few frames a strike takes are joined by a curve, not by straight lines, or the sweep would
+ * show every frame as a corner.
  *
- * Positions are whatever space the caller draws the item in; this class only measures in it.
+ * Positions are in the space the caller draws the item in, with the viewer at its origin.
  */
 final class SwingTrailRibbon {
 
@@ -30,7 +31,7 @@ final class SwingTrailRibbon {
     /** The strike is over once the tip has come back this share of the way it went out. */
     private static final float RETURN_SHARE = 0.03f;
 
-    /** Slashes kept per hand: the one being drawn and the ones still fading. */
+    /** Sweeps kept per hand: the one being drawn and the ones still being used up. */
     static final int MAX_STROKES = 3;
 
     /** Frames kept of one strike. */
@@ -42,33 +43,39 @@ final class SwingTrailRibbon {
     /** Pieces the curve between two kept frames is cut into. */
     static final int PIECES = 6;
 
-    /** A slash shorter than this many texels is not drawn: the item barely moved. */
-    private static final float MIN_TEXELS = 2.0f;
+    /** A sweep shorter than this many pixels is not drawn: the item barely moved. */
+    private static final int MIN_COLUMNS = 2;
 
-    /** At a width of 100 %, the slash reaches this share of the way from the tip to the grip end. */
-    static final float BLADE_SHARE = 0.36f;
+    /** Most pixels a sweep is long; a longer one is drawn in longer pixels. */
+    static final int MAX_COLUMNS = 96;
 
-    /** The outer share of the slash's width that is drawn solid; the rest fades out towards the grip. */
-    private static final float CORE_SHARE = 0.55f;
+    /** Most pixels a sweep is thick. */
+    static final int MAX_ROWS = 16;
 
-    /** How fast the slash narrows towards its tail: 1 is a straight taper, more a thinner tail. */
-    private static final float TAPER = 1.8f;
+    /** At a width of 100 %, the sweep is this share of the item's length thick at its middle. */
+    static final float BLADE_SHARE = 0.2f;
 
-    /** The share of the slash's length its front closes over once the strike has ended. */
-    private static final float FRONT_SHARE = 0.4f;
+    /** A sweep is at least this many times as long as it is thick, so a short one is thin. */
+    static final int ASPECT = 5;
 
-    /** Floats per vertex: x, y, z and opacity (0..1). The slash is written as quads of four. */
+    /** How blunt the crescent is: 1 thins evenly from the middle, less stays thick for longer. */
+    private static final float BLUNT = 0.75f;
+
+    /** How bright the row along the inner edge is, as in the particle's texture. */
+    static final float EDGE_SHADE = 232.0f / 255.0f;
+
+    /** Floats per vertex: x, y, z and brightness (0..1). The sweep is written as quads of four. */
     static final int VERTEX_FLOATS = 4;
     private static final int POINTS = (MAX_SAMPLES - 1) * PIECES + 1;
-    /** Most floats {@link #build} can write: two quads between every two points of every slash. */
-    static final int MAX_FLOATS = MAX_STROKES * (POINTS - 1) * 2 * 4 * VERTEX_FLOATS;
+    /** Most floats {@link #build} can write: two quads for every pixel of length of every sweep. */
+    static final int MAX_FLOATS = MAX_STROKES * MAX_COLUMNS * 2 * 4 * VERTEX_FLOATS;
 
-    /** One slash: the frames of its strike, oldest first, tip and grip end in six floats each. */
+    /** One sweep: the frames of its strike, oldest first, tip and grip end in six floats each. */
     private static final class Stroke {
         final float[] points = new float[MAX_SAMPLES * 6];
         final long[] times = new long[MAX_SAMPLES];
         int count;
-        /** Whether the strike is still under way and the slash hangs on the blade. */
+        /** Whether the strike is still under way and the sweep hangs on the tip. */
         boolean attached;
         long releasedAt;
 
@@ -89,7 +96,7 @@ final class SwingTrailRibbon {
     }
 
     private final Stroke[] strokes = new Stroke[MAX_STROKES];
-    /** The slash being drawn, or null between strikes. */
+    /** The sweep being drawn, or null between strikes. */
     private Stroke active;
 
     // The swing.
@@ -106,10 +113,13 @@ final class SwingTrailRibbon {
     private float furthest;
     private long lastNanos = Long.MIN_VALUE / 2;
 
-    // Scratch for build(): the points of one slash along its curve.
+    // Scratch for build(): the points of one sweep along its curve.
     private final float[] fine = new float[POINTS * 6];
     private final long[] fineTimes = new long[POINTS];
     private final float[] lengths = new float[POINTS];
+    /** The places a pixel apart along one sweep, tip and grip end, and one pixel across it at each. */
+    private final float[] places = new float[(MAX_COLUMNS + 1) * 6];
+    private final float[] across = new float[(MAX_COLUMNS + 1) * 3];
 
     SwingTrailRibbon() {
         for (int i = 0; i < MAX_STROKES; i++) {
@@ -117,7 +127,7 @@ final class SwingTrailRibbon {
         }
     }
 
-    /** Drops every slash and what is known of the swing, as after the item was not drawn. */
+    /** Drops every sweep and what is known of the swing, as after the item was not drawn. */
     void clear() {
         for (Stroke stroke : strokes) {
             stroke.count = 0;
@@ -128,7 +138,7 @@ final class SwingTrailRibbon {
         lostTrack = true;
     }
 
-    /** Ends the strike under way and leaves its slash to fade, as after a change of item. */
+    /** Ends the strike under way and leaves its sweep to be used up, as after a change of item. */
     void interrupt(long now) {
         release(now);
         restKnown = false;
@@ -152,7 +162,7 @@ final class SwingTrailRibbon {
      * @param progress  the swing progress the hand is drawn at, 0 while it rests
      * @param point     the tip and the grip end of the item this frame, six floats
      * @param texel     the size one pixel of the item's texture is drawn at
-     * @param lifeNanos how long the slash stays after it was drawn
+     * @param lifeNanos how long the sweep stays after it was drawn
      */
     void update(long now, float progress, float[] point, float texel, long lifeNanos) {
         if (now - lastNanos > GAP_RESET_NANOS) {
@@ -208,7 +218,7 @@ final class SwingTrailRibbon {
         }
     }
 
-    /** Drops the slashes whose time is up. */
+    /** Drops the sweeps whose time is up. */
     private void expire(long now, long lifeNanos) {
         for (Stroke stroke : strokes) {
             if (stroke != active && stroke.count > 0 && now - stroke.times[stroke.count - 1] >= lifeNanos) {
@@ -217,7 +227,7 @@ final class SwingTrailRibbon {
         }
     }
 
-    /** A slash to draw the next strike with: an unused one, or else the one that has faded most. */
+    /** A sweep to draw the next strike with: an unused one, or else the one released longest ago. */
     private Stroke free() {
         Stroke oldest = null;
         for (Stroke stroke : strokes) {
@@ -232,12 +242,12 @@ final class SwingTrailRibbon {
     }
 
     /**
-     * Writes the slashes as quads, {@link #VERTEX_FLOATS} floats a vertex.
+     * Writes the sweeps as quads, {@link #VERTEX_FLOATS} floats a vertex.
      *
      * @param now       frame time
      * @param texel     the size one pixel of the item's texture is drawn at
-     * @param lifeNanos how long a slash stays after it was drawn
-     * @param width     how wide the slash is, 1 for the usual width
+     * @param lifeNanos how long a sweep stays after it was drawn
+     * @param width     how thick the sweep is, 1 for the usual thickness
      * @param out       receives the vertices, at least {@link #MAX_FLOATS} floats
      * @return the number of floats written
      */
@@ -266,7 +276,7 @@ final class SwingTrailRibbon {
         System.arraycopy(stroke.points, segments * 6, fine, (points - 1) * 6, 6);
         fineTimes[points - 1] = stroke.times[segments];
 
-        // The tail: whatever was drawn longer ago than the slash stays is gone.
+        // The tail: whatever was drawn longer ago than the sweep stays is gone.
         long cutoff = now - lifeNanos;
         int first = 0;
         while (first < points - 1 && fineTimes[first + 1] <= cutoff) {
@@ -283,60 +293,97 @@ final class SwingTrailRibbon {
             fineTimes[first] = cutoff;
         }
 
-        // How far along the slash each point is, from the front.
+        // How far along the sweep each point is, from the front.
         lengths[points - 1] = 0.0f;
         for (int i = points - 2; i >= first; i--) {
             lengths[i] = lengths[i + 1] + distance(fine, i * 6, fine, (i + 1) * 6);
         }
         float total = lengths[first];
-        if (texel <= 0.0f || total < MIN_TEXELS * texel) {
+        if (texel <= 0.0f) {
             return written;
         }
 
-        // Once the strike is over the slash fades, and its front closes to a point as well.
+        // Once the strike is over the sweep is used up from where it began, slowly at first.
         float released = stroke.attached ? 0.0f : Math.min(1.0f, (now - stroke.releasedAt) / (float) lifeNanos);
-        float fade = 1.0f - released * released;
-        float front = FRONT_SHARE * Math.min(1.0f, released * 4.0f);
+        float visible = total * (1.0f - released * released);
+        int columns = Math.min(MAX_COLUMNS, Math.round(visible / texel));
+        if (columns < MIN_COLUMNS) {
+            return written;
+        }
+        float step = visible / columns;
 
-        float reach = BLADE_SHARE * width;
-        float px = 0, py = 0, pz = 0, pcx = 0, pcy = 0, pcz = 0, pix = 0, piy = 0, piz = 0, pa = 0;
-        for (int i = first; i < points; i++) {
-            float along = lengths[i] / total;
-            float wide = (float) Math.pow(1.0f - along, TAPER);
-            if (front > 0.0f && along < front) {
-                float t = along / front;
-                wide *= t * (2.0f - t);
+        // How thick it is at its middle, in pixels.
+        int head = (points - 1) * 6;
+        float item = distance(fine, head, fine, head + 3);
+        int thick = Math.max(1, Math.min(MAX_ROWS, Math.round(BLADE_SHARE * width * item / texel)));
+        thick = Math.max(1, Math.min(thick, columns / ASPECT));
+
+        // The places a pixel apart on the way the tip went, from the front, and the way to the
+        // grip end from each.
+        int at = points - 1;
+        for (int column = 0; column <= columns; column++) {
+            float length = column * step;
+            while (at > first && lengths[at - 1] < length) {
+                at--;
             }
-            float alpha = fade * (1.0f - along);
-            int p = i * 6;
-            float x = fine[p], y = fine[p + 1], z = fine[p + 2];
-            float dx = (fine[p + 3] - x) * reach * wide;
-            float dy = (fine[p + 4] - y) * reach * wide;
-            float dz = (fine[p + 5] - z) * reach * wide;
-            float cx = x + dx * CORE_SHARE, cy = y + dy * CORE_SHARE, cz = z + dz * CORE_SHARE;
-            float ix = x + dx, iy = y + dy, iz = z + dz;
-            if (i > first) {
-                // The solid outer band.
-                written = vertex(out, written, px, py, pz, pa);
-                written = vertex(out, written, x, y, z, alpha);
-                written = vertex(out, written, cx, cy, cz, alpha);
-                written = vertex(out, written, pcx, pcy, pcz, pa);
-                // The inner band, fading out towards the grip.
-                written = vertex(out, written, pcx, pcy, pcz, pa);
-                written = vertex(out, written, cx, cy, cz, alpha);
-                written = vertex(out, written, ix, iy, iz, 0.0f);
-                written = vertex(out, written, pix, piy, piz, 0.0f);
+            float u = 0.0f;
+            if (at > first && lengths[at - 1] > lengths[at]) {
+                u = Math.min(1.0f, (length - lengths[at]) / (lengths[at - 1] - lengths[at]));
             }
-            px = x;
-            py = y;
-            pz = z;
-            pcx = cx;
-            pcy = cy;
-            pcz = cz;
-            pix = ix;
-            piy = iy;
-            piz = iz;
-            pa = alpha;
+            int a = at * 6;
+            int b = (at > first ? at - 1 : at) * 6;
+            for (int k = 0; k < 6; k++) {
+                places[column * 6 + k] = fine[a + k] + (fine[b + k] - fine[a + k]) * u;
+            }
+        }
+
+        // The pixels face the viewer, as a particle does: each column stands at a right angle to
+        // the tip's way and to the line of sight. Along the item instead, they would be sheared
+        // to slivers wherever the item moves along its own length. Of the two sides that leaves,
+        // the sweep is on the one the item is on, taken over the whole of it so it cannot twist.
+        float side = 0.0f;
+        for (int column = 0; column <= columns; column++) {
+            int p = column * 6;
+            int before = Math.max(0, column - 1) * 6;
+            int after = Math.min(columns, column + 1) * 6;
+            float tx = places[after] - places[before];
+            float ty = places[after + 1] - places[before + 1];
+            float tz = places[after + 2] - places[before + 2];
+            float x = places[p], y = places[p + 1], z = places[p + 2];
+            float nx = ty * z - tz * y;
+            float ny = tz * x - tx * z;
+            float nz = tx * y - ty * x;
+            float size = (float) Math.sqrt(nx * nx + ny * ny + nz * nz);
+            float way = (float) Math.sqrt((tx * tx + ty * ty + tz * tz) * (x * x + y * y + z * z));
+            int n = column * 3;
+            if (size > 0.05f * way) {
+                across[n] = nx / size * texel;
+                across[n + 1] = ny / size * texel;
+                across[n + 2] = nz / size * texel;
+            } else if (column > 0) {
+                // The tip came straight at the viewer here: as the column before.
+                across[n] = across[n - 3];
+                across[n + 1] = across[n - 2];
+                across[n + 2] = across[n - 1];
+            } else {
+                across[n] = 0.0f;
+                across[n + 1] = 0.0f;
+                across[n + 2] = 0.0f;
+            }
+            side += across[n] * (places[p + 3] - x) + across[n + 1] * (places[p + 4] - y) + across[n + 2] * (places[p + 5] - z);
+        }
+        float sign = side < 0.0f ? -1.0f : 1.0f;
+
+        // One column of pixels after the other.
+        for (int column = 1; column <= columns; column++) {
+            float along = (column - 0.5f) / columns;
+            int rows = Math.max(1, Math.round(thick * (float) Math.pow(Math.sin(Math.PI * along), BLUNT)));
+            // All of it is one brightness but the row along the inner edge.
+            int body = rows > 1 ? rows - 1 : rows;
+            written = quad(out, written, column, sign, 0, body, 1.0f);
+            if (rows > body) {
+                written = quad(out, written, column, sign, body, rows, EDGE_SHADE);
+            }
         }
         return written;
     }
@@ -368,11 +415,26 @@ final class SwingTrailRibbon {
         return (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
-    private static int vertex(float[] out, int at, float x, float y, float z, float alpha) {
+    /** One run of pixels of a column, from row {@code from} to row {@code to}. */
+    private int quad(float[] out, int at, int column, float sign, int from, int to, float shade) {
+        at = corner(out, at, column - 1, sign * from, shade);
+        at = corner(out, at, column, sign * from, shade);
+        at = corner(out, at, column, sign * to, shade);
+        at = corner(out, at, column - 1, sign * to, shade);
+        return at;
+    }
+
+    private int corner(float[] out, int at, int place, float rows, float shade) {
+        int p = place * 6;
+        int n = place * 3;
+        return vertex(out, at, places[p] + across[n] * rows, places[p + 1] + across[n + 1] * rows, places[p + 2] + across[n + 2] * rows, shade);
+    }
+
+    private static int vertex(float[] out, int at, float x, float y, float z, float shade) {
         out[at] = x;
         out[at + 1] = y;
         out[at + 2] = z;
-        out[at + 3] = alpha;
+        out[at + 3] = shade;
         return at + VERTEX_FLOATS;
     }
 }

@@ -1589,44 +1589,36 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Swing Trail", ConfigCategory.VIEWMODEL));
 
         OPTIONS.add(new ConfigOption("item_swing_trail", "Swing Trail",
-                "Draws a slash in the air behind the tip of the held item when you strike.",
+                "Draws a solid sweep behind the tip of the held item when you strike, like the sweep attack particle.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwingTrailEnabled,
                 v -> { AlpakaConfig.instance.itemSwingTrailEnabled = v; AlpakaConfig.save(); },
-                "swing trail slash streak swoosh arc crescent sword tip strike attack hit effect"));
+                "swing trail sweep slash streak swoosh arc crescent particle sword tip strike attack hit effect"));
 
         OPTIONS.add(ConfigOption.color("item_swing_trail_color", "Trail Color",
-                "The color of the slash.",
+                "The color of the sweep.",
                 ConfigCategory.VIEWMODEL,
                 c -> c.itemSwingTrailColor,
                 v -> { AlpakaConfig.instance.itemSwingTrailColor = v; AlpakaConfig.save(); },
-                "swing trail slash color white tint"));
+                "swing trail sweep slash color white tint"));
 
         OPTIONS.add(new ConfigOption("item_swing_trail_duration", "Trail Length",
-                "How long the slash stays in the air. Longer also means more of the strike is drawn.",
+                "How long the sweep stays in the air. Longer also means more of the strike is drawn.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwingTrailDuration,
                 v -> { AlpakaConfig.instance.itemSwingTrailDuration = (float) Math.round(v / 25.0f) * 25.0f; AlpakaConfig.save(); },
                 SwingTrailFeature.MIN_LENGTH_MS, SwingTrailFeature.MAX_LENGTH_MS,
                 val -> String.format(Locale.ROOT, "%.0f ms", val),
-                "swing trail slash length duration time long short fade lingers lifetime"));
+                "swing trail sweep slash length duration time long short lingers lifetime"));
 
         OPTIONS.add(new ConfigOption("item_swing_trail_width", "Trail Width",
-                "How wide the slash is at the item.",
+                "How thick the sweep is.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwingTrailWidth,
                 v -> { AlpakaConfig.instance.itemSwingTrailWidth = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
                 SwingTrailFeature.MIN_WIDTH, SwingTrailFeature.MAX_WIDTH,
                 val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
-                "swing trail slash width thick thin wide narrow size"));
-
-        OPTIONS.add(new ConfigOption("item_swing_trail_opacity", "Trail Opacity",
-                "How strongly the slash is drawn.",
-                ConfigCategory.VIEWMODEL,
-                () -> AlpakaConfig.instance.itemSwingTrailOpacity,
-                v -> { AlpakaConfig.instance.itemSwingTrailOpacity = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
-                0.1f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
-                "swing trail slash opacity alpha strength transparency intensity"));
+                "swing trail sweep slash width thick thin wide narrow size"));
 
         OPTIONS.add(new ConfigOption("Inspect Animation", ConfigCategory.VIEWMODEL));
 

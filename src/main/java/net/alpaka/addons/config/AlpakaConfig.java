@@ -1246,14 +1246,13 @@ public class AlpakaConfig {
     /** Number of ghost copies spread over the trail length. */
     public float itemMotionBlurSteps = 8.0f;
 
-    // Swing trail: the tip of the held item draws a slash in the air while it strikes; see SwingTrailFeature.
+    // Swing trail: the tip of the held item draws a sweep in the air while it strikes; see SwingTrailFeature.
     public boolean itemSwingTrailEnabled = false;
     public int itemSwingTrailColor = 0xFFFFFFFF;
-    /** How long the slash stays after it was drawn, in milliseconds. */
+    /** How long the sweep stays after it was drawn, in milliseconds. */
     public float itemSwingTrailDuration = 250.0f;
-    /** How wide the slash is, 1.0 its usual width: a good third of the item's length. */
+    /** How thick the sweep is, 1.0 its usual thickness: a fifth of the item's length. */
     public float itemSwingTrailWidth = 1.0f;
-    public float itemSwingTrailOpacity = 0.9f;
 
     // Inspect Animation: the hand shows off the held item on a key press; see ItemInspectFeature.
     public boolean itemInspectEnabled = false;
@@ -1296,7 +1295,6 @@ public class AlpakaConfig {
         public int swingTrailColor = 0xFFFFFFFF;
         public float swingTrailDuration = 250.0f;
         public float swingTrailWidth = 1.0f;
-        public float swingTrailOpacity = 0.9f;
         /** What the player called it; empty for none, and it shows as "Preset n" then. */
         public String name = "";
 
@@ -1368,7 +1366,6 @@ public class AlpakaConfig {
             this.itemSwingTrailColor = preset.swingTrailColor;
             this.itemSwingTrailDuration = preset.swingTrailDuration;
             this.itemSwingTrailWidth = preset.swingTrailWidth;
-            this.itemSwingTrailOpacity = preset.swingTrailOpacity;
             this.activeItemPresetIndex = index;
             save();
         }
@@ -1409,7 +1406,6 @@ public class AlpakaConfig {
         this.itemSwingTrailColor = 0xFFFFFFFF;
         this.itemSwingTrailDuration = 250.0f;
         this.itemSwingTrailWidth = 1.0f;
-        this.itemSwingTrailOpacity = 0.9f;
         this.itemInspectSpeed = 1.0f;
 
         this.swingDriftX = 0.0f;
@@ -1477,7 +1473,6 @@ public class AlpakaConfig {
         preset.swingTrailColor = this.itemSwingTrailColor;
         preset.swingTrailDuration = this.itemSwingTrailDuration;
         preset.swingTrailWidth = this.itemSwingTrailWidth;
-        preset.swingTrailOpacity = this.itemSwingTrailOpacity;
         return preset;
     }
 

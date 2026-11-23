@@ -32,11 +32,7 @@ public final class EquipAnimation {
         VANILLA("Vanilla"),
         RISE_SPIN("Rise + Spin"),
         POP("Pop"),
-        FLIP("Flip"),
-        SPIRAL("Spiral"),
-        SWOOSH("Swoosh"),
-        DROP_IN("Drop In"),
-        SLAM("Slam");
+        DROP_IN("Drop In");
 
         public final String title;
 
@@ -178,52 +174,12 @@ public final class EquipAnimation {
                 pose.translate(0.0f, -0.08f * k * e, 0.0f);
                 aroundItem(pose, side, () -> pose.scale(s, s, s));
             }
-            case FLIP -> {
-                // Tips over towards the viewer as it drops, and the next one flips back up.
-                pose.translate(0.0f, -0.6f * k * e, 0.0f);
-                aroundItem(pose, side, () -> {
-                    pose.mulPose(Axis.XP.rotationDegrees(180.0f * k * e));
-                    pose.mulPose(Axis.ZP.rotationDegrees(-side * 30.0f * k * e));
-                });
-            }
-            case SPIRAL -> {
-                // Spins flat on the screen while it sinks towards the middle, and spins back up.
-                pose.translate(-0.2f * side * k * e, -0.6f * k * e, 0.0f);
-                aroundItem(pose, side, () -> pose.mulPose(Axis.ZP.rotationDegrees(side * 360.0f * k * e)));
-            }
-            case SWOOSH -> {
-                // Tips outward and slides off the side of the screen; the next one swings in from there.
-                pose.translate(0.9f * side * k * e, -0.2f * k * e, 0.0f);
-                aroundItem(pose, side, () -> pose.mulPose(Axis.ZP.rotationDegrees(-side * 85.0f * k * e)));
-            }
             case DROP_IN -> {
                 // Lifts up and back, tilting outward; the next one drops down into the hand from there.
                 pose.translate(0.05f * side * k * e, 0.55f * k * e, -0.35f * k * e);
                 aroundItem(pose, side, () -> {
                     pose.mulPose(Axis.ZP.rotationDegrees(-side * 45.0f * k * e));
                     pose.mulPose(Axis.XP.rotationDegrees(-15.0f * k * e));
-                });
-            }
-            case SLAM -> {
-                // Raised high and far, upright; the next one comes down fast and lands with a small knock.
-                float d = e;
-                float knock = 0.0f;
-                if (arriving) {
-                    float t = 1.0f - a;
-                    if (t < 0.75f) {
-                        float u = t / 0.75f;
-                        d = 1.0f - u * u;
-                    } else {
-                        d = 0.0f;
-                        knock = Mth.sin((float) Math.PI * (t - 0.75f) / 0.25f);
-                    }
-                }
-                float dd = d;
-                float kk = knock;
-                pose.translate(-0.15f * side * k * dd, 0.45f * k * dd - 0.07f * k * kk, -0.6f * k * dd);
-                aroundItem(pose, side, () -> {
-                    pose.mulPose(Axis.ZP.rotationDegrees(side * 35.0f * k * dd));
-                    pose.mulPose(Axis.XP.rotationDegrees(-25.0f * k * dd + 8.0f * k * kk));
                 });
             }
         }

@@ -273,20 +273,6 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     }
 
     /**
-     * Times the whole re-layout, the replay hooks below included, with its end in a finally. Only a
-     * measurement, like the two other timers here, so the game starts without it if it cannot apply.
-     */
-    @WrapMethod(method = "refreshTrimmedMessages", require = 0)
-    private void alpaka$timeReplay(Operation<Void> original) {
-        long t = AlpakaPerf.begin(AlpakaPerf.Section.CHAT_REPLAY);
-        try {
-            original.call();
-        } finally {
-            AlpakaPerf.end(AlpakaPerf.Section.CHAT_REPLAY, t);
-        }
-    }
-
-    /**
      * The lines a re-layout produces, oldest first, while it runs; null otherwise.
      *
      * Vanilla puts every line in at the front of the display list, which shifts the whole list each
@@ -296,25 +282,38 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
      */
     @Unique private java.util.ArrayList<GuiMessage.Line> alpaka$replayLines;
 
-    /** A re-layout replays every stored message through the queue; none of that is a new arrival. */
-    @Inject(method = "refreshTrimmedMessages", at = @At("HEAD"))
-    private void alpaka$beginReplay(CallbackInfo ci) {
+    /**
+     * A re-layout replays every stored message through the queue; none of that is a new arrival.
+     * Also times the whole re-layout.
+     *
+     * The end runs in a finally: if anything in the replay throws (a message filter, the line
+     * wrapping, another mod's hook), the collected lines stay pending otherwise, every later
+     * message goes into them instead of the chat, and the chat shows nothing until the next
+     * re-layout that gets through. Not required: without it the lines go in one by one, as in
+     * vanilla.
+     */
+    @WrapMethod(method = "refreshTrimmedMessages", require = 0)
+    private void alpaka$replay(Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.CHAT_REPLAY);
         this.alpaka$replayLines = new java.util.ArrayList<>(Math.max(16, this.trimmedMessages.size()));
         SmoothChatFeature.clear();
         SmoothChatFeature.beginReplay();
-    }
-
-    @Inject(method = "refreshTrimmedMessages", at = @At("RETURN"))
-    private void alpaka$endReplay(CallbackInfo ci) {
-        java.util.ArrayList<GuiMessage.Line> lines = this.alpaka$replayLines;
-        this.alpaka$replayLines = null;
-        if (lines != null) {
-            // Newest first, as vanilla keeps them, cut to the same limit it trims to line by line.
-            java.util.Collections.reverse(lines);
-            int limit = AlpakaConfig.instance.chatHistoryLength();
-            this.trimmedMessages.addAll(lines.size() > limit ? lines.subList(0, limit) : lines);
+        try {
+            original.call();
+        } finally {
+            java.util.ArrayList<GuiMessage.Line> lines = this.alpaka$replayLines;
+            this.alpaka$replayLines = null;
+            if (lines != null) {
+                // Newest first, as vanilla keeps them, cut to the same limit it trims to line by
+                // line. After a failure these are the lines laid out before it, as vanilla would
+                // have left them.
+                java.util.Collections.reverse(lines);
+                int limit = AlpakaConfig.instance.chatHistoryLength();
+                this.trimmedMessages.addAll(lines.size() > limit ? lines.subList(0, limit) : lines);
+            }
+            SmoothChatFeature.endReplay();
+            AlpakaPerf.end(AlpakaPerf.Section.CHAT_REPLAY, t);
         }
-        SmoothChatFeature.endReplay();
     }
 
     /**

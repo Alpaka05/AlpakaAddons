@@ -27,6 +27,10 @@ import java.util.regex.Pattern;
  * dialog arrives as "Select an option: " followed by its choices, each in brackets and under a
  * {@code skyblock:dialogue_response} click action; the choices may each carry their own action or
  * share one that sits on the piece around them.
+ *
+ * A player's chat line also carries a click event (on the sender's name) and may contain any words,
+ * "Select an option:" included. So the marker only counts at the start of a line, where a player's
+ * text never stands, and only clickable pieces after it can be choices.
  */
 public final class ChatPromptParser {
 
@@ -42,7 +46,7 @@ public final class ChatPromptParser {
     private static final Pattern FORMATTING = Pattern.compile("§.");
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
-    private static final Pattern OPTIONS_MARKER = Pattern.compile("(?:Select|Click) an option:");
+    private static final Pattern OPTIONS_MARKER = Pattern.compile("(?m)^[ \\t]*(?:Select|Click) an option:");
     private static final Pattern BRACKETED = Pattern.compile("^\\[(.+)]$");
 
     private static final Pattern FRIEND_ACCEPT = Pattern.compile("^/(?:f|friend) accept (?<player>[A-Za-z0-9_]{1,16})$");
@@ -159,15 +163,22 @@ public final class ChatPromptParser {
         Matcher marker = OPTIONS_MARKER.matcher(plain);
         if (!marker.find()) return null;
 
+        List<Piece> after = new ArrayList<>();
+        int offset = 0;
+        for (Piece piece : pieces) {
+            if (offset >= marker.end()) after.add(piece);
+            offset += piece.text().length();
+        }
+
         // Each choice stands in its own brackets, whether it has a click action of its own or
         // shares one with its neighbors.
         List<Choice> choices = new ArrayList<>();
-        for (Piece piece : pieces) {
+        for (Piece piece : after) {
             if (!answers(piece.click())) continue;
             Matcher bracketed = BRACKETED.matcher(piece.text().trim());
             if (bracketed.matches()) choices.add(new Choice(label(bracketed.group(1)), piece.click()));
         }
-        if (choices.isEmpty()) choices = unbracketed(pieces);
+        if (choices.isEmpty()) choices = unbracketed(after);
         if (choices.isEmpty() || choices.size() > MAX_CHOICES) return null;
 
         // Y is the yes, wherever Hypixel put it.
@@ -184,13 +195,17 @@ public final class ChatPromptParser {
         return new ChatPrompt(Kind.DIALOG, title, shorten(question, MAX_DETAIL), List.copyOf(choices));
     }
 
-    /** Choices written without brackets: every run of text under one click action is one choice. */
+    /**
+     * Choices written without brackets: every run of text under one click action is one choice.
+     * Without brackets nothing tells a choice from other clickable text, so only an NPC dialog's
+     * own click action counts here, never a command.
+     */
     private static List<Choice> unbracketed(List<Piece> pieces) {
         List<Choice> choices = new ArrayList<>();
         ClickEvent current = null;
         StringBuilder text = new StringBuilder();
         for (Piece piece : pieces) {
-            ClickEvent click = answers(piece.click()) ? piece.click() : null;
+            ClickEvent click = isDialogueResponse(piece.click()) ? piece.click() : null;
             if (current != null && !current.equals(click)) {
                 String label = label(text.toString());
                 if (!label.isEmpty()) choices.add(new Choice(label, current));
@@ -212,6 +227,10 @@ public final class ChatPromptParser {
             String command = run.command();
             return command.length() > 1 && command.startsWith("/") && command.indexOf('\n') < 0;
         }
+        return isDialogueResponse(click);
+    }
+
+    private static boolean isDialogueResponse(ClickEvent click) {
         return click instanceof ClickEvent.Custom custom && Outbound.DIALOGUE_RESPONSE.equals(custom.id());
     }
 

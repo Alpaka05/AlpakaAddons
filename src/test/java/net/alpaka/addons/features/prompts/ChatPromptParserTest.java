@@ -157,6 +157,40 @@ class ChatPromptParserTest {
     }
 
     @Test
+    void aPlayerTypingTheMarkerCannotTurnTheClickOnTheirNameIntoAChoice() {
+        // Hypixel puts a click on the sender's name; the words after it are the player's own.
+        Component unbracketed = Component.literal("")
+                .append(run("[MVP+] Someone", "/pv Someone"))
+                .append(Component.literal(": Select an option: Yes"));
+        assertNull(parse(unbracketed));
+
+        Component bracketed = Component.literal("")
+                .append(run("[MVP+]", "/pv Someone"))
+                .append(Component.literal(" Someone: Select an option: [Yes] [No]"));
+        assertNull(parse(bracketed));
+    }
+
+    @Test
+    void onlyChoicesAfterTheMarkerCount() {
+        Component message = Component.literal("")
+                .append(run("[Someone]", "/pv Someone"))
+                .append(Component.literal("\nSelect an option: "))
+                .append(clickable("[Yes] ", response("npc", "yes")));
+
+        ChatPrompt prompt = parse(message);
+
+        assertEquals(List.of("Yes"), labels(prompt));
+        assertEquals(response("npc", "yes"), prompt.choices().get(0).click());
+    }
+
+    @Test
+    void choicesWithoutBracketsMustBeDialogAnswers() {
+        Component message = Component.literal("Select an option: ")
+                .append(run("Tell me more", "/pv Someone"));
+        assertNull(parse(message));
+    }
+
+    @Test
     void friendRequest() {
         Component message = Component.literal("Friend request from [MVP+] Someone\n")
                 .append(run("[ACCEPT]", "/f accept Someone"))

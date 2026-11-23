@@ -118,11 +118,15 @@ object StarredMobsHighlight {
 
         // Only mobs the player can see: the outline glow is drawn through walls, and highlighting a
         // mob behind one is the mob ESP Hypixel bans. Checked every tick, so a mob lights up as it
-        // comes into view and goes dark behind the next corner.
+        // comes into view and goes dark behind the next corner. Never an invisible one either: a
+        // Shadow Assassin turns invisible on its own, and outlining it then would show what the game
+        // hides. Checked here rather than in the rescan, which only runs every few ticks.
         val color = cfg.starredMobsHighlightColor
         for (id in starredIds) {
             val mob = level.getEntity(id) as? LivingEntity ?: continue
-            if (!mob.isRemoved && mob.isAlive && player.hasLineOfSight(mob)) targets.put(id, color)
+            if (!mob.isRemoved && mob.isAlive && !mob.isInvisible && player.hasLineOfSight(mob)) {
+                targets.put(id, color)
+            }
         }
     }
 

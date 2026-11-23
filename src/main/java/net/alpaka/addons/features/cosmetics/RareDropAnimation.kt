@@ -55,8 +55,8 @@ import kotlin.random.Random
  * world, so it stays where it is while the player turns, and it is drawn over an open menu too.
  *
  * Which drops count is read off Hypixel's chat lines ([RareDrops]): a slayer's rarest drop, a dye
- * the player finds, a dungeon chest's rare reward, and any other drop that is crazy rare or better,
- * a pet, or worth at least the set minimum. Client-side only: nothing is sent and nobody else sees
+ * the player finds, a dungeon chest's rare reward, and any other drop, pets included, whose price is
+ * known and at least the set minimum. Client-side only: nothing is sent and nobody else sees
  * it. The item is drawn by [RareDropItemRenderer]; the light from soft shapes ([GlowRenderState]).
  *
  * The item's look comes by its id in Hypixel's and SkyCofl's item lists ([ItemIcons], [ItemNames]),
@@ -220,7 +220,8 @@ object RareDropAnimation {
             found.kind == Kind.DYE -> cfg.rareDropAnimationDyes
             found.kind == Kind.DUNGEON -> cfg.rareDropAnimationDungeon
             !cfg.rareDropAnimationValuable -> false
-            RareDrops.alwaysRare(found) -> true
+            // Only a known price counts: a drop's tier says little about its worth (Snake Rune I is
+            // crazy rare and sells for next to nothing), and one without a price stays quiet.
             else -> {
                 val price = ItemPrices.quote(idFor(found.kind, found.name, color))?.price() ?: return
                 price >= cfg.rareDropAnimationMinValue * 1_000_000.0

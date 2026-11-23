@@ -10,8 +10,6 @@ import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.performance.PerformanceHudRenderer;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
 import net.alpaka.addons.features.ragnarock.RagnarockFeature;
-import net.alpaka.addons.features.scoreboard.ScoreboardBlurFeature;
-import net.alpaka.addons.features.scoreboard.ScoreboardFooterFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
 import net.alpaka.addons.features.tooltip.OldMasterStarsFeature;
 import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
@@ -22,12 +20,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
 import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.scores.Objective;
 import net.minecraft.network.chat.Component;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.sugar.Local;
-import net.minecraft.client.gui.Font;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -167,51 +161,5 @@ public class HudMixin implements ChatOverHud.Late {
     )
     private Component alpaka$oldMasterStars(ItemStack stack, Operation<Component> original) {
         return OldMasterStarsFeature.applyHeld(original.call(stack));
-    }
-
-    /**
-     * The scoreboard sidebar: its two flat boxes become one blurred panel; see ScoreboardBlurFeature.
-     * Opened and closed around the whole method in one place, the close in a finally: as a HEAD and a
-     * TAIL hook, a sidebar that threw left the panel's shifted pose on the stack for the rest of the HUD.
-     */
-    @WrapMethod(method = "displayScoreboardSidebar")
-    private void alpaka$scoreboard(GuiGraphicsExtractor graphicsExtractor, Objective objective, Operation<Void> original) {
-        long t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SCOREBOARD);
-        ScoreboardBlurFeature.begin(graphicsExtractor);
-        try {
-            original.call(graphicsExtractor, objective);
-        } finally {
-            ScoreboardBlurFeature.end(graphicsExtractor);
-            AlpakaPerf.end(AlpakaPerf.Section.HUD_SCOREBOARD, t);
-        }
-    }
-
-    @WrapOperation(
-            method = "displayScoreboardSidebar",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V", ordinal = 0)
-    )
-    private void alpaka$scoreboardTitleBox(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
-        if (!ScoreboardBlurFeature.titleBox(y0)) original.call(graphics, x0, y0, x1, y1, color);
-    }
-
-    @WrapOperation(
-            method = "displayScoreboardSidebar",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V", ordinal = 1)
-    )
-    private void alpaka$scoreboardBodyBox(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
-        if (!ScoreboardBlurFeature.bodyBox(graphics, x0, y0, x1, y1, color)) original.call(graphics, x0, y0, x1, y1, color);
-    }
-
-    /** The AlpakaAddons footer is centred like the title instead of starting at the left edge. */
-    @WrapOperation(
-            method = "displayScoreboardSidebar",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V", ordinal = 1)
-    )
-    private void alpaka$centerScoreboardFooter(GuiGraphicsExtractor graphics, Font font, Component line, int x, int y, int color, boolean shadow,
-                                               Operation<Void> original, @Local(name = "width") int width) {
-        if (ScoreboardFooterFeature.isFooter(line)) x = ScoreboardFooterFeature.centeredX(x, width,
-                // The bare footer is one kept component; a font wrapper around it is new every frame.
-                line == ScoreboardFooterFeature.FOOTER ? net.alpaka.addons.client.gui.TextWidths.of(font, line) : font.width(line));
-        original.call(graphics, font, line, x, y, color, shadow);
     }
 }

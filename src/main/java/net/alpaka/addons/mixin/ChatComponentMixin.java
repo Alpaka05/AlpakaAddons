@@ -273,20 +273,6 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     }
 
     /**
-     * Times the whole re-layout, the replay hooks below included, with its end in a finally. Only a
-     * measurement, like the two other timers here, so the game starts without it if it cannot apply.
-     */
-    @WrapMethod(method = "refreshTrimmedMessages", require = 0)
-    private void alpaka$timeReplay(Operation<Void> original) {
-        long t = AlpakaPerf.begin(AlpakaPerf.Section.CHAT_REPLAY);
-        try {
-            original.call();
-        } finally {
-            AlpakaPerf.end(AlpakaPerf.Section.CHAT_REPLAY, t);
-        }
-    }
-
-    /**
      * The lines a re-layout produces, oldest first, while it runs; null otherwise.
      *
      * Vanilla puts every line in at the front of the display list, which shifts the whole list each
@@ -296,25 +282,38 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
      */
     @Unique private java.util.ArrayList<GuiMessage.Line> alpaka$replayLines;
 
-    /** A re-layout replays every stored message through the queue; none of that is a new arrival. */
-    @Inject(method = "refreshTrimmedMessages", at = @At("HEAD"))
-    private void alpaka$beginReplay(CallbackInfo ci) {
+    /**
+     * A re-layout replays every stored message through the queue; none of that is a new arrival.
+     * Also times the whole re-layout.
+     *
+     * The end runs in a finally: if anything in the replay throws (a message filter, the line
+     * wrapping, another mod's hook), the collected lines stay pending otherwise, every later
+     * message goes into them instead of the chat, and the chat shows nothing until the next
+     * re-layout that gets through. Not required: without it the lines go in one by one, as in
+     * vanilla.
+     */
+    @WrapMethod(method = "refreshTrimmedMessages", require = 0)
+    private void alpaka$replay(Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.CHAT_REPLAY);
         this.alpaka$replayLines = new java.util.ArrayList<>(Math.max(16, this.trimmedMessages.size()));
         SmoothChatFeature.clear();
         SmoothChatFeature.beginReplay();
-    }
-
-    @Inject(method = "refreshTrimmedMessages", at = @At("RETURN"))
-    private void alpaka$endReplay(CallbackInfo ci) {
-        java.util.ArrayList<GuiMessage.Line> lines = this.alpaka$replayLines;
-        this.alpaka$replayLines = null;
-        if (lines != null) {
-            // Newest first, as vanilla keeps them, cut to the same limit it trims to line by line.
-            java.util.Collections.reverse(lines);
-            int limit = AlpakaConfig.instance.chatHistoryLength();
-            this.trimmedMessages.addAll(lines.size() > limit ? lines.subList(0, limit) : lines);
+        try {
+            original.call();
+        } finally {
+            java.util.ArrayList<GuiMessage.Line> lines = this.alpaka$replayLines;
+            this.alpaka$replayLines = null;
+            if (lines != null) {
+                // Newest first, as vanilla keeps them, cut to the same limit it trims to line by
+                // line. After a failure these are the lines laid out before it, as vanilla would
+                // have left them.
+                java.util.Collections.reverse(lines);
+                int limit = AlpakaConfig.instance.chatHistoryLength();
+                this.trimmedMessages.addAll(lines.size() > limit ? lines.subList(0, limit) : lines);
+            }
+            SmoothChatFeature.endReplay();
+            AlpakaPerf.end(AlpakaPerf.Section.CHAT_REPLAY, t);
         }
-        SmoothChatFeature.endReplay();
     }
 
     /**
@@ -598,27 +597,8 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         return count;
     }
 
-    /** The scrollbar, drawn at the full height, fades in while the chat unrolls instead of standing there at once. */
-    @ModifyArg(
-        method = EXTRACT_PRIVATE,
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;fill(IIIII)V", ordinal = 2),
-        index = 4
-    )
-    private int alpaka$fadeScrollbar(int color) {
-        return this.alpaka$fadeWhileOpening(color);
-    }
-
-    @ModifyArg(
-        method = EXTRACT_PRIVATE,
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;fill(IIIII)V", ordinal = 3),
-        index = 4
-    )
-    private int alpaka$fadeScrollbarHighlight(int color) {
-        return this.alpaka$fadeWhileOpening(color);
-    }
-
-    @Unique
-    private int alpaka$fadeWhileOpening(int color) {
+    @Override
+    public int alpaka$fadeWhileOpening(int color) {
         if (!this.alpaka$opening) return color;
         int alpha = Math.round((color >>> 24) * this.alpaka$openProgress);
         return (alpha << 24) | (color & 0xFFFFFF);
@@ -685,23 +665,6 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         ChatScrollbar.draw(clip.alpaka$graphics(), scale, boxRight, chatBottom, this.getLineHeight(),
                 this.trimmedMessages.size(), this.getLinesPerPage(), this.alpaka$scrollPosition(),
                 this.newMessageSinceScroll, this.alpaka$mouseX, this.alpaka$mouseY);
-    }
-
-    /** Vanilla's scrollbar - its bar and its lighter edge, the method's last two fills - left out for ours. */
-    @WrapOperation(
-        method = EXTRACT_PRIVATE,
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;fill(IIIII)V", ordinal = 2)
-    )
-    private void alpaka$skipVanillaScrollbar(ChatComponent.ChatGraphicsAccess access, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
-        if (!ChatScrollbar.isEnabled()) original.call(access, x0, y0, x1, y1, color);
-    }
-
-    @WrapOperation(
-        method = EXTRACT_PRIVATE,
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;fill(IIIII)V", ordinal = 3)
-    )
-    private void alpaka$skipVanillaScrollbarEdge(ChatComponent.ChatGraphicsAccess access, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
-        if (!ChatScrollbar.isEnabled()) original.call(access, x0, y0, x1, y1, color);
     }
 
     @Inject(method = EXTRACT_PUBLIC, at = @At("RETURN"))

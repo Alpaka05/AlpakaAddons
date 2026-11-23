@@ -171,6 +171,26 @@ public class AlpakaConfig {
      */
     public boolean rareDropAnimationEffects = true;
 
+    /**
+     * The picture warps for a moment after the player teleports with an item (Aspect of the End,
+     * Aspect of the Void, ...). Drawn by this client only; the teleport itself is untouched.
+     */
+    public boolean teleportWarpEnabled = false;
+    /** Whether the picture warps (the Style below); Smooth Teleport is switched on its own. */
+    public boolean teleportWarpScreenEffect = true;
+    /** Which look: 0 Warp (lens pull and ring), 1 Hyperspace (zoom and light streaks). */
+    public int teleportWarpStyle = 0;
+    /** How strong the warp is, as a factor. */
+    public float teleportWarpStrength = 1.0f;
+    /** How long the warp takes to fade, in seconds. */
+    public float teleportWarpDuration = 0.45f;
+    /** The camera glides to the destination instead of jumping there; only the picture moves. */
+    public boolean teleportWarpSmooth = true;
+    /** How long the camera's glide takes, in milliseconds. */
+    public float teleportWarpSmoothTime = 150.0f;
+    /** Whether an Etherwarp (sneak + right-click) warps the picture too. */
+    public boolean teleportWarpEtherwarp = true;
+
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.
     public boolean playerScaleEnabled = false;
@@ -281,8 +301,6 @@ public class AlpakaConfig {
     public boolean clutterHitParticles = true;
     /** Firework rocket bursts. */
     public boolean clutterFireworks = true;
-    /** Experience orbs are never added. */
-    public boolean clutterExperienceOrbs = true;
     /** A dying Ender Dragon, its light rays and its death explosions. */
     public boolean clutterDragonDeath = true;
     /** Arrows stuck in players and in blocks. */
@@ -1776,7 +1794,6 @@ public class AlpakaConfig {
         clutterFallingBlocks = false;
         clutterHitParticles = false;
         clutterFireworks = false;
-        clutterExperienceOrbs = false;
         clutterDragonDeath = false;
     }
 
@@ -1989,6 +2006,7 @@ public class AlpakaConfig {
         this.chromaHatEnabled = false;
         this.auraEnabled = false;
         this.rareDropAnimationEnabled = false;
+        this.teleportWarpEnabled = false;
         this.playerScaleEnabled = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;

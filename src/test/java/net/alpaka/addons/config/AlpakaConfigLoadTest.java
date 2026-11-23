@@ -199,7 +199,6 @@ class AlpakaConfigLoadTest {
         assertFalse(had.clutterFallingBlocks, "nothing hides that was not hidden before");
         assertFalse(had.clutterHitParticles);
         assertFalse(had.clutterFireworks);
-        assertFalse(had.clutterExperienceOrbs);
         assertFalse(had.clutterDragonDeath);
         assertTrue(saved().contains("\"hideVisualClutter\": false"));
 

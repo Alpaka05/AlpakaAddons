@@ -38,9 +38,6 @@ object RareDrops {
     private val DYE = Regex("""^\s*WOW! (?:\[[A-Z+]+] )?([A-Za-z0-9_]+) found (?:a|an) ([A-Za-z' ]+ Dye)(?: #[\d,]+)?!\s*$""")
     private val CHEST = Regex("""^\s{2,}(RARE REWARD!\s+)?([^:]+?)\s*$""")
 
-    /** The tiers rare enough to celebrate whatever the item is worth. */
-    private val ALWAYS = setOf("CRAZY RARE", "INSANE", "PRAY TO RNGESUS", "PET")
-
     /**
      * The dungeons' big chest items, which Hypixel lists in chat without a tag; from Skyblocker's
      * list of the same.
@@ -77,10 +74,6 @@ object RareDrops {
         }
         return null
     }
-
-    /** Whether a drop's tier alone makes it worth celebrating, whatever it sells for. */
-    fun alwaysRare(found: Found): Boolean = found.kind == Kind.DROP && found.heading.removeSuffix(" DROP!") in ALWAYS ||
-        found.kind == Kind.PET
 
     /**
      * The enchantments whose market id is not their name: "Turbo-Cacti" is TURBO_CACTUS, "Duplex"

@@ -3,6 +3,7 @@ package net.alpaka.addons.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
+import net.alpaka.addons.features.teleportwarp.TeleportWarpFeature;
 import net.alpaka.addons.features.viewmodel.HandInThirdPerson;
 import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.renderer.GameRenderer;
@@ -11,6 +12,8 @@ import net.minecraft.client.CameraType;
 import org.joml.Matrix4fc;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GameRenderer.class)
 public class GameRendererMixin {
@@ -47,5 +50,17 @@ public class GameRendererMixin {
         } finally {
             ChatBlurFeature.setInFramePass(false);
         }
+    }
+
+    /**
+     * The finished world frame - vanilla's own post effects included - just before the HUD is drawn
+     * on it: where Teleport Warp redraws it warped, so the HUD stays still.
+     */
+    @Inject(
+        method = "render",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/fog/FogRenderer;endFrame()V")
+    )
+    private void alpaka$teleportWarp(CallbackInfo ci) {
+        TeleportWarpFeature.renderFrame();
     }
 }

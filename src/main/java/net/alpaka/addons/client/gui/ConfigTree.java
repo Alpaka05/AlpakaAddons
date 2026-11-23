@@ -122,7 +122,7 @@ public final class ConfigTree {
             // SkyBlock: dungeon
             "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers",
             // Cosmetics
-            "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags", "rare_drop_animation",
+            "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags", "rare_drop_animation", "teleport_warp",
             // Sound & utility
             "command_wheel_custom_commands", "command_shortcuts", "inventory_buttons", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
             "custom_sound_button_click", "custom_sound_hotbar_scroll", "custom_sound_inventory_open_close",
@@ -200,7 +200,7 @@ public final class ConfigTree {
                             "message_filter", "expand_chat_history", "mention_notification"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur", "item_swing_trail", "item_inspect",
                             "render_hand_third_person", "#Viewmodel Presets", "item_viewmodel_reset"},
-                    {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "rare_drop_animation", "inventory_snow"}},
+                    {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "rare_drop_animation", "teleport_warp", "inventory_snow"}},
             {{"SkyBlock"},
                     {"Dungeon", "dungeon_map_enabled", "dungeon_door_highlight", "leap_menu_enabled", "starred_mobs_highlight", "teammate_class_glow", "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",

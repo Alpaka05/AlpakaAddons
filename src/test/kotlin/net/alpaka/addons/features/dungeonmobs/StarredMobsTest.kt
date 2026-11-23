@@ -35,6 +35,12 @@ class StarredMobsTest {
     }
 
     @Test
+    fun higherOrLowerBlazeTagsStay() {
+        assertFalse(StarredMobs.isPlainMobTag("§8[§7Lv15§8] \uE07C §cBlaze §a1,234§f/§a1,234§c❤"))
+        assertFalse(StarredMobs.isPlainMobTag("§8[§7Lv15§8] §cBlaze §a0§f/§a1.5k§c❤"))
+    }
+
+    @Test
     fun minibossesByProfileName() {
         assertTrue(StarredMobs.isMiniboss("Diamond Guy"))
         assertFalse(StarredMobs.isMiniboss("Alpakaa"))

@@ -329,11 +329,11 @@ public class AlpakaConfigRegistry {
                 "hide mob death smoke poof particles cloud puff"));
 
         OPTIONS.add(new ConfigOption("hide_visual_clutter", "Hide Visual Clutter",
-                "Hides effects that only cost frames: falling blocks, hit sparks, fireworks, experience orbs, dying dragons, stuck arrows and lightning.",
+                "Hides effects that only cost frames: falling blocks, hit sparks, fireworks, dying dragons, stuck arrows and lightning.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideVisualClutter,
                 v -> { AlpakaConfig.instance.hideVisualClutter = v; AlpakaConfig.save(); },
-                "hide visual clutter performance fps lag particles effects falling blocks fireworks orbs dragon arrows lightning"));
+                "hide visual clutter performance fps lag particles effects falling blocks fireworks dragon arrows lightning"));
         OPTIONS.add(new ConfigOption("hide_clutter_falling_blocks", "Falling Blocks",
                 "Blocks flying through the air, like the gold of Molten Wave. What they hit is decided by the server either way.",
                 ConfigCategory.VISUALS,
@@ -352,12 +352,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.clutterFireworks,
                 v -> { AlpakaConfig.instance.clutterFireworks = v; AlpakaConfig.save(); },
                 "hide fireworks firework rocket burst explosion stars sparkle"));
-        OPTIONS.add(new ConfigOption("hide_clutter_experience_orbs", "Experience Orbs",
-                "Experience orbs on the ground, like the ones from Experience Bottles. The experience still counts.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.clutterExperienceOrbs,
-                v -> { AlpakaConfig.instance.clutterExperienceOrbs = v; AlpakaConfig.save(); },
-                "hide experience orbs xp exp bottle orb green"));
         OPTIONS.add(new ConfigOption("hide_clutter_dragon_death", "Dragon Death",
                 "A dying Ender Dragon with its light rays and explosions, in the End and in Master Mode 7.",
                 ConfigCategory.VISUALS,
@@ -2836,11 +2830,11 @@ public class AlpakaConfigRegistry {
                 "rare drop animation dungeon chest reward bedrock necron handle master star"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_valuable", "Other Valuable Drops",
-                "Plays for any other drop that is crazy rare or better, a pet, or worth at least the minimum value below.",
+                "Plays for any other drop, pets included, worth at least the minimum value below.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.rareDropAnimationValuable,
                 v -> { AlpakaConfig.instance.rareDropAnimationValuable = v; AlpakaConfig.save(); },
-                "rare drop animation valuable expensive crazy rare insane pet drop worth"));
+                "rare drop animation valuable expensive crazy rare insane pet drop worth price"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_min_value", "Minimum Value",
                 "What another drop has to be worth for the animation. Needs Network Features for prices.",
@@ -2879,6 +2873,70 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.rareDropAnimationEffects,
                 v -> { AlpakaConfig.instance.rareDropAnimationEffects = v; AlpakaConfig.save(); },
                 "rare drop animation special effects glow rays sparkles light rainbow beam slayer colors off"));
+
+        OPTIONS.add(new ConfigOption("Teleport Warp", ConfigCategory.COSMETICS));
+
+        OPTIONS.add(new ConfigOption("teleport_warp", "Teleport Warp",
+                "Effects for when you teleport with an item, like the Aspect of the End or Aspect of the Void: the picture warps for a moment, and the camera glides to where you land. Only you see them; the teleport itself is unchanged.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpEnabled,
+                v -> { AlpakaConfig.instance.teleportWarpEnabled = v; AlpakaConfig.save(); },
+                "teleport warp effect distortion screen aote aotv aspect of the end void instant transmission etherwarp hyperion wither impact zoom lens"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_screen_effect", "Screen Effect",
+                "Warps the picture for a moment, in the style chosen below.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpScreenEffect,
+                v -> { AlpakaConfig.instance.teleportWarpScreenEffect = v; AlpakaConfig.save(); },
+                "teleport warp screen effect picture distortion shader"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_style", "Style",
+                "Warp pulls the picture towards the middle while a ripple runs outward. Hyperspace zooms in while streaks of light shoot past to the edges, like a jump to light speed.",
+                ConfigCategory.COSMETICS,
+                () -> (float) AlpakaConfig.instance.teleportWarpStyle,
+                v -> { AlpakaConfig.instance.teleportWarpStyle = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.teleportwarp.TeleportWarpFeature.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.teleportwarp.TeleportWarpFeature.STYLE_NAMES[Math.round(val)],
+                "teleport warp style look hyperspace light speed star streaks zoom ripple lens")
+                .choices(net.alpaka.addons.features.teleportwarp.TeleportWarpFeature.STYLE_NAMES));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_strength", "Strength",
+                "How strongly the picture warps.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpStrength,
+                v -> { AlpakaConfig.instance.teleportWarpStrength = v; AlpakaConfig.save(); },
+                0.25f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "teleport warp strength intensity strong weak"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_duration", "Duration",
+                "How long the warp takes to fade.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpDuration,
+                v -> { AlpakaConfig.instance.teleportWarpDuration = v; AlpakaConfig.save(); },
+                0.2f, 1.5f, val -> String.format(Locale.ROOT, "%.2f s", val),
+                "teleport warp duration time long short seconds"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_smooth", "Smooth Teleport",
+                "The camera glides to where you land instead of jumping there. Only the picture moves: you are already at the destination, so aiming and moving work right away.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpSmooth,
+                v -> { AlpakaConfig.instance.teleportWarpSmooth = v; AlpakaConfig.save(); },
+                "teleport smooth glide camera aote aotv transition interpolate skyblocker"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_smooth_time", "Glide Time",
+                "How long the camera takes to glide to where you land.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpSmoothTime,
+                v -> { AlpakaConfig.instance.teleportWarpSmoothTime = v; AlpakaConfig.save(); },
+                50.0f, 500.0f, val -> String.format(Locale.ROOT, "%.0f ms", val),
+                "teleport smooth glide time duration speed ms milliseconds"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_etherwarp", "Etherwarp",
+                "Plays the effects for an Etherwarp too, not only for the plain teleport.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpEtherwarp,
+                v -> { AlpakaConfig.instance.teleportWarpEtherwarp = v; AlpakaConfig.save(); },
+                "teleport warp etherwarp ether transmission sneak aotv"));
 
         OPTIONS.add(new ConfigOption("Damage Tags", ConfigCategory.COSMETICS));
 

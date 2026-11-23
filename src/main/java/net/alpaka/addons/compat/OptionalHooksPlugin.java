@@ -11,7 +11,9 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The plugin of {@code alpaka.cosmetic.mixins.json}: the hooks that only change how something looks
@@ -52,6 +54,17 @@ public final class OptionalHooksPlugin implements IMixinConfigPlugin {
             "Optional hook {} found nothing to hook into, so that effect is off. "
                     + "Another mod got there first, or this Minecraft version moved the code.", hook));
 
+    /**
+     * The mixins whose hooks only work together, so the feature has to ask whether they all
+     * applied ({@link #hooked}): Smooth Font measures a glyph in one class and renders its bitmap in
+     * another, and the two have to agree or vanilla refuses the bitmap.
+     */
+    private static final Set<String> ASKED_ABOUT = Set.of(
+            "net.alpaka.addons.mixin.TrueTypeGlyphProviderMixin",
+            "net.alpaka.addons.mixin.NativeImageFontMixin");
+    /** The target class of each of those mixins, kept to look at when asked. */
+    private static final Map<String, ClassNode> KEPT = new ConcurrentHashMap<>();
+
     @Override
     public void onLoad(String mixinPackage) {
     }
@@ -89,6 +102,7 @@ public final class OptionalHooksPlugin implements IMixinConfigPlugin {
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
         try {
             String target = dotted(targetClassName);
+            if (ASKED_ABOUT.contains(mixinClassName)) KEPT.put(mixinClassName, targetClass);
             CHECK.checkFinished(target);
             CHECK.applied(mixinClassName, dotted(mixinInfo.getTargetClasses()), target, targetClass,
                     handlers(mixinInfo.getClassNode(0)));
@@ -107,6 +121,21 @@ public final class OptionalHooksPlugin implements IMixinConfigPlugin {
             CHECK.checkAll(OptionalHooksPlugin::awaitDefined);
         } catch (RuntimeException e) {
             LOGGER.debug("Could not check the optional hooks", e);
+        }
+    }
+
+    /**
+     * Whether {@code handler} of {@code mixin} (one of {@link #ASKED_ABOUT}) found its target. Only
+     * meaningful once that target class is loaded, when Mixin is done with it; false while it is
+     * not, or when Mixin never got to it.
+     */
+    public static boolean hooked(String mixin, String handler) {
+        try {
+            ClassNode target = KEPT.get(mixin);
+            return target != null && HookCheck.called(target, List.of(handler)).contains(handler);
+        } catch (RuntimeException e) {
+            LOGGER.debug("Could not check the hook {}.{}", mixin, handler, e);
+            return false;
         }
     }
 

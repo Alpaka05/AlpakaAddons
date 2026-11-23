@@ -2839,14 +2839,14 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.rareDropAnimationEffects = v; AlpakaConfig.save(); },
                 "rare drop animation special effects glow rays sparkles light rainbow beam slayer colors off"));
 
-        OPTIONS.add(new ConfigOption("Teleport Warp", ConfigCategory.COSMETICS));
+        OPTIONS.add(new ConfigOption("Teleport Effects", ConfigCategory.COSMETICS));
 
-        OPTIONS.add(new ConfigOption("teleport_warp", "Teleport Warp",
+        OPTIONS.add(new ConfigOption("teleport_warp", "Teleport Effects",
                 "Effects for when you teleport with an item, like the Aspect of the End or Aspect of the Void: the picture warps for a moment, and the camera glides to where you land. Only you see them; the teleport itself is unchanged.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.teleportWarpEnabled,
                 v -> { AlpakaConfig.instance.teleportWarpEnabled = v; AlpakaConfig.save(); },
-                "teleport warp effect distortion screen aote aotv aspect of the end void instant transmission etherwarp hyperion wither impact zoom lens"));
+                "teleport effects warp effect distortion screen aote aotv aspect of the end void instant transmission etherwarp hyperion wither impact zoom lens"));
 
         OPTIONS.add(new ConfigOption("teleport_warp_screen_effect", "Screen Effect",
                 "Warps the picture for a moment, in the style chosen below.",

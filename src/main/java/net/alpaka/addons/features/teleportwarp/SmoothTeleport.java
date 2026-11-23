@@ -8,7 +8,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Smooth Teleport, part of Teleport Warp: after an item teleport the camera glides from where the
+ * Smooth Teleport, part of Teleport Effects: after an item teleport the camera glides from where the
  * player stood to where they landed instead of jumping there, like Skyblocker's responsive Smooth
  * AOTE.
  *

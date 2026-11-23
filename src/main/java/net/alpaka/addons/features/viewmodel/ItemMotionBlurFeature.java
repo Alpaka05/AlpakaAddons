@@ -7,6 +7,7 @@ import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.mixin.RenderPipelinesAccessor;
 import net.alpaka.addons.mixin.RenderTypeInvoker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -125,6 +126,21 @@ public final class ItemMotionBlurFeature {
     private static final int ATLAS_BLOCKS = 1;
     private static final RenderType[] ghostLit = new RenderType[2];
     private static final RenderType[] ghostUnlit = new RenderType[2];
+    /** The two ghost pipelines, shared by both atlases; registered once, see {@link #init}. */
+    private static RenderPipeline ghostPipeline;
+    private static RenderPipeline ghostUnlitPipeline;
+
+    /**
+     * Builds and registers the ghost pipelines up front, so they are compiled with vanilla's while
+     * the game loads. Built on the first swing instead, compiling them stalled that frame, which
+     * shows most on MoltenVK.
+     */
+    public static void init() {
+        for (int atlas = ATLAS_ITEMS; atlas <= ATLAS_BLOCKS; atlas++) {
+            ghostType(atlas, false);
+            ghostType(atlas, true);
+        }
+    }
 
     public static boolean isEnabled() {
         return AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemMotionBlurEnabled;
@@ -347,7 +363,11 @@ public final class ItemMotionBlurFeature {
         try {
             if (unlit) {
                 // Same pipeline the lighting feature draws the unlit hand item with, minus depth write.
-                RenderPipeline pipeline = cloneWithoutDepthWrite(RenderPipelines.BREEZE_WIND, "item_ghost_unlit");
+                if (ghostUnlitPipeline == null) {
+                    ghostUnlitPipeline = RenderPipelinesAccessor.alpaka$register(
+                            cloneWithoutDepthWrite(RenderPipelines.BREEZE_WIND, "item_ghost_unlit"));
+                }
+                RenderPipeline pipeline = ghostUnlitPipeline;
                 RenderSetup setup = RenderSetup.builder(pipeline)
                         .withTexture("Sampler0", sheet)
                         .setTextureTransform(new TextureTransform.OffsetTextureTransform(0.0f, 0.0f))
@@ -356,7 +376,10 @@ public final class ItemMotionBlurFeature {
                         .createRenderSetup();
                 return RenderTypeInvoker.alpaka$create("alpaka_item_ghost_unlit", setup);
             }
-            RenderPipeline pipeline = cloneWithoutDepthWrite(RenderPipelines.ITEM_TRANSLUCENT, "item_ghost");
+            if (ghostPipeline == null) {
+                ghostPipeline = RenderPipelinesAccessor.alpaka$register(cloneWithoutDepthWrite(RenderPipelines.ITEM_TRANSLUCENT, "item_ghost"));
+            }
+            RenderPipeline pipeline = ghostPipeline;
             RenderSetup setup = RenderSetup.builder(pipeline)
                     .withTexture("Sampler0", sheet)
                     .useLightmap()

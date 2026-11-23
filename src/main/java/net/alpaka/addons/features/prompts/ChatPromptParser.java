@@ -76,19 +76,17 @@ public final class ChatPromptParser {
      * @param caller  who the Abiphone last announced, if it did a moment ago, else null
      */
     public static ChatPrompt parse(Component message, String npcName, String npcLine, String caller) {
+        // Nearly every chat line has nothing a key could answer: found out before anything is built.
+        if (message.visit(CLICKABLE, Style.EMPTY).isEmpty()) return null;
+
         List<Piece> pieces = new ArrayList<>();
         message.visit((style, text) -> {
             pieces.add(new Piece(strip(text), style.getClickEvent(), style.getHoverEvent()));
             return Optional.empty();
         }, Style.EMPTY);
 
-        boolean clickable = false;
         StringBuilder joined = new StringBuilder();
-        for (Piece piece : pieces) {
-            joined.append(piece.text());
-            clickable |= answers(piece.click());
-        }
-        if (!clickable) return null;
+        for (Piece piece : pieces) joined.append(piece.text());
         String plain = joined.toString();
 
         ChatPrompt request = request(pieces, plain);
@@ -220,6 +218,11 @@ public final class ChatPromptParser {
         }
         return choices;
     }
+
+    private static final Optional<Boolean> FOUND = Optional.of(Boolean.TRUE);
+    /** Stops at the first part of a message with a click event a key may send. */
+    private static final net.minecraft.network.chat.FormattedText.StyledContentConsumer<Boolean> CLICKABLE =
+            (style, text) -> answers(style.getClickEvent()) ? FOUND : Optional.empty();
 
     /** Whether a click event is one a key may send: a command, or an NPC dialog's click action. */
     static boolean answers(ClickEvent click) {

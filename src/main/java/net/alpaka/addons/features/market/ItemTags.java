@@ -179,6 +179,11 @@ public final class ItemTags {
         return List.copyOf(all);
     }
 
+    /** Whether SkyCofl's names are in, so a name they don't know stays unknown. */
+    public static boolean namesLoaded() {
+        return bazaarByName != null && auctionByName != null;
+    }
+
     /** Whether a list the suggestions need is on its way: SkyCofl's names, or Hypixel's word on which are plain items. */
     public static boolean loading() {
         return fetching || ItemIcons.loading();

@@ -223,9 +223,20 @@ final class AlpakaApi {
             }
         }
         if (login != null && !login.isDone()) return login;
-        login = CompletableFuture.supplyAsync(AlpakaApi::logIn);
+        login = CompletableFuture.supplyAsync(AlpakaApi::logIn, LOGIN);
         return login;
     }
+
+    /**
+     * The login waits on Mojang and the API in turn, up to a minute with its retries. It gets a
+     * thread of its own: on the shared pool it would hold up everything else the mod and the game
+     * hand there meanwhile (the networth, reading the kept profile).
+     */
+    private static final Executor LOGIN = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "Alpaka API login");
+        t.setDaemon(true);
+        return t;
+    });
 
     private static String logIn() {
         Minecraft mc = Minecraft.getInstance();

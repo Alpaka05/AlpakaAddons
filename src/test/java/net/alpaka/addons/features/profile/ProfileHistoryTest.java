@@ -75,4 +75,25 @@ class ProfileHistoryTest {
         peach.selectedAt = 3_000;
         assertEquals("b135", ProfileHistory.lastProfile(entries, "alpakaa"));
     }
+
+    @Test
+    void pruningDropsProfilesNotLookedAtForAYearAndThinsTheRest() {
+        long now = 1_000 * ProfileHistory.DAY;
+        ProfileHistory.Entry stale = new ProfileHistory.Entry();
+        stale.points.add(at(now - 400 * ProfileHistory.DAY, 1));
+        ProfileHistory.Entry viewed = new ProfileHistory.Entry();
+        viewed.points.add(at(now - 400 * ProfileHistory.DAY, 1));
+        viewed.lastViewed = now - 10 * ProfileHistory.DAY;
+        ProfileHistory.Entry busy = new ProfileHistory.Entry();
+        // Hourly for 100 days, never thinned since nobody looked at it again.
+        for (long t = now - 100 * ProfileHistory.DAY; t <= now - 50 * ProfileHistory.DAY; t += ProfileHistory.HOUR) busy.points.add(at(t, t));
+        int before = busy.points.size();
+        java.util.Map<String, ProfileHistory.Entry> entries = new java.util.HashMap<>(java.util.Map.of(
+                "a:stale", stale, "a:viewed", viewed, "b:busy", busy));
+        assertTrue(ProfileHistory.prune(entries, now));
+        assertEquals(java.util.Set.of("a:viewed", "b:busy"), entries.keySet());
+        assertTrue(busy.points.size() < before / 4, "thinned to " + busy.points.size());
+        // Nothing more to do the second time.
+        assertTrue(!ProfileHistory.prune(entries, now));
+    }
 }

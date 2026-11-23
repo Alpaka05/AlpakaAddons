@@ -86,6 +86,11 @@ public final class ProfileSession {
     private volatile String skykingsKeyUsed = null;
     /** Bumped whenever something a graph draws from changes, to drop cached series. */
     private volatile int version;
+    /**
+     * Guards the graphs' cache only. The render thread asks for series every frame, so it must not
+     * wait on the session's own lock, under which a load puts a new profile on show.
+     */
+    private final Object seriesLock = new Object();
     private final Map<String, List<ProfileHistory.Point>> seriesCache = new HashMap<>();
     private int seriesVersion = -1;
 
@@ -105,14 +110,21 @@ public final class ProfileSession {
         String account = AlpakaApi.currentUuid();
         if (account == null || !ProfileApi.allowed()) return;
         CompletableFuture.supplyAsync(() -> ProfileCache.read(account)).thenAccept(kept -> {
-            if (kept == null) return;
+            if (kept == null || loads.get() != load || answer != null) return;
+            Decoded decoded;
+            try {
+                decoded = decode(kept);
+            } catch (RuntimeException e) {
+                net.alpaka.addons.AlpakaAddons.LOGGER.debug("Profile Dashboard: the kept profile couldn't be shown: {}", e.toString());
+                return;
+            }
             synchronized (this) {
                 if (loads.get() != load || answer != null || state != State.LOADING) return;
                 try {
                     readAccount(HypixelProfile.account(kept), null, System.currentTimeMillis());
                     provisional = true;
                     refreshing = true;
-                    apply(kept);
+                    apply(kept, decoded);
                     state = State.READY;
                 } catch (RuntimeException e) {
                     // A kept answer that doesn't read is only not shown; the new one comes anyway.
@@ -171,9 +183,11 @@ public final class ProfileSession {
         String player = uuid != null ? uuid : query;
         // The profile shown the last time is most likely the one shown now, which lets the API ask
         // Hypixel for everything at once. With Network Features off nothing is asked, so nothing is looked up.
-        String hint = wantedProfile != null || !ProfileApi.allowed() ? null
-                : profileId != null ? profileId : ProfileHistory.lastProfile(player);
-        AlpakaApi.dashboard(player, wantedProfile, hint, fresh).thenCombine(bingo, (first, event) -> {
+        // The history is a file of its own: read off the render thread, which opens the dashboard.
+        String shown = profileId;
+        CompletableFuture<String> hint = wantedProfile != null || !ProfileApi.allowed() ? CompletableFuture.completedFuture(null)
+                : shown != null ? CompletableFuture.completedFuture(shown) : ProfileHistory.lastProfileAsync(player);
+        hint.thenCompose(h -> AlpakaApi.dashboard(player, wantedProfile, h, fresh)).thenCombine(bingo, (first, event) -> {
             readAccount(HypixelProfile.account(first), event, System.currentTimeMillis());
             return first;
         }).thenCompose(first -> {
@@ -186,6 +200,16 @@ public final class ProfileSession {
             if (id.equals(Json.str(first, "profile.profile_id"))) return CompletableFuture.completedFuture(first);
             return AlpakaApi.dashboard(player, id, null, fresh);
         }).whenComplete((loaded, failure) -> {
+            // The inventories are unpacked (Base64, gzip, NBT) before the lock, not under it.
+            Decoded decoded = null;
+            RuntimeException undecodable = null;
+            if (failure == null && loads.get() == load) {
+                try {
+                    decoded = decode(loaded);
+                } catch (RuntimeException e) {
+                    undecodable = e;
+                }
+            }
             synchronized (this) {
                 // Another load followed this one (another profile, a refresh): its answer counts.
                 if (loads.get() != load) return;
@@ -201,7 +225,8 @@ public final class ProfileSession {
                     return;
                 }
                 try {
-                    apply(loaded);
+                    if (undecodable != null) throw undecodable;
+                    apply(loaded, decoded);
                 } catch (RuntimeException e) {
                     // An answer shaped unlike what is expected must not leave the dashboard on Loading.
                     fail(e);
@@ -229,21 +254,31 @@ public final class ProfileSession {
         return (name, e) -> net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't read {} of {}: {}", name, playerName, e.toString());
     }
 
+    /** An answer's inventories and museum, unpacked; null for a museum that didn't come along. */
+    private record Decoded(Map<String, JsonElement> inventories, JsonObject museum) {}
+
+    /**
+     * Unpacks every inventory of an answer, and its museum if it came along. Hundreds of items of a
+     * big profile take a while, so this runs on the load's thread before the session is locked.
+     */
+    private Decoded decode(JsonElement loaded) {
+        Map<String, JsonElement> read = HypixelProfile.inventories(loaded, unreadable());
+        JsonObject museum = Json.at(loaded, "museum") != null ? HypixelProfile.museum(loaded, unreadable()) : null;
+        return new Decoded(read, museum);
+    }
+
     /**
      * Puts an answer of the API on show: the profile in it, its inventories, and its museum if it
      * came along (a kept answer has it). Without one, the museum on show stays while the profile is
      * the same, and the one asked for next replaces it.
      */
-    private synchronized void apply(JsonElement loaded) {
+    private synchronized void apply(JsonElement loaded, Decoded decoded) {
         String sent = Json.str(loaded, "profile.profile_id");
         // Whichever profile came is the one on show, should the one asked for be gone.
         profileId = sent;
-        Map<String, JsonElement> read = HypixelProfile.inventories(loaded, unreadable());
-        boolean museumCame = Json.at(loaded, "museum") != null;
-        if (museumCame) {
-            JsonObject museum = HypixelProfile.museum(loaded, unreadable());
-            if (!Json.obj(museum, "items").isEmpty()) read.put("museum", museum);
-        }
+        Map<String, JsonElement> read = new java.util.LinkedHashMap<>(decoded.inventories());
+        boolean museumCame = decoded.museum() != null;
+        if (museumCame && !Json.obj(decoded.museum(), "items").isEmpty()) read.put("museum", decoded.museum());
         // A refresh keeps the networth on show until the new one is worked out, and the museum
         // until the new one is there.
         ProfileData shown = data;
@@ -720,12 +755,19 @@ public final class ProfileSession {
      * One metric over time for the profile on show: the dashboard's own snapshots together with
      * Soopy's and SkyKings' history, oldest first.
      */
-    public synchronized List<ProfileHistory.Point> series(String metric) {
+    public List<ProfileHistory.Point> series(String metric) {
+        synchronized (seriesLock) {
+            return seriesOf(metric);
+        }
+    }
+
+    private List<ProfileHistory.Point> seriesOf(String metric) {
         ProfileData d = data;
         if (d == null) return List.of();
-        if (seriesVersion != version) {
+        int current = version;
+        if (seriesVersion != current) {
             seriesCache.clear();
-            seriesVersion = version;
+            seriesVersion = current;
         }
         return seriesCache.computeIfAbsent(metric, m -> {
             List<ProfileHistory.Point> merged = new ArrayList<>(ProfileHistory.series(d.uuid, d.profileId, m));

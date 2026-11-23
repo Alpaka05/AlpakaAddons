@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Where the player stood before and after a server teleport, for Teleport Warp. The position is
+ * Where the player stood before and after a server teleport, for Teleport Effects. The position is
  * read just before vanilla applies the packet - past its hand-off from the network thread, so on
  * the client thread only - and again at the return. Only observed; vanilla applies and answers the
  * teleport as always.

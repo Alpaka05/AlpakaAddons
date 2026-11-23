@@ -34,8 +34,9 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * Teleport Warp: the picture warps for a moment after the player teleports with an item, like the
- * Aspect of the End's Instant Transmission or the Aspect of the Void's Etherwarp.
+ * Teleport Effects, the screen effect: the picture warps for a moment after the player teleports
+ * with an item, like the Aspect of the End's Instant Transmission or the Aspect of the Void's
+ * Etherwarp.
  *
  * Two styles, one shader each: Warp ({@code teleport_warp}) pulls the picture towards the middle
  * with a ring running outward; Hyperspace ({@code teleport_hyperspace}) zooms in with streaks of

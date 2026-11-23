@@ -870,6 +870,11 @@ public final class DevScreenshotTour {
             new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_PICKAXE, 0.25f, 0.0f, 1.0f), () -> true, 30),
             new Stop("swing-trail-pickaxe", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> {}, () -> true, 20),
+            // Turning fast while striking: the hand lags behind the view, which must move the
+            // sweep along with the item and not draw it out across the screen.
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, 0.0f, 1.0f), () -> true, 30),
+            new Stop("swing-trail-turning", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> tourTurn(60.0f), 5),
+            new Stop(null, DevScreenshotTour::tourTurnBack, () -> true, 20),
             // At night, where a white sweep stands out.
             new Stop(null, () -> {
                 swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, 0.0f, 1.0f);
@@ -1382,6 +1387,24 @@ public final class DevScreenshotTour {
         if (server != null) {
             server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "time set " + time));
         }
+    }
+
+    /** How far {@link #tourTurn} has turned the player, to turn back by. */
+    private static float tourTurned = 0.0f;
+
+    /** Turns the player's view by so many degrees, the way moving the mouse does. Always true, to serve as a stop's condition that turns every tick. */
+    private static boolean tourTurn(float degrees) {
+        net.minecraft.client.player.LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.setYRot(player.getYRot() + degrees);
+            player.yRotO += degrees;
+            tourTurned += degrees;
+        }
+        return true;
+    }
+
+    private static void tourTurnBack() {
+        tourTurn(-tourTurned);
     }
 
     /** An item in hand with the swing trail on, swinging at the given speed, turned and scaled as given. */

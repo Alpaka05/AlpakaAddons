@@ -32,7 +32,7 @@ class SwingTrailRibbonTest {
     }
 
     private int build(float width) {
-        floats = trail.build(now, TEXEL, LIFE, width, quads);
+        floats = trail.build(now, TEXEL, LIFE, width, 0.0f, 0.0f, 0.0f, quads);
         return floats;
     }
 
@@ -140,6 +140,25 @@ class SwingTrailRibbonTest {
         assertEquals(0.0f, minX(), EPS);
         assertEquals(1.0f, maxX(), EPS);
         assertEquals(-4 * TEXEL, depthAt(0.5f), EPS);
+    }
+
+    @Test
+    void theSweepFacesTheViewerWhereverTheyAre() {
+        // The grip end is below the tip and nearer; the viewer is straight above the strike.
+        for (int i = 0; i <= 2; i++) {
+            now += 10 * MS;
+            trail.update(now, i * 0.1f, new float[]{i * 0.5f, 0, AWAY, i * 0.5f, -1, AWAY + 1}, TEXEL, LIFE);
+        }
+        floats = trail.build(now, TEXEL, LIFE, 1.0f, 0.5f, 5.0f, AWAY, quads);
+        assertTrue(floats > 0);
+        float nearest = AWAY;
+        for (int i = 0; i < floats; i += SwingTrailRibbon.VERTEX_FLOATS) {
+            // Seen from above it lies flat, and reaches towards the side the grip end is on.
+            assertEquals(0.0f, quads[i + 1], EPS);
+            assertTrue(quads[i + 2] >= AWAY - EPS, "z=" + quads[i + 2]);
+            nearest = Math.max(nearest, quads[i + 2]);
+        }
+        assertEquals(AWAY + 4 * TEXEL, nearest, EPS);
     }
 
     @Test

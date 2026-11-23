@@ -308,6 +308,20 @@ public class ItemInHandRendererMixin {
             "Lnet/minecraft/client/renderer/item/ItemStackRenderState;submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;III)V";
 
     /**
+     * Gives the swing trail the pose the arm is placed in, before anything of the arm or the item
+     * is added to it: the view with its bobbing and the sway of the hand.
+     */
+    @Inject(method = "submitArmWithItem", at = @At("HEAD"))
+    private void alpaka$noteArmPose(
+            AbstractClientPlayer player, float tickProgress, float pitch, InteractionHand hand,
+            float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            SubmitNodeCollector queue, int light, CallbackInfo ci) {
+        if (player == Minecraft.getInstance().player) {
+            SwingTrailFeature.noteArmPose(matrices.last().pose());
+        }
+    }
+
+    /**
      * Tells the motion blur and the swing trail which hand is about to be drawn and how far into its swing it is. Hooked
      * at the renderItem call rather than at HEAD so the swing progress seen here is the one the
      * ModifyVariable above has already adjusted.

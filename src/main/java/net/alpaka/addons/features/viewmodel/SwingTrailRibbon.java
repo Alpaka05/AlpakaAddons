@@ -21,7 +21,8 @@ package net.alpaka.addons.features.viewmodel;
  * The few frames a strike takes are joined by a curve, not by straight lines, or the sweep would
  * show every frame as a corner.
  *
- * Positions are in the space the caller draws the item in, with the viewer at its origin.
+ * Positions are in whatever space the caller follows the item in; this class only measures in it
+ * and is told where the viewer is.
  */
 final class SwingTrailRibbon {
 
@@ -248,20 +249,22 @@ final class SwingTrailRibbon {
      * @param texel     the size one pixel of the item's texture is drawn at
      * @param lifeNanos how long a sweep stays after it was drawn
      * @param width     how thick the sweep is, 1 for the usual thickness
+     * @param eyeX      where the viewer is
      * @param out       receives the vertices, at least {@link #MAX_FLOATS} floats
      * @return the number of floats written
      */
-    int build(long now, float texel, long lifeNanos, float width, float[] out) {
+    int build(long now, float texel, long lifeNanos, float width, float eyeX, float eyeY, float eyeZ, float[] out) {
         int written = 0;
         for (Stroke stroke : strokes) {
             if (stroke.count >= 2) {
-                written = build(stroke, now, texel, lifeNanos, width, out, written);
+                written = build(stroke, now, texel, lifeNanos, width, eyeX, eyeY, eyeZ, out, written);
             }
         }
         return written;
     }
 
-    private int build(Stroke stroke, long now, float texel, long lifeNanos, float width, float[] out, int written) {
+    private int build(Stroke stroke, long now, float texel, long lifeNanos, float width,
+                      float eyeX, float eyeY, float eyeZ, float[] out, int written) {
         // The frames, joined by a curve.
         int segments = stroke.count - 1;
         int points = segments * PIECES + 1;
@@ -349,7 +352,8 @@ final class SwingTrailRibbon {
             float tx = places[after] - places[before];
             float ty = places[after + 1] - places[before + 1];
             float tz = places[after + 2] - places[before + 2];
-            float x = places[p], y = places[p + 1], z = places[p + 2];
+            // The line of sight to this place.
+            float x = places[p] - eyeX, y = places[p + 1] - eyeY, z = places[p + 2] - eyeZ;
             float nx = ty * z - tz * y;
             float ny = tz * x - tx * z;
             float nz = tx * y - ty * x;
@@ -370,7 +374,8 @@ final class SwingTrailRibbon {
                 across[n + 1] = 0.0f;
                 across[n + 2] = 0.0f;
             }
-            side += across[n] * (places[p + 3] - x) + across[n + 1] * (places[p + 4] - y) + across[n + 2] * (places[p + 5] - z);
+            side += across[n] * (places[p + 3] - places[p]) + across[n + 1] * (places[p + 4] - places[p + 1])
+                    + across[n + 2] * (places[p + 5] - places[p + 2]);
         }
         float sign = side < 0.0f ? -1.0f : 1.0f;
 

@@ -13,6 +13,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 
@@ -34,9 +36,14 @@ import java.util.Map;
  * same pose as the item, the sweep hangs on the tip at any size, offset and rotation, and its
  * pixels are the size the item's are drawn at.
  *
- * The sweep is submitted as plain colored quads in the space the item's pose ends in, so it stays
- * where it was on screen while the camera turns, like the hand itself. It tests against the hand
- * item's depth but writes none: the item covers the part behind it.
+ * The sweep is kept in the space the arm is placed in, not in the view's. The two differ by what
+ * the game does to the whole hand: the bobbing of the view, and the sway that lets the hand lag
+ * behind the camera when it turns. Kept in the view's space, turning while striking drew the sway
+ * into the sweep - turning fast, right across the screen. Kept with the arm, the sweep moves with
+ * the item as one and only the swing itself draws it.
+ *
+ * It is submitted as plain colored quads. It tests against the hand item's depth but writes none:
+ * the item covers the part behind it.
  *
  * An item drawn by a special renderer (a head, a shield) has no quads to find a tip in and gets no
  * trail.
@@ -59,6 +66,13 @@ public final class SwingTrailFeature {
     private static int currentHand = 0;
     private static float currentProgress = 0.0f;
 
+    /**
+     * The pose the arm renderer was handed this hand in - the view with its bobbing and sway, before
+     * anything of the arm or the item - and the way back from the view into it.
+     */
+    private static final Matrix4f armPose = new Matrix4f();
+    private static final Matrix4f fromView = new Matrix4f();
+
     /** ItemSubmits of this frame's hand item, one per model layer. */
     private static final List<ItemFeatureRenderer.Submit> currentSubmits = new ArrayList<>();
 
@@ -67,7 +81,7 @@ public final class SwingTrailFeature {
     /** The tip each hand's trail was last recorded for; another one means another item. */
     private static final SwingTrailTip[] lastTips = new SwingTrailTip[2];
 
-    /** The sweep is already where it is drawn, so it is submitted without a pose of its own. */
+    /** The sweep is taken to where it is drawn here, so it is submitted without a pose of its own. */
     private static final PoseStack NO_POSE = new PoseStack();
 
     private static final float[] quads = new float[SwingTrailRibbon.MAX_FLOATS];
@@ -75,6 +89,8 @@ public final class SwingTrailFeature {
     private static final float[] point = new float[6];
     private static float texel;
     private static final Vector3f scratch = new Vector3f();
+    /** Where the viewer is in the arm's space. */
+    private static final Vector3f eye = new Vector3f();
 
     public static boolean isEnabled() {
         return AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemSwingTrailEnabled;
@@ -83,6 +99,11 @@ public final class SwingTrailFeature {
     // ---------------------------------------------------------------------------------------------
     // Hooks from ItemInHandRenderer
     // ---------------------------------------------------------------------------------------------
+
+    /** Called when the arm renderer starts on one hand, with the pose it was handed. */
+    public static void noteArmPose(Matrix4fc pose) {
+        armPose.set(pose);
+    }
 
     /**
      * Called right before the arm renderer hands one hand's item to {@code renderItem}, with the
@@ -122,6 +143,11 @@ public final class SwingTrailFeature {
             if (tip == null) {
                 return;
             }
+            // From the view, where the item's pose ends, into the arm's space.
+            armPose.invert(fromView);
+            move(fromView, point, 0);
+            move(fromView, point, 3);
+            fromView.transformPosition(0.0f, 0.0f, 0.0f, eye);
             long now = System.nanoTime();
             if (tip != lastTips[hand]) {
                 // Another item: its tip is somewhere else, which is no strike from the old one's.
@@ -134,13 +160,18 @@ public final class SwingTrailFeature {
             if (trail.isEmpty()) {
                 return;
             }
-            int floats = trail.build(now, texel, lifeNanos, Mth.clamp(config.itemSwingTrailWidth, MIN_WIDTH, MAX_WIDTH), quads);
+            int floats = trail.build(now, texel, lifeNanos, Mth.clamp(config.itemSwingTrailWidth, MIN_WIDTH, MAX_WIDTH),
+                    eye.x, eye.y, eye.z, quads);
             if (floats == 0) {
                 return;
             }
             // The quads are drawn after this method returns, when the other hand or the next frame
-            // may have written its own already; they get a copy of their own.
+            // may have written its own already; they get a copy of their own, taken to where the
+            // arm is in the view this frame.
             float[] vertices = Arrays.copyOf(quads, floats);
+            for (int i = 0; i < floats; i += SwingTrailRibbon.VERTEX_FLOATS) {
+                move(armPose, vertices, i);
+            }
             // Solid, whatever the color's alpha: the sweep is a particle, not a glow.
             int color = ARGB.opaque(config.itemSwingTrailColor);
             int edge = ARGB.scaleRGB(color, SwingTrailRibbon.EDGE_SHADE);
@@ -153,6 +184,14 @@ public final class SwingTrailFeature {
         } finally {
             currentSubmits.clear();
         }
+    }
+
+    /** Takes the position in three floats of an array through a pose. */
+    private static void move(Matrix4f pose, float[] floats, int at) {
+        pose.transformPosition(floats[at], floats[at + 1], floats[at + 2], scratch);
+        floats[at] = scratch.x;
+        floats[at + 1] = scratch.y;
+        floats[at + 2] = scratch.z;
     }
 
     /**

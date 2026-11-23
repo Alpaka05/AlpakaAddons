@@ -26,7 +26,7 @@ class RareDropsTest {
     fun slayerDropWithMagicFindInBrackets() {
         val found = parse("PRAY TO RNGESUS DROP! (Judgement Core) (+412% ✯ Magic Find)")!!
         assertEquals("Judgement Core", found.name)
-        assertTrue(RareDrops.alwaysRare(found))
+        assertTrue(RareDrops.rareByTier(found))
     }
 
     @Test
@@ -44,7 +44,19 @@ class RareDropsTest {
         assertEquals("Summoning Eye", parse("RARE DROP! Summoning Eye (+155% ✯ Magic Find)")!!.name)
         assertEquals("Enchanted Diamond", parse("RARE DROP! (2x Enchanted Diamond)")!!.name)
         assertEquals("Bite Rune I", parse("RARE DROP! (◆ Bite Rune I)")!!.name)
-        assertFalse(RareDrops.alwaysRare(parse("RARE DROP! Summoning Eye")!!))
+        assertFalse(RareDrops.rareByTier(parse("RARE DROP! Summoning Eye")!!))
+    }
+
+    @Test
+    fun priceDecidesOverTier() {
+        // Snake Rune I comes as a crazy rare drop from Revenant Horror but sells for little.
+        val rune = parse("CRAZY RARE DROP! (◆ Snake Rune I) (+120% ✯ Magic Find)")!!
+        assertEquals("Snake Rune I", rune.name)
+        assertFalse(RareDrops.valuable(rune, 40_000.0, 500_000.0))
+        assertTrue(RareDrops.valuable(rune, null, 500_000.0))
+        val eye = parse("RARE DROP! Summoning Eye")!!
+        assertTrue(RareDrops.valuable(eye, 900_000.0, 500_000.0))
+        assertFalse(RareDrops.valuable(eye, null, 500_000.0))
     }
 
     @Test
@@ -52,7 +64,7 @@ class RareDropsTest {
         val found = parse("PET DROP! Ender Dragon (+120% ✯ Magic Find)")!!
         assertEquals(Kind.PET, found.kind)
         assertEquals("Ender Dragon", found.name)
-        assertTrue(RareDrops.alwaysRare(found))
+        assertTrue(RareDrops.rareByTier(found))
     }
 
     @Test

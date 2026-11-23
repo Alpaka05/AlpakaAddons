@@ -9,12 +9,17 @@ this server. Not affiliated with Hypixel.
 - `GET /v1/auth/challenge` hands out a random server id, good for one login within a minute
   (ten per address in ten minutes).
 - `GET /v1/auth` logs a player in. The mod tells Mojang's session server that it joins a server
-  with that id (`joinServer`, as joining any server does) and sends the id with the player's name in
-  `X-Minecraft-Username` and `X-Minecraft-Server`. The server checks that it handed the id out and
-  that it wasn't used yet, asks Mojang (`hasJoined`) and, if Mojang confirms, answers with a token
-  for 12 hours. The player's access token never reaches this server. The one-time id is what keeps
-  the owner of some other server from logging in here as the players who join theirs: their server
-  id is that server's hash, which this server never handed out. The token names the player and
+  whose id is worked out from the challenge (`joinServer`, as joining any server does; the id is
+  `sha1("alpaka-api-login:" + challenge)` in hex) and sends the challenge with the player's name in
+  `X-Minecraft-Username` and `X-Minecraft-Server`, and `X-Alpaka-Login: 2`. The server checks that
+  it handed the challenge out and that it wasn't used yet, asks Mojang (`hasJoined`) about the id
+  worked out from it and, if Mojang confirms, answers with a token for 12 hours. The player's access
+  token never reaches this server. The one-time challenge is what keeps the owner of some other
+  server from logging in here as the players who join theirs: their server id is that server's
+  hash, which this server never handed out. Working the id out in the mod keeps it the other way
+  round: whoever answers as this server can't hand out a real server's hash as a challenge and be let
+  into that server as the player. Without `X-Alpaka-Login: 2` (2.0.0-alpha.1) Mojang is asked about
+  the challenge itself, until no one runs that version any more. The token names the player and
   when it ends, signed with the server's secret (`Sessions`), so nothing is stored about it and it
   outlives a restart; the mod keeps it for the next game.
 - `GET /v1/dashboard/<name or uuid>` with `Authorization: Bearer <token>` answers with everything

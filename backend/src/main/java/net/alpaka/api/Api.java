@@ -191,9 +191,12 @@ final class Api {
         if (!Ids.username(username) || !Ids.serverId(serverId)) return Response.error(400, "Missing username or server id");
         // Only a challenge this server handed out, once: see Challenges for why.
         if (!challenges.consume(serverId)) return Response.error(401, "Unknown or used challenge");
+        // A mod that says so told Mojang the id worked out from the challenge (see Challenges);
+        // 2.0.0-alpha.1 still tells it the challenge itself, until no one runs that any more.
+        String joined = "2".equals(r.header("X-Alpaka-Login")) ? Challenges.loginServerId(serverId) : serverId;
         String uuid;
         try {
-            uuid = Ids.uuid(mojang.hasJoined(username, serverId));
+            uuid = Ids.uuid(mojang.hasJoined(username, joined));
         } catch (IOException e) {
             return Response.error(503, "Mojang can't be reached");
         }

@@ -129,10 +129,14 @@ class ApiTest {
         Api.Response c = get("/v1/auth/challenge", Map.of());
         assertEquals(200, c.status(), c.body());
         String challenge = field(c.body(), "challenge");
-        joined.put("Alpakaa", challenge);
-        Api.Response r = get("/v1/auth", Map.of("X-Minecraft-Username", "Alpakaa", "X-Minecraft-Server", challenge));
+        joined.put("Alpakaa", Challenges.loginServerId(challenge));
+        Api.Response r = get("/v1/auth", loginHeaders(challenge));
         assertEquals(200, r.status(), r.body());
         return field(r.body(), "token");
+    }
+
+    private static Map<String, String> loginHeaders(String challenge) {
+        return Map.of("X-Minecraft-Username", "Alpakaa", "X-Minecraft-Server", challenge, "X-Alpaka-Login", "2");
     }
 
     private Map<String, String> auth() {
@@ -177,15 +181,33 @@ class ApiTest {
     @Test
     void aChallengeWorksOnceAndNotForLong() {
         String challenge = field(get("/v1/auth/challenge", Map.of()).body(), "challenge");
-        joined.put("Alpakaa", challenge);
-        Map<String, String> headers = Map.of("X-Minecraft-Username", "Alpakaa", "X-Minecraft-Server", challenge);
+        joined.put("Alpakaa", Challenges.loginServerId(challenge));
+        Map<String, String> headers = loginHeaders(challenge);
         assertEquals(200, get("/v1/auth", headers).status());
         assertEquals(401, get("/v1/auth", headers).status());
 
         String late = field(get("/v1/auth/challenge", Map.of()).body(), "challenge");
-        joined.put("Alpakaa", late);
+        joined.put("Alpakaa", Challenges.loginServerId(late));
         now.addAndGet(Challenges.LIFETIME_MS + 1);
-        assertEquals(401, get("/v1/auth", Map.of("X-Minecraft-Username", "Alpakaa", "X-Minecraft-Server", late)).status());
+        assertEquals(401, get("/v1/auth", loginHeaders(late)).status());
+    }
+
+    @Test
+    void theModTellsMojangAnIdWorkedOutFromTheChallenge() {
+        // The same value the mod's own test expects (AlpakaApiTest): both sides must agree.
+        assertEquals("90fe3bc0abcf59105e79f8548cec1a1ef1e6724d",
+                Challenges.loginServerId("0123456789abcdef0123456789abcdef01234567"));
+        // A new mod that joined the challenge itself isn't let in: Mojang must know the worked-out id.
+        String challenge = field(get("/v1/auth/challenge", Map.of()).body(), "challenge");
+        joined.put("Alpakaa", challenge);
+        assertEquals(401, get("/v1/auth", loginHeaders(challenge)).status());
+    }
+
+    @Test
+    void anOlderModThatJoinsTheChallengeItselfStillLogsIn() {
+        String challenge = field(get("/v1/auth/challenge", Map.of()).body(), "challenge");
+        joined.put("Alpakaa", challenge);
+        assertEquals(200, get("/v1/auth", Map.of("X-Minecraft-Username", "Alpakaa", "X-Minecraft-Server", challenge)).status());
     }
 
     @Test

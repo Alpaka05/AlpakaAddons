@@ -1,5 +1,6 @@
 package net.alpaka.addons.compat.oneconfig;
 
+import net.alpaka.addons.client.gui.AlpakaConfigRegistry;
 import net.alpaka.addons.client.gui.ConfigCategory;
 import net.alpaka.addons.client.gui.ConfigOption;
 import net.alpaka.addons.client.gui.ConfigTree;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.polyfrost.oneconfig.api.config.v1.MetaKeys;
 import org.polyfrost.oneconfig.api.config.v1.MetaKeysKt;
+import org.polyfrost.oneconfig.api.config.v1.Node;
 import org.polyfrost.oneconfig.api.config.v1.Property;
 import org.polyfrost.oneconfig.api.config.v1.Tree;
 import org.polyfrost.oneconfig.api.config.v1.ValueFormatter;
@@ -286,6 +288,36 @@ class OneConfigTreeTest {
         assertNull(tree.get("chat_preview"));
         assertNotNull(tree.get("fullbright"));
         assertEquals("Fullbright Twin", tree.get("fullbright_2").getTitle());
+    }
+
+    /**
+     * The mod's real settings, as OneConfig gets them in the game. Guards a feature added later:
+     * whatever it registers has to build into the tree, show up there and be readable.
+     */
+    @Test
+    void theModsOwnSettingsAllBuildAndCanBeRead() {
+        AlpakaConfig.instance = new AlpakaConfig();
+        Tree real = OneConfigTree.build(ConfigTree.groups(), host);
+        assertTrue(real.map.size() > 300, "the mod's option list did not load: only " + real.map.size() + " rows");
+
+        for (ConfigCategory category : ConfigCategory.values()) {
+            for (ConfigOption option : AlpakaConfigRegistry.getOptions(category, "")) {
+                ConfigOption.Type type = option.getType();
+                if (type == ConfigOption.Type.HEADER || type == ConfigOption.Type.PREVIEW) continue;
+                assertNotNull(real.get(option.getId()), option.getId() + " is in the mod's menu but not in OneConfig's");
+                if (option.isColor() && option.hasColorEffects()) {
+                    assertNotNull(real.get(option.getId() + "_mode"), option.getId() + " has no mode to pick its gradient or rainbow with");
+                }
+            }
+        }
+        for (Node node : real.map.values()) {
+            if (!(node instanceof Property<?> property)) continue;
+            assertNotNull(MetaKeysKt.get(property, MetaKeys.VISUALIZER), property.getID());
+            Object visualizer = MetaKeysKt.get(property, MetaKeys.VISUALIZER);
+            if (visualizer != Visualizer.ButtonVisualizer.class) {
+                assertNotNull(property.get(), property.getID() + " reads nothing");
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")

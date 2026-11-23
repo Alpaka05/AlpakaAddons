@@ -21,8 +21,8 @@ import java.util.concurrent.Executor;
  * (see {@code backend/} in the repository) and the server hands out what the dashboard shows.
  *
  * Logging in works as joining a server does: the API hands out a one-time challenge, the game tells
- * Mojang's session server that the player joins a server with that id, and the API asks Mojang
- * whether they did. The player's access token
+ * Mojang's session server that the player joins a server with an id worked out from it
+ * ({@link #loginServerId}), and the API asks Mojang whether they did. The player's access token
  * only ever goes to Mojang, never to the API. The API then hands out a token of its own for half a
  * day, which is kept on disk for the account it belongs to, so a game started again within that time
  * needs no new login. Only used from the Profile Dashboard, while Network Features is on, and only
@@ -233,8 +233,12 @@ final class AlpakaApi {
         String accessToken = user.getAccessToken();
         if (accessToken != null && accessToken.equals(rejectedAccessToken)) throw new MojangRefused(SESSION_EXPIRED);
         if (System.currentTimeMillis() < mojangBusyUntil) throw new MojangRefused(MOJANG_BUSY);
-        // The server id comes from the API, so a login can't be made from any other server's join.
-        String serverId = challenge();
+        String challenge = challenge();
+        // The game tells Mojang it joins a server id worked out from the challenge, never the
+        // challenge itself: the API could otherwise hand out the hash of a real server's login
+        // (Hypixel's, say) and be let into that server as this player. No challenge leads to a
+        // given server's hash, and the API checks the same id worked out from its own challenge.
+        String serverId = loginServerId(challenge);
         try {
             mc.services().sessionService().joinServer(user.getProfileId(), accessToken, serverId);
         } catch (Exception e) {
@@ -245,7 +249,8 @@ final class AlpakaApi {
                 .timeout(Duration.ofSeconds(20))
                 .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
                 .header("X-Minecraft-Username", user.getName())
-                .header("X-Minecraft-Server", serverId)
+                .header("X-Minecraft-Server", challenge)
+                .header("X-Alpaka-Login", LOGIN_VERSION)
                 .GET()
                 .build();
         HttpResponse<String> response;
@@ -268,6 +273,24 @@ final class AlpakaApi {
             if (uuid != null) save(new Saved(uuid, t, tokenUntil));
         }
         return t;
+    }
+
+    /** Tells the API that Mojang was told {@link #loginServerId}, not the challenge itself. */
+    static final String LOGIN_VERSION = "2";
+
+    /**
+     * The server id a login tells Mojang for an API challenge: SHA-1 of the challenge behind a
+     * prefix of this API's own, as 40 hex digits. The API works it out the same way
+     * ({@code Challenges.loginServerId} in {@code backend/}).
+     */
+    static String loginServerId(String challenge) {
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-1")
+                    .digest(("alpaka-api-login:" + challenge).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     static final String SESSION_EXPIRED = "Couldn't log in to the AlpakaAddons API: Mojang no longer accepts this game's"

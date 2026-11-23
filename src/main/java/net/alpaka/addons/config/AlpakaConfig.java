@@ -178,7 +178,7 @@ public class AlpakaConfig {
     public boolean teleportWarpEnabled = false;
     /** Whether the picture warps (the Style below); Smooth Teleport is switched on its own. */
     public boolean teleportWarpScreenEffect = true;
-    /** Which look: 0 Warp (lens pull and ring), 1 Hyperspace (zoom and light streaks), 2 Dissolve. */
+    /** Which look: 0 Warp (lens pull and ring), 1 Hyperspace (zoom and light streaks). */
     public int teleportWarpStyle = 0;
     /** How strong the warp is, as a factor. */
     public float teleportWarpStrength = 1.0f;

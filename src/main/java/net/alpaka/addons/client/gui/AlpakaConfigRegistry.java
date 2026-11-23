@@ -2856,17 +2856,17 @@ public class AlpakaConfigRegistry {
                 "teleport warp screen effect picture distortion shader"));
 
         OPTIONS.add(new ConfigOption("teleport_warp_style", "Style",
-                "Warp pulls the picture towards the middle while a ripple runs outward. Hyperspace zooms in while streaks of light shoot past to the edges, like a jump to light speed. Dissolve breaks the old place up into sparkling blocks that give way to the new one.",
+                "Warp pulls the picture towards the middle while a ripple runs outward. Hyperspace zooms in while streaks of light shoot past to the edges, like a jump to light speed.",
                 ConfigCategory.COSMETICS,
                 () -> (float) AlpakaConfig.instance.teleportWarpStyle,
                 v -> { AlpakaConfig.instance.teleportWarpStyle = Math.round(v); AlpakaConfig.save(); },
                 0.0f, (float) (net.alpaka.addons.features.teleportwarp.TeleportWarpFeature.STYLE_NAMES.length - 1),
                 val -> net.alpaka.addons.features.teleportwarp.TeleportWarpFeature.STYLE_NAMES[Math.round(val)],
-                "teleport warp style look hyperspace light speed star streaks zoom ripple lens dissolve blocks sparkle beam transition")
+                "teleport warp style look hyperspace light speed star streaks zoom ripple lens")
                 .choices(net.alpaka.addons.features.teleportwarp.TeleportWarpFeature.STYLE_NAMES));
 
         OPTIONS.add(new ConfigOption("teleport_warp_strength", "Strength",
-                "How strong the effect is. For Dissolve, how brightly its edge sparkles.",
+                "How strongly the picture warps.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.teleportWarpStrength,
                 v -> { AlpakaConfig.instance.teleportWarpStrength = v; AlpakaConfig.save(); },
@@ -2874,7 +2874,7 @@ public class AlpakaConfigRegistry {
                 "teleport warp strength intensity strong weak"));
 
         OPTIONS.add(new ConfigOption("teleport_warp_duration", "Duration",
-                "How long the effect lasts.",
+                "How long the warp takes to fade.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.teleportWarpDuration,
                 v -> { AlpakaConfig.instance.teleportWarpDuration = v; AlpakaConfig.save(); },

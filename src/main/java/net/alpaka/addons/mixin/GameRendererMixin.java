@@ -54,7 +54,7 @@ public class GameRendererMixin {
 
     /**
      * The finished world frame - vanilla's own post effects included - just before the HUD is drawn
-     * on it: where Teleport Warp redraws it warped, so the HUD stays still.
+     * on it: where Teleport Effects redraws it warped, so the HUD stays still.
      */
     @Inject(
         method = "render",

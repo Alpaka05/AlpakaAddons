@@ -1,6 +1,6 @@
 #version 330
 
-// The Hyperspace style of Teleport Warp: a jump to light speed. The frame zooms in and blurs
+// The Hyperspace style of Teleport Effects: a jump to light speed. The frame zooms in and blurs
 // outward from the middle, and thin streaks of light shoot past towards the edges, each a dash that
 // grows longer the further out it gets. Everything scales with Amount, so 0 gives back the frame
 // unchanged.

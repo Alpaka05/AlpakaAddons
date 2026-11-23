@@ -101,7 +101,7 @@ class DisableAllFeaturesTest {
             // Wide Health Bar, Always Sprint, Price History
             "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
             "marketPriceHistoryRange",
-            // Teleport Warp
+            // Teleport Effects
             "teleportWarpEtherwarp", "teleportWarpStyle", "teleportWarpScreenEffect", "teleportWarpSmooth",
             // Chest Value: whether it shows, and how
             "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",

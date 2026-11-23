@@ -286,7 +286,6 @@ object RareDropAnimation {
         Sample(Kind.DUNGEON, "Necron's Handle", 0xAA00AA, null),
         Sample(Kind.PET, "Ender Dragon", 0xFFAA00, null),
         Sample(Kind.DROP, "Smoldering VI", 0x5555FF, null),
-        Sample(Kind.DROP, "Pestilence Rune II", 0x5555FF, null),
         Sample(Kind.DROP, "High Class Archfiend Dice", 0xFFAA00, SlayerType.BLAZE),
     )
 

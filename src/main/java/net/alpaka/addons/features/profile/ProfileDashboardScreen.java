@@ -4025,7 +4025,8 @@ public class ProfileDashboardScreen extends Screen {
             ItemStack stack = f.item() != null ? InventoryItems.stack(f.item())
                     : f.pet() != null ? PetIcons.icon(f.pet())
                     : ItemIcons.forItem(f.iconId(), SkyblockUtils.cleanColor(f.name()));
-            if (!stack.isEmpty()) graphics.item(stack, x + 2, ry + 1);
+            // A pet's head is null while its texture is still being looked up.
+            if (stack != null && !stack.isEmpty()) graphics.item(stack, x + 2, ry + 1);
             String where = f.where();
             int whereW = textW(where);
             text(graphics, where, x + w - 8 - whereW, ry + 5, AlpakaStyle.TEXT_MUTED);

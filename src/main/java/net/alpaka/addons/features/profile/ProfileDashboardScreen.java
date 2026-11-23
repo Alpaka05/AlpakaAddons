@@ -644,12 +644,13 @@ public class ProfileDashboardScreen extends Screen {
         } else {
             text(graphics, "Profile", x + PAD, rowY, AlpakaStyle.fade(AlpakaStyle.TEXT_MUTED, wide));
             // The magnifier just after the label opens the item search in its place.
+            // Ten pixels, centered on the label: at eight the glass was too small to read as round.
             int gx = x + PAD + textW("Profile") + 4;
-            int gy = rowY - 2;
-            boolean hoverGlass = open && AlpakaStyle.inside(mx, my, gx - 2, gy - 1, 13, 12) && !menuOpen;
-            MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, gx, gy + 1, 8,
+            int gy = rowY - 1;
+            boolean hoverGlass = open && AlpakaStyle.inside(mx, my, gx - 2, gy - 2, 14, 14) && !menuOpen;
+            MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, gx, gy, 10,
                     AlpakaStyle.fade(hoverGlass ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED, wide));
-            if (open) hits.add(new Hit(gx - 2, gy - 1, 13, 12, () -> {
+            if (open) hits.add(new Hit(gx - 2, gy - 2, 14, 14, () -> {
                 itemSearchOpen = true;
                 itemSearchFocused = true;
                 itemCaretFrom = System.currentTimeMillis();

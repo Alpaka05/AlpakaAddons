@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.viewmodel.EquipAnimation;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.InspectAnimation;
@@ -55,6 +56,12 @@ public class ItemInHandRendererMixin {
 
     @Shadow
     private float oOffHandHeight;
+
+    @Shadow
+    private ItemStack mainHandItem;
+
+    @Shadow
+    private ItemStack offHandItem;
 
     @Shadow
     private void applyItemArmAttackTransform(PoseStack poseStack, HumanoidArm arm, float swingProgress) {
@@ -287,14 +294,31 @@ public class ItemInHandRendererMixin {
 
     @Inject(method = "shouldInstantlyReplaceVisibleItem", at = @At("HEAD"), cancellable = true)
     private void onShouldSkipAnimation(ItemStack from, ItemStack to, CallbackInfoReturnable<Boolean> cir) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) {
+        if ((AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) || EquipAnimation.instant()) {
             cir.setReturnValue(true);
         }
     }
 
+    /** Tells the equip animation where each hand is in a slot switch, and lets its test run lower the hand. */
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void alpaka$equipAnimationTick(CallbackInfo ci) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) return;
+        this.mainHandHeight = EquipAnimation.afterTick(InteractionHand.MAIN_HAND,
+                this.mainHandItem != player.getMainHandItem(), this.oMainHandHeight, this.mainHandHeight);
+        this.offHandHeight = EquipAnimation.afterTick(InteractionHand.OFF_HAND,
+                this.offHandItem != player.getOffhandItem(), this.oOffHandHeight, this.offHandHeight);
+    }
+
+    /** Draws a hand in a slot switch along the chosen equip animation's path instead of vanilla's straight drop. */
+    @Inject(method = "applyItemArmTransform", at = @At("HEAD"), cancellable = true)
+    private void alpaka$equipAnimation(PoseStack poseStack, HumanoidArm arm, float equipProgress, CallbackInfo ci) {
+        if (EquipAnimation.apply(poseStack, arm, equipProgress)) ci.cancel();
+    }
+
     @Inject(method = "tick", at = @At("TAIL"))
     private void onUpdateHeldItems(CallbackInfo ci) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) {
+        if ((AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) || EquipAnimation.instant()) {
             this.mainHandHeight = 1.0f;
             this.offHandHeight = 1.0f;
             this.oMainHandHeight = 1.0f;

@@ -527,6 +527,31 @@ class MarketParsingTest {
     }
 
     @Test
+    void keepsTheNeuRepositorysAnswersOnDiskForAWhile() {
+        long now = 100L * 24 * 3_600_000L;
+        long day = 24 * 3_600_000L;
+        NeuItems.readKept("""
+                {"items":{
+                  "TEST_KEPT_FRESH":{"at":%d,"look":{"material":"player_head","damage":3,"skin":"ewogIA==","glowing":true,"model":"hypixel:x"}},
+                  "TEST_KEPT_STALE":{"at":%d,"look":{"material":"stone"}},
+                  "TEST_KEPT_MISSING":{"at":%d},
+                  "TEST_KEPT_MISSING_OLD":{"at":%d}}}""".formatted(now - day, now - 20 * day, now - day, now - 5 * day), now);
+        assertTrue(NeuItems.missing("TEST_KEPT_MISSING"));
+        // Too old: asked for again.
+        assertFalse(NeuItems.missing("TEST_KEPT_MISSING_OLD"));
+        String written = NeuItems.keptJson(now);
+        assertTrue(written.contains("TEST_KEPT_FRESH") && written.contains("TEST_KEPT_MISSING"), written);
+        assertFalse(written.contains("TEST_KEPT_STALE") || written.contains("TEST_KEPT_MISSING_OLD"), written);
+        // What was written reads back the same.
+        assertTrue(written.contains("\"skin\":\"ewogIA==\"") && written.contains("\"model\":\"hypixel:x\""), written);
+
+        // After failures GitHub gets a minute, then longer, never more than a quarter of an hour.
+        assertEquals(60_000L, NeuItems.pause(1));
+        assertEquals(120_000L, NeuItems.pause(2));
+        assertEquals(15 * 60_000L, NeuItems.pause(50));
+    }
+
+    @Test
     void findsPetsRunesAndShardsInTheNeuRepository() {
         List<String> pet = NeuItems.candidates("PET_GRIFFIN", null);
         assertEquals("GRIFFIN;4", pet.get(0));

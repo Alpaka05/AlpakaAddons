@@ -102,7 +102,7 @@ class DisableAllFeaturesTest {
             "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
             "marketPriceHistoryRange",
             // Teleport Warp
-            "teleportWarpEtherwarp", "teleportWarpStyle",
+            "teleportWarpEtherwarp", "teleportWarpStyle", "teleportWarpScreenEffect", "teleportWarpSmooth",
             // Chest Value: whether it shows, and how
             "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
             "chestValueX", "chestValueY",

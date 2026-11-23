@@ -41,6 +41,8 @@ import java.util.Optional;
  * with a ring running outward; Hyperspace ({@code teleport_hyperspace}) zooms in with streaks of
  * light shooting past to the edges, like a jump to light speed.
  *
+ * Separately, Smooth Teleport ({@link SmoothTeleport}) lets the camera glide to the destination.
+ *
  * Purely visual. The teleport is the server's own position packet, which vanilla handles and
  * answers as always; this only compares where the player stood before and after it
  * ({@code ClientPacketListenerTeleportWarpMixin}) and then redraws the finished world frame with
@@ -113,7 +115,8 @@ public final class TeleportWarpFeature {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null || !teleports(player.getMainHandItem())) return;
         if (!AlpakaConfig.instance.teleportWarpEtherwarp && EtherwarpDetector.isAimingEtherwarp()) return;
-        start();
+        SmoothTeleport.onTeleport(from, to);
+        if (AlpakaConfig.instance.teleportWarpScreenEffect) start();
     }
 
     /** Starts the warp, or builds it back up from where it is when one is still fading. */
@@ -190,7 +193,8 @@ public final class TeleportWarpFeature {
         }
         float elapsed = (now - startNanos) / 1.0e9f;
         float duration = duration();
-        if (elapsed >= duration || !AlpakaConfig.instance.teleportWarpEnabled) {
+        if (elapsed >= duration || !AlpakaConfig.instance.teleportWarpEnabled
+                || !AlpakaConfig.instance.teleportWarpScreenEffect) {
             startNanos = -1L;
             return;
         }

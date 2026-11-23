@@ -9,6 +9,7 @@ import net.alpaka.addons.features.mobdeath.HideMobDeathsFeature;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.alpaka.addons.features.slayer.SlayerBossHighlight;
 import net.alpaka.addons.features.teammateglow.TeammateClassGlow;
+import net.alpaka.addons.features.teleportwarp.SmoothTeleport;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -47,6 +48,13 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
         TeammateClassGlow.applyOutline(entity, state);
         SlayerBossHighlight.applyOutline(entity, state);
         StarredMobsHighlight.applyOutline(entity, state);
+        if (SmoothTeleport.applies(entity)) {
+            // Smooth Teleport in third person: the model glides along with the camera.
+            net.minecraft.world.phys.Vec3 offset = SmoothTeleport.offset();
+            state.x += offset.x;
+            state.y += offset.y;
+            state.z += offset.z;
+        }
     }
 
     /**

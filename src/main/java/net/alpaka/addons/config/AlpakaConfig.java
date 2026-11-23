@@ -176,12 +176,18 @@ public class AlpakaConfig {
      * Aspect of the Void, ...). Drawn by this client only; the teleport itself is untouched.
      */
     public boolean teleportWarpEnabled = false;
+    /** Whether the picture warps (the Style below); Smooth Teleport is switched on its own. */
+    public boolean teleportWarpScreenEffect = true;
     /** Which look: 0 Warp (lens pull and ring), 1 Hyperspace (zoom and light streaks). */
     public int teleportWarpStyle = 0;
     /** How strong the warp is, as a factor. */
     public float teleportWarpStrength = 1.0f;
     /** How long the warp takes to fade, in seconds. */
     public float teleportWarpDuration = 0.45f;
+    /** The camera glides to the destination instead of jumping there; only the picture moves. */
+    public boolean teleportWarpSmooth = true;
+    /** How long the camera's glide takes, in milliseconds. */
+    public float teleportWarpSmoothTime = 150.0f;
     /** Whether an Etherwarp (sneak + right-click) warps the picture too. */
     public boolean teleportWarpEtherwarp = true;
 

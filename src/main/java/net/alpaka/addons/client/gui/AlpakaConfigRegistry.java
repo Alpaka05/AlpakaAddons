@@ -2842,11 +2842,18 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Teleport Warp", ConfigCategory.COSMETICS));
 
         OPTIONS.add(new ConfigOption("teleport_warp", "Teleport Warp",
-                "The picture warps for a moment when you teleport with an item, like the Aspect of the End or Aspect of the Void. Only you see it; the teleport itself is unchanged.",
+                "Effects for when you teleport with an item, like the Aspect of the End or Aspect of the Void: the picture warps for a moment, and the camera glides to where you land. Only you see them; the teleport itself is unchanged.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.teleportWarpEnabled,
                 v -> { AlpakaConfig.instance.teleportWarpEnabled = v; AlpakaConfig.save(); },
                 "teleport warp effect distortion screen aote aotv aspect of the end void instant transmission etherwarp hyperion wither impact zoom lens"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_screen_effect", "Screen Effect",
+                "Warps the picture for a moment, in the style chosen below.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpScreenEffect,
+                v -> { AlpakaConfig.instance.teleportWarpScreenEffect = v; AlpakaConfig.save(); },
+                "teleport warp screen effect picture distortion shader"));
 
         OPTIONS.add(new ConfigOption("teleport_warp_style", "Style",
                 "Warp pulls the picture towards the middle while a ripple runs outward. Hyperspace zooms in while streaks of light shoot past to the edges, like a jump to light speed.",
@@ -2874,8 +2881,23 @@ public class AlpakaConfigRegistry {
                 0.2f, 1.5f, val -> String.format(Locale.ROOT, "%.2f s", val),
                 "teleport warp duration time long short seconds"));
 
+        OPTIONS.add(new ConfigOption("teleport_warp_smooth", "Smooth Teleport",
+                "The camera glides to where you land instead of jumping there. Only the picture moves: you are already at the destination, so aiming and moving work right away.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpSmooth,
+                v -> { AlpakaConfig.instance.teleportWarpSmooth = v; AlpakaConfig.save(); },
+                "teleport smooth glide camera aote aotv transition interpolate skyblocker"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_smooth_time", "Glide Time",
+                "How long the camera takes to glide to where you land.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpSmoothTime,
+                v -> { AlpakaConfig.instance.teleportWarpSmoothTime = v; AlpakaConfig.save(); },
+                50.0f, 500.0f, val -> String.format(Locale.ROOT, "%.0f ms", val),
+                "teleport smooth glide time duration speed ms milliseconds"));
+
         OPTIONS.add(new ConfigOption("teleport_warp_etherwarp", "Etherwarp",
-                "Warps the picture for an Etherwarp too, not only for the plain teleport.",
+                "Plays the effects for an Etherwarp too, not only for the plain teleport.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.teleportWarpEtherwarp,
                 v -> { AlpakaConfig.instance.teleportWarpEtherwarp = v; AlpakaConfig.save(); },

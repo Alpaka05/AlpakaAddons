@@ -171,10 +171,12 @@ public final class ProfileApi {
     /** The current or last Bingo event, with its start and end. */
     /**
      * Once the game is up: renews the AlpakaAddons API login of a player who used the dashboard
-     * before, so opening it doesn't wait for the login. See {@code AlpakaApi.warmUp}.
+     * before, so opening it doesn't wait for the login. See {@code AlpakaApi.warmUp}. The dashboard's
+     * history file is read in the background then too, so the render thread never waits for it.
      */
     public static void warmUpLogin() {
         AlpakaApi.warmUp();
+        ProfileHistory.preload();
     }
 
     static CompletableFuture<JsonElement> bingo() {

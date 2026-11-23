@@ -89,5 +89,6 @@ public final class SessionLifecycle {
         AlpakaConfig.endDeferredSaves();
         AlpakaStats.flushOnExit();
         net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.flushNow();
+        net.alpaka.addons.features.profile.ProfileHistory.flush();
     }
 }

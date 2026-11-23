@@ -121,7 +121,13 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
         val innermost = if (hasInnerEdge) rIn - half else 0f
         val outermost = rOut + half
 
-        val steps = max(1, ceil(abs(aOut1 - aOut0) * rOut / 3f).toInt())
+        // A step every 3 GUI units of arc, but no longer than about 1.5 real pixels either: at 3 GUI
+        // units a small circle, such as the magnifier's glass, came out as a heptagon. The feather
+        // is one real pixel, so it measures the arc in real pixels; the floor keeps a chart's tiny
+        // dots, hundreds of them a frame, at a handful of steps.
+        val span = abs(aOut1 - aOut0)
+        val perTurn = if (feather > 0f) ceil(TAU * rOut / (feather * 1.5f)).toInt().coerceIn(MIN_STEPS, MAX_FINE_STEPS) else 1
+        val steps = max(max(1, ceil(span * rOut / 3f).toInt()), ceil(perTurn * span / TAU).toInt())
         val radialSpan = rOut - rIn
 
         fun angleAt(r: Float, t: Float): Float {
@@ -341,6 +347,9 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
 
     companion object {
         const val TAU: Float = (Math.PI * 2.0).toFloat()
+        /** The fewest and the most steps a full turn gets from the real-pixel rule above. */
+        private const val MIN_STEPS = 8
+        private const val MAX_FINE_STEPS = 64
 
         /** Linear blend of two ARGB colors, alpha included. */
         @JvmStatic

@@ -15,7 +15,7 @@ import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
 
 /**
  * Hides effects that cost frames and tell the player nothing: falling blocks, the sparks of
- * critical hits, firework bursts, experience orbs, the Ender Dragon's death, arrows stuck in
+ * critical hits, firework bursts, the Ender Dragon's death, arrows stuck in
  * players and blocks, and lightning. Each has its own switch under the feature's master switch.
  * It started as Hide Explosions, which is why its master field still reads that name from older
  * files.
@@ -51,18 +51,15 @@ public final class HideVisualClutterFeature {
     // Entities that are never added ------------------------------------------------------------
 
     /**
-     * Falling blocks (Molten Wave's gold, Seismic Wave, debris) and experience orbs. The packet that
-     * adds one is dropped, so it is never built, ticked or drawn; a falling block is redrawn as a
-     * full block model every frame, and a burst of orbs moves and merges every tick. Neither can be
-     * collided with, and both are client copies of server entities: what lands, what is picked up
-     * and what deals damage is decided by the server either way.
+     * Falling blocks (Molten Wave's gold, Seismic Wave, debris). The packet that adds one is
+     * dropped, so it is never built, ticked or drawn; a falling block is redrawn as a full block
+     * model every frame. It can't be collided with and is a client copy of a server entity: what
+     * lands and what deals damage is decided by the server either way.
      */
     public static boolean shouldSkipEntity(EntityType<?> type) {
         AlpakaConfig config = AlpakaConfig.instance;
         if (!config.hideVisualClutter) return false;
-        if (type == EntityTypes.FALLING_BLOCK) return config.clutterFallingBlocks;
-        if (type == EntityTypes.EXPERIENCE_ORB) return config.clutterExperienceOrbs;
-        return false;
+        return type == EntityTypes.FALLING_BLOCK && config.clutterFallingBlocks;
     }
 
     // Hit particles ----------------------------------------------------------------------------

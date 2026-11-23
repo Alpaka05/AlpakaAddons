@@ -328,11 +328,11 @@ public class AlpakaConfigRegistry {
                 "hide mob death smoke poof particles cloud puff"));
 
         OPTIONS.add(new ConfigOption("hide_visual_clutter", "Hide Visual Clutter",
-                "Hides effects that only cost frames: falling blocks, hit sparks, fireworks, experience orbs, dying dragons, stuck arrows and lightning.",
+                "Hides effects that only cost frames: falling blocks, hit sparks, fireworks, dying dragons, stuck arrows and lightning.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideVisualClutter,
                 v -> { AlpakaConfig.instance.hideVisualClutter = v; AlpakaConfig.save(); },
-                "hide visual clutter performance fps lag particles effects falling blocks fireworks orbs dragon arrows lightning"));
+                "hide visual clutter performance fps lag particles effects falling blocks fireworks dragon arrows lightning"));
         OPTIONS.add(new ConfigOption("hide_clutter_falling_blocks", "Falling Blocks",
                 "Blocks flying through the air, like the gold of Molten Wave. What they hit is decided by the server either way.",
                 ConfigCategory.VISUALS,
@@ -351,12 +351,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.clutterFireworks,
                 v -> { AlpakaConfig.instance.clutterFireworks = v; AlpakaConfig.save(); },
                 "hide fireworks firework rocket burst explosion stars sparkle"));
-        OPTIONS.add(new ConfigOption("hide_clutter_experience_orbs", "Experience Orbs",
-                "Experience orbs on the ground, like the ones from Experience Bottles. The experience still counts.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.clutterExperienceOrbs,
-                v -> { AlpakaConfig.instance.clutterExperienceOrbs = v; AlpakaConfig.save(); },
-                "hide experience orbs xp exp bottle orb green"));
         OPTIONS.add(new ConfigOption("hide_clutter_dragon_death", "Dragon Death",
                 "A dying Ender Dragon with its light rays and explosions, in the End and in Master Mode 7.",
                 ConfigCategory.VISUALS,

@@ -103,7 +103,6 @@ public final class DevClutterBenchmark {
                 new Scenario("falling_blocks", on -> AlpakaConfig.instance.clutterFallingBlocks = on, DevClutterBenchmark::fallingBlocks, null),
                 new Scenario("hit_particles", on -> AlpakaConfig.instance.clutterHitParticles = on, DevClutterBenchmark::critArrows, DevClutterBenchmark::hitSparks),
                 new Scenario("fireworks", on -> AlpakaConfig.instance.clutterFireworks = on, DevClutterBenchmark::fireworks, null),
-                new Scenario("experience_orbs", on -> AlpakaConfig.instance.clutterExperienceOrbs = on, DevClutterBenchmark::experienceOrbs, null),
                 new Scenario("dragon_death", on -> AlpakaConfig.instance.clutterDragonDeath = on, DevClutterBenchmark::dragonDeath, null));
         for (Scenario s : all) {
             if (wanted.equals("all") || wanted.equals("1") || List.of(wanted.split(",")).contains(s.name())) SCENARIOS.add(s);
@@ -198,7 +197,6 @@ public final class DevClutterBenchmark {
         config.clutterFallingBlocks = false;
         config.clutterHitParticles = false;
         config.clutterFireworks = false;
-        config.clutterExperienceOrbs = false;
         config.clutterDragonDeath = false;
         SCENARIOS.get(scenario).toggle().accept(PHASES[phase]);
     }
@@ -356,13 +354,6 @@ public final class DevClutterBenchmark {
         rocket.set(DataComponents.FIREWORKS, new Fireworks(0, List.of(star, star, star)));
         FireworkRocketEntity entity = new FireworkRocketEntity(level, ax(), oy + 1, az(), rocket);
         level.addFreshEntity(entity);
-    }
-
-    /** Experience Bottles: ten orbs a tick on the ground, gone after three seconds. */
-    private static void experienceOrbs(ServerLevel level) {
-        for (int i = 0; i < 10; i++) {
-            keep(level, new ExperienceOrb(level, ax(), oy + 0.5, az(), 1 + RANDOM.nextInt(7)), 60);
-        }
     }
 
     /** A dragon killed every two seconds, so about five are dying at a time, like M7's last phase. */

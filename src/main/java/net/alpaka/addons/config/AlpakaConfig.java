@@ -281,8 +281,6 @@ public class AlpakaConfig {
     public boolean clutterHitParticles = true;
     /** Firework rocket bursts. */
     public boolean clutterFireworks = true;
-    /** Experience orbs are never added. */
-    public boolean clutterExperienceOrbs = true;
     /** A dying Ender Dragon, its light rays and its death explosions. */
     public boolean clutterDragonDeath = true;
     /** Arrows stuck in players and in blocks. */
@@ -1752,7 +1750,6 @@ public class AlpakaConfig {
         clutterFallingBlocks = false;
         clutterHitParticles = false;
         clutterFireworks = false;
-        clutterExperienceOrbs = false;
         clutterDragonDeath = false;
     }
 

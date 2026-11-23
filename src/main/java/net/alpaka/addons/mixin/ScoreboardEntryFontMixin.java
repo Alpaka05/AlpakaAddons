@@ -24,13 +24,19 @@ public abstract class ScoreboardEntryFontMixin {
         return GuiFont.inScoreboard() ? GuiFont.restyle(name) : name;
     }
 
+    /*
+     * The score and its width are wrapped and measured once per line: both hooks share one wrapped
+     * score (GuiFont.restyleScore). A score vanilla measured as nothing - Hypixel hides the numbers -
+     * stays as it is; there is nothing to draw in another font.
+     */
     @ModifyVariable(method = "<init>", at = @At("HEAD"), argsOnly = true, ordinal = 1)
-    private static Component alpaka$scoreInMenuFont(Component score) {
-        return GuiFont.inScoreboard() ? GuiFont.restyle(score) : score;
+    private static Component alpaka$scoreInMenuFont(Component score, @Local(argsOnly = true) int scoreWidth) {
+        return scoreWidth != 0 && GuiFont.inScoreboard() ? GuiFont.restyleScore(score) : score;
     }
 
     @ModifyVariable(method = "<init>", at = @At("HEAD"), argsOnly = true)
     private static int alpaka$scoreWidthInMenuFont(int scoreWidth, @Local(argsOnly = true, ordinal = 1) Component score) {
-        return GuiFont.inScoreboard() ? Minecraft.getInstance().font.width(GuiFont.restyle(score)) : scoreWidth;
+        if (scoreWidth == 0 || !GuiFont.inScoreboard()) return scoreWidth;
+        return Minecraft.getInstance().font.width(GuiFont.restyleScore(score));
     }
 }

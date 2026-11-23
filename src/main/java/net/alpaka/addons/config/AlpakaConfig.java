@@ -176,6 +176,8 @@ public class AlpakaConfig {
      * Aspect of the Void, ...). Drawn by this client only; the teleport itself is untouched.
      */
     public boolean teleportWarpEnabled = false;
+    /** Which look: 0 Warp (lens pull and ring), 1 Hyperspace (zoom and light streaks). */
+    public int teleportWarpStyle = 0;
     /** How strong the warp is, as a factor. */
     public float teleportWarpStrength = 1.0f;
     /** How long the warp takes to fade, in seconds. */

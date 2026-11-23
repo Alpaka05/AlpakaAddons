@@ -37,10 +37,14 @@ import java.util.Optional;
  * Teleport Warp: the picture warps for a moment after the player teleports with an item, like the
  * Aspect of the End's Instant Transmission or the Aspect of the Void's Etherwarp.
  *
+ * Two styles, one shader each: Warp ({@code teleport_warp}) pulls the picture towards the middle
+ * with a ring running outward; Hyperspace ({@code teleport_hyperspace}) zooms in with streaks of
+ * light shooting past to the edges, like a jump to light speed.
+ *
  * Purely visual. The teleport is the server's own position packet, which vanilla handles and
  * answers as always; this only compares where the player stood before and after it
  * ({@code ClientPacketListenerTeleportWarpMixin}) and then redraws the finished world frame with
- * the {@code teleport_warp} shader before the HUD goes on top. Nothing is sent, and the position,
+ * the chosen style's shader before the HUD goes on top. Nothing is sent, and the position,
  * camera and movement are untouched.
  *
  * Only a teleport the player caused counts: they right-clicked within the last second, and the item
@@ -61,7 +65,11 @@ public final class TeleportWarpFeature {
     /** Tooltip words of a teleporting ability: Instant and Ether Transmission, Wither Impact, ... */
     private static final String[] TELEPORT_MARKERS = {"teleport", "transmission"};
 
-    private static RenderPipeline pipeline;
+    /** The styles, in the order of {@link #STYLE_SHADERS}; the setting stores the index. */
+    public static final String[] STYLE_NAMES = {"Warp", "Hyperspace"};
+    private static final String[] STYLE_SHADERS = {"teleport_warp", "teleport_hyperspace"};
+
+    private static final RenderPipeline[] PIPELINES = new RenderPipeline[STYLE_SHADERS.length];
     private static TextureTarget snapshot;
     /** A snapshot replaced after a resize, closed once the frame that sampled it is done. */
     private static TextureTarget retired;
@@ -77,18 +85,21 @@ public final class TeleportWarpFeature {
 
     private TeleportWarpFeature() {}
 
-    /** Registers the shader's pipeline with vanilla's, before the shader manager precompiles them. */
+    /** Registers the styles' pipelines with vanilla's, before the shader manager precompiles them. */
     public static void init() {
-        pipeline = RenderPipelinesAccessor.alpaka$register(
-                RenderPipeline.builder(RenderPipelines.POST_PROCESSING_SNIPPET)
-                        .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/teleport_warp"))
-                        .withVertexShader(Identifier.withDefaultNamespace("core/screenquad"))
-                        .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "post/teleport_warp"))
-                        .withBindGroupLayout(BindGroupLayout.builder()
-                                .withSampler("InSampler")
-                                .withUniform("WarpConfig", UniformType.UNIFORM_BUFFER)
-                                .build())
-                        .build());
+        for (int i = 0; i < STYLE_SHADERS.length; i++) {
+            String name = STYLE_SHADERS[i];
+            PIPELINES[i] = RenderPipelinesAccessor.alpaka$register(
+                    RenderPipeline.builder(RenderPipelines.POST_PROCESSING_SNIPPET)
+                            .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/" + name))
+                            .withVertexShader(Identifier.withDefaultNamespace("core/screenquad"))
+                            .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "post/" + name))
+                            .withBindGroupLayout(BindGroupLayout.builder()
+                                    .withSampler("InSampler")
+                                    .withUniform("WarpConfig", UniformType.UNIFORM_BUFFER)
+                                    .build())
+                            .build());
+        }
     }
 
     /**
@@ -185,13 +196,14 @@ public final class TeleportWarpFeature {
         }
         lastWarpNanos = now;
         Minecraft mc = Minecraft.getInstance();
+        RenderPipeline pipeline = PIPELINES[Mth.clamp(AlpakaConfig.instance.teleportWarpStyle, 0, PIPELINES.length - 1)];
         if (mc.level == null || mc.player == null || pipeline == null) return;
 
         float strength = Mth.clamp(AlpakaConfig.instance.teleportWarpStrength, 0.25f, 2.0f);
         float amount = envelope(elapsed, duration) * strength;
         if (amount <= 0.001f) return;
         try {
-            draw(mc.gameRenderer.mainRenderTarget(), amount, elapsed / duration);
+            draw(mc.gameRenderer.mainRenderTarget(), pipeline, amount, elapsed / duration);
         } catch (RuntimeException e) {
             startNanos = -1L;
             if (!warned) {
@@ -201,7 +213,7 @@ public final class TeleportWarpFeature {
         }
     }
 
-    private static void draw(RenderTarget main, float amount, float progress) {
+    private static void draw(RenderTarget main, RenderPipeline pipeline, float amount, float progress) {
         GpuTexture source = main.getColorTexture();
         if (source == null || main.width <= 0 || main.height <= 0) return;
         if (snapshot == null) {

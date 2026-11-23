@@ -2848,6 +2848,16 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.teleportWarpEnabled = v; AlpakaConfig.save(); },
                 "teleport warp effect distortion screen aote aotv aspect of the end void instant transmission etherwarp hyperion wither impact zoom lens"));
 
+        OPTIONS.add(new ConfigOption("teleport_warp_style", "Style",
+                "Warp pulls the picture towards the middle while a ripple runs outward. Hyperspace zooms in while streaks of light shoot past to the edges, like a jump to light speed.",
+                ConfigCategory.COSMETICS,
+                () -> (float) AlpakaConfig.instance.teleportWarpStyle,
+                v -> { AlpakaConfig.instance.teleportWarpStyle = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.teleportwarp.TeleportWarpFeature.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.teleportwarp.TeleportWarpFeature.STYLE_NAMES[Math.round(val)],
+                "teleport warp style look hyperspace light speed star streaks zoom ripple lens")
+                .choices(net.alpaka.addons.features.teleportwarp.TeleportWarpFeature.STYLE_NAMES));
+
         OPTIONS.add(new ConfigOption("teleport_warp_strength", "Strength",
                 "How strongly the picture warps.",
                 ConfigCategory.COSMETICS,

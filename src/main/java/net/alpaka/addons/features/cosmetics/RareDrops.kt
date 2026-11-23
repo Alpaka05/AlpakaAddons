@@ -38,9 +38,6 @@ object RareDrops {
     private val DYE = Regex("""^\s*WOW! (?:\[[A-Z+]+] )?([A-Za-z0-9_]+) found (?:a|an) ([A-Za-z' ]+ Dye)(?: #[\d,]+)?!\s*$""")
     private val CHEST = Regex("""^\s{2,}(RARE REWARD!\s+)?([^:]+?)\s*$""")
 
-    /** The tiers rare enough to celebrate when the item's price is not known. */
-    private val ALWAYS = setOf("CRAZY RARE", "INSANE", "PRAY TO RNGESUS", "PET")
-
     /**
      * The dungeons' big chest items, which Hypixel lists in chat without a tag; from Skyblocker's
      * list of the same.
@@ -77,18 +74,6 @@ object RareDrops {
         }
         return null
     }
-
-    /** Whether a drop's tier alone makes it worth celebrating, for when its price is not known. */
-    fun rareByTier(found: Found): Boolean = found.kind == Kind.DROP && found.heading.removeSuffix(" DROP!") in ALWAYS ||
-        found.kind == Kind.PET
-
-    /**
-     * Whether a drop that is neither a slayer's headline drop, a dye nor a dungeon reward is worth
-     * the animation. Its [price] decides whenever it has one, so a cheap crazy rare drop like Snake
-     * Rune I stays quiet; without one (no Network Features, or an item no market lists) its tier does.
-     */
-    fun valuable(found: Found, price: Double?, minimum: Double): Boolean =
-        if (price != null) price >= minimum else rareByTier(found)
 
     /**
      * The enchantments whose market id is not their name: "Turbo-Cacti" is TURBO_CACTUS, "Duplex"

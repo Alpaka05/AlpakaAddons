@@ -2795,11 +2795,11 @@ public class AlpakaConfigRegistry {
                 "rare drop animation dungeon chest reward bedrock necron handle master star"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_valuable", "Other Valuable Drops",
-                "Plays for any other drop worth at least the minimum value below. Without a price, for one that is crazy rare or better, or a pet.",
+                "Plays for any other drop, pets included, worth at least the minimum value below.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.rareDropAnimationValuable,
                 v -> { AlpakaConfig.instance.rareDropAnimationValuable = v; AlpakaConfig.save(); },
-                "rare drop animation valuable expensive crazy rare insane pet drop worth"));
+                "rare drop animation valuable expensive crazy rare insane pet drop worth price"));
 
         OPTIONS.add(new ConfigOption("rare_drop_animation_min_value", "Minimum Value",
                 "What another drop has to be worth for the animation. Needs Network Features for prices.",

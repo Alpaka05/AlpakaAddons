@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Falling blocks and experience orbs that Hide Visual Clutter skips are never added; see
+ * Falling blocks that Hide Visual Clutter skips are never added; see
  * {@link HideVisualClutterFeature#shouldSkipEntity}. After the thread check, like the other packet
  * hooks, so the packet is only looked at once, on the client thread. Later packets for the skipped
  * entity id find no entity, which vanilla already ignores.

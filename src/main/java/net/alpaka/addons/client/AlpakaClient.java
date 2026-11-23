@@ -47,6 +47,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chat.ChatBlurFeature.init();
         net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.init();
         net.alpaka.addons.features.cosmetics.AuraFeature.init();
+        net.alpaka.addons.features.teleportwarp.TeleportWarpFeature.init();
         CustomSoundFeature.register();
         SessionLifecycle.register();
         StartupNotices.register();

@@ -17,6 +17,7 @@
     "ClientLevelMobDeathMixin",
     "ClientPacketListenerClutterMixin",
     "ClientPacketListenerMobDeathMixin",
+    "ClientPacketListenerTeleportWarpMixin",
     "EnderDragonClutterMixin",
     "EntityRenderDispatcherMixin",
     "EffectsInInventoryMixin",

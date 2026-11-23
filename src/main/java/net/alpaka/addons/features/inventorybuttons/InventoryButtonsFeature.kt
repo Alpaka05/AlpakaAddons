@@ -4,7 +4,10 @@ import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.compliance.Outbound
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaConfig.InventoryButton
+import net.alpaka.addons.features.chestvalue.ChestValuePanel
+import net.alpaka.addons.features.itemvalue.ItemValuePopup
 import net.alpaka.addons.features.market.MarketScreen
+import net.alpaka.addons.features.storagepreview.StoragePreviewFreeze
 import net.alpaka.addons.mixin.AbstractContainerScreenAccessor
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
@@ -98,7 +101,7 @@ object InventoryButtonsFeature {
     }
 
     private fun buttonAt(screen: AbstractContainerScreen<*>, mouseX: Double, mouseY: Double): InventoryButton? {
-        if (!active(screen)) return null
+        if (!active(screen) || overlayCovers(screen)) return null
         val box = box(screen)
         // The last drawn is on top, so it is the one a click finds first.
         for (button in AlpakaConfig.instance.inventoryButtons.asReversed()) {
@@ -110,6 +113,15 @@ object InventoryButtonsFeature {
         }
         return null
     }
+
+    /**
+     * Whether one of the mod's own windows lies over the mouse: the Item Value popup, the Chest Value
+     * panel or a frozen Storage Preview. They are drawn over the buttons, and the buttons take their
+     * clicks before those windows do, so a click on a frozen preview would otherwise run the command
+     * of the button under it.
+     */
+    private fun overlayCovers(screen: Screen): Boolean =
+        ItemValuePopup.coversMouse(screen) || ChestValuePanel.coversMouse(screen) || StoragePreviewFreeze.coversMouse(screen)
 
     private fun extract(screen: AbstractContainerScreen<*>, graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         if (!active(screen)) return

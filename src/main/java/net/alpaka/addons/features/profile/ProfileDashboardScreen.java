@@ -321,6 +321,9 @@ public class ProfileDashboardScreen extends Screen {
         clipY = y + HEADER_H;
         clipW = w - sideW - 1;
         clipH = h - HEADER_H - 4;
+        // The mark of a search result goes once its page, tab or profile isn't shown any more.
+        if (focused() && (session.data != focusData || !viewKey().equals(focusView))) dropMark();
+        focusY = Integer.MIN_VALUE;
         // A search is a view of its own, and every new query starts at the top.
         String detail = searching() ? "\u0000search:" + itemSearch.getText() : skillDetail;
         if (scrolledPage != page || !java.util.Objects.equals(scrolledDetail, detail)) {
@@ -340,6 +343,13 @@ public class ProfileDashboardScreen extends Screen {
         }
         clipping = false;
         scroll.max = Math.max(0, bottom + scroll.offset() - clipY - clipH + PAD);
+        // A search result's item or pet scrolls into the middle of the view, as far as the page lets
+        // it, once the view has settled: a sub-page found while drawing starts at the top next frame.
+        if (focusScroll && focusY != Integer.MIN_VALUE && !searching() && scrolledPage == page
+                && java.util.Objects.equals(scrolledDetail, skillDetail)) {
+            scroll.target = Math.max(0, Math.min(scroll.max, scroll.offset() + focusY + focusH / 2.0 - (clipY + clipH / 2.0)));
+            focusScroll = false;
+        }
         if (devScrollToEnd) scroll.current = scroll.target = scroll.max;
         scroll.update(deltaSec);
         AlpakaStyle.scrollFades(graphics, clipX, clipY, clipW, clipH, scroll.offset() > 0, scroll.offset() + 1 < scroll.max);
@@ -2378,10 +2388,12 @@ public class ProfileDashboardScreen extends Screen {
             ProfileData.Pet p = d.pets.get(i);
             int cx = x + (i % cols) * (cw + gap);
             int cy = y + (i / cols) * (ch + gap);
+            if (p == focusPet) focusAt(cy, ch);
             if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
             boolean hover = hover(cx, cy, cw, ch);
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-            if (p.active()) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
+            if (p == focusPet) focusMark(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS);
+            else if (p.active()) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
             // The pet's head, in the skin it wears, as the game shows it; a placeholder while it loads.
             ItemStack head = PetIcons.icon(p);
             // Twice the size of an item, so the head can be made out; a whole multiple stays sharp.
@@ -2979,6 +2991,11 @@ public class ProfileDashboardScreen extends Screen {
         int tx = x + 8;
         if (s.icon() != null) {
             ItemStack icon = InventoryItems.stack(s.icon());
+            if (s.icon() == focusItem) {
+                // A backpack's icon from the Storage menu: the card is where it is.
+                focusAt(y, h);
+                focusMark(graphics, x + 5, y + 2, 18, 18, 3);
+            }
             if (!icon.isEmpty()) {
                 stackIcon(graphics, icon, x + 6, y + 3, 1.0f);
                 tx = x + 26;
@@ -3006,9 +3023,11 @@ public class ProfileDashboardScreen extends Screen {
             int size = SLOT * slotScale;
             int sx = x + (i % cols) * size;
             int sy = y + (i / cols) * size;
+            JsonElement item = items.get(key);
+            if (item != null && item == focusItem) focusAt(sy, size);
             // Far outside the view: not even the slot is drawn; an Ender Chest has 405 of them.
             if (sy > clipY + clipH || sy + size < clipY) continue;
-            slot(graphics, items.get(key), sx, sy);
+            slot(graphics, item, sx, sy);
         }
     }
 
@@ -3018,6 +3037,10 @@ public class ProfileDashboardScreen extends Screen {
         boolean hover = has && hover(sx, sy, size, size);
         ModernGuiUtils.drawRoundedRect(graphics, sx, sy, size, size, 2 * slotScale, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.PANEL);
         if (!has) return;
+        if (item == focusItem) {
+            focusAt(sy, size);
+            focusMark(graphics, sx, sy, size, size, 2 * slotScale);
+        }
         ItemStack stack = InventoryItems.stack(item);
         if (!stack.isEmpty()) {
             int inset = (size - 16 * slotScale) / 2;
@@ -3344,6 +3367,15 @@ public class ProfileDashboardScreen extends Screen {
             museumValues = values;
         }
         Museum.Donated m = repo != null && inventory != null ? museum : null;
+        if (m != null && focusMuseum) {
+            // A search result opens the category its item was donated in.
+            focusMuseum = false;
+            if (containsSame(m.special(), focusItem)) skillDetail = SPECIAL;
+            for (Museum.Category c : m.categories()) {
+                for (Museum.Entry e : c.entries()) if (containsSame(e.items(), focusItem)) skillDetail = c.def().id();
+            }
+            focusView = viewKey();
+        }
         if (m != null && skillDetail != null) {
             if (skillDetail.equals(SPECIAL)) return museumSpecial(graphics, m, x, y, w);
             for (Museum.Category c : m.categories()) {
@@ -3418,10 +3450,12 @@ public class ProfileDashboardScreen extends Screen {
             Museum.Entry e = entries.get(i);
             int sx = x + (i % cols) * CELL;
             int sy = y + (i / cols) * CELL;
+            boolean focus = focusItem != null && containsSame(e.items(), focusItem);
+            if (focus) focusAt(sy, CELL - 2);
             if (sy > clipY + clipH || sy + CELL < clipY) continue;
             JsonElement shown = museumItem(repo, e);
             ItemStack stack = shown != null ? InventoryItems.stack(shown) : ItemIcons.forItem(Museum.iconId(repo, e.id()), null);
-            museumSlot(graphics, stack, sx, sy, !e.donated(), e.borrowed(), museumTip(repo, e));
+            museumSlot(graphics, stack, sx, sy, !e.donated(), e.borrowed(), museumTip(repo, e), focus);
         }
         return y + ((entries.size() + cols - 1) / cols) * CELL - 2;
     }
@@ -3434,6 +3468,7 @@ public class ProfileDashboardScreen extends Screen {
             JsonElement item = m.special().get(i);
             int sx = x + (i % cols) * CELL;
             int sy = y + (i / cols) * CELL;
+            if (item == focusItem) focusAt(sy, CELL - 2);
             if (sy > clipY + clipH || sy + CELL < clipY) continue;
             boolean out = Museum.borrowed(item);
             List<Component> lines = new ArrayList<>();
@@ -3442,16 +3477,18 @@ public class ProfileDashboardScreen extends Screen {
             lines.add(Component.literal(out ? "§eDonated, taken out right now" : "§aDonated"));
             double value = museumValue(List.of(item));
             if (value > 0) lines.add(Component.literal("§7Value: §6" + Coins.compact(value)));
-            museumSlot(graphics, InventoryItems.stack(item), sx, sy, false, out, lines);
+            museumSlot(graphics, InventoryItems.stack(item), sx, sy, false, out, lines, item == focusItem);
         }
         return y + ((m.special().size() + cols - 1) / cols) * CELL - 2;
     }
 
     /** A slot of the museum: greyed out while missing, with a dot in the corner while taken out. */
-    private void museumSlot(GuiGraphicsExtractor graphics, ItemStack stack, int sx, int sy, boolean missing, boolean out, List<Component> tip) {
+    private void museumSlot(GuiGraphicsExtractor graphics, ItemStack stack, int sx, int sy, boolean missing, boolean out, List<Component> tip,
+                            boolean focus) {
         int size = CELL - 2;
         boolean hover = hover(sx, sy, size, size);
         ModernGuiUtils.drawRoundedRect(graphics, sx, sy, size, size, 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+        if (focus) focusMark(graphics, sx, sy, size, size, 2);
         if (!stack.isEmpty()) graphics.item(stack, sx + 1, sy + 1);
         if (missing) veils.add(new int[] {sx, sy, size, size});
         if (out) borrowedDots.add(new int[] {sx + size - 5, sy + 1});
@@ -3757,21 +3794,35 @@ public class ProfileDashboardScreen extends Screen {
         }
     }
 
-    /** Leaves the search for the page an item is shown on. */
-    private Runnable opener(Page target, InvTab tab, String detail) {
+    /**
+     * Leaves the search for the page an item or pet is shown on, with the tab or view it is in
+     * ({@code view}), scrolled to it and marked there.
+     */
+    private Runnable opener(Page target, Runnable view, JsonElement item, ProfileData.Pet pet) {
         return () -> {
             itemSearch.setText("");
             itemSearchOpen = false;
             itemSearchFocused = false;
             page = target;
             lastPage = target;
-            skillDetail = detail;
-            if (tab != null) invTab = tab;
+            skillDetail = null;
+            if (view != null) view.run();
+            focusItem = item;
+            focusPet = pet;
+            focusData = session.data;
+            focusSince = System.currentTimeMillis();
+            focusScroll = true;
+            focusMuseum = target == Page.MUSEUM;
+            focusView = viewKey();
         };
     }
 
-    private Runnable opener(String inventory) {
-        if (inventory.equals("museum")) return opener(Page.MUSEUM, null, null);
+    private Runnable opener(String inventory, JsonElement item) {
+        if (inventory.equals("museum")) return opener(Page.MUSEUM, null, item, null);
+        if (inventory.startsWith(ProfileSession.RIFT)) {
+            boolean chest = inventory.equals(ProfileSession.RIFT + "ender_chest");
+            return opener(Page.RIFT, () -> riftEnderChest = chest, item, null);
+        }
         InvTab tab;
         if (inventory.startsWith("backpack_") || inventory.equals("icons_backpack")) tab = InvTab.BACKPACKS;
         else tab = switch (inventory) {
@@ -3782,7 +3833,71 @@ public class ProfileDashboardScreen extends Screen {
             case "personal_vault" -> InvTab.VAULT;
             default -> InvTab.BAGS;
         };
-        return opener(Page.INVENTORY, tab, null);
+        return opener(Page.INVENTORY, () -> invTab = tab, item, null);
+    }
+
+    // ---- Search target --------------------------------------------------------------------------
+
+    /**
+     * The item or pet a search result was opened on, by identity: the page scrolls to it once and
+     * marks it until another page, tab or profile is shown. Null for none.
+     */
+    private JsonElement focusItem;
+    private ProfileData.Pet focusPet;
+    private ProfileData focusData;
+    private long focusSince;
+    /** Still to be scrolled to; it is, the first frame it is drawn on a settled view. */
+    private boolean focusScroll;
+    /** Its museum category still to be found, once the museum has loaded. */
+    private boolean focusMuseum;
+    /** The view it was opened on, see {@link #viewKey}. */
+    private String focusView;
+    /** Where it was drawn this frame, on screen; MIN_VALUE when not. */
+    private int focusY = Integer.MIN_VALUE;
+    private int focusH;
+
+    /** The page, sub-page and tab shown, which the marked item belongs to. */
+    private String viewKey() {
+        return page + "/" + skillDetail + "/" + (page == Page.INVENTORY ? invTab : page == Page.RIFT ? riftEnderChest : "");
+    }
+
+    private boolean focused() {
+        return focusItem != null || focusPet != null;
+    }
+
+    private void dropMark() {
+        focusItem = null;
+        focusPet = null;
+        focusData = null;
+        focusScroll = false;
+        focusMuseum = false;
+    }
+
+    /** Notes where the marked thing is drawn; called for it even when it is outside the view. */
+    private void focusAt(int y, int h) {
+        if (focusY == Integer.MIN_VALUE) {
+            focusY = y;
+            focusH = h;
+        }
+    }
+
+    /** How strongly the mark shows: three pulses on arrival, so the eye finds it, then steady. */
+    private float focusGlow() {
+        long t = System.currentTimeMillis() - focusSince;
+        if (t >= 1800) return 1.0f;
+        return 0.5f + 0.5f * (float) Math.cos(t / 600.0 * 2 * Math.PI);
+    }
+
+    /** The mark around a slot, card or cell of the thing a search result was opened on. */
+    private void focusMark(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int radius) {
+        float glow = focusGlow();
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, radius, MarketIcons.fade(AlpakaStyle.accent(), 0.12f + 0.2f * glow));
+        ModernGuiUtils.drawRoundedOutline(graphics, x - 1, y - 1, w + 2, h + 2, radius + 1, MarketIcons.fade(AlpakaStyle.accent(), 0.45f + 0.55f * glow));
+    }
+
+    private static boolean containsSame(List<JsonElement> items, JsonElement item) {
+        for (JsonElement e : items) if (e == item) return true;
+        return false;
     }
 
     private static String haystack(String name, String id) {
@@ -3814,7 +3929,6 @@ public class ProfileDashboardScreen extends Screen {
             JsonElement inv = answers.get(i);
             if (inv == null) continue;
             String name = names.get(i);
-            Runnable open = opener(name);
             for (var e : Json.obj(inv, "items").entrySet()) {
                 JsonElement item = e.getValue();
                 if (!InventoryItems.present(item)) continue;
@@ -3824,7 +3938,7 @@ public class ProfileDashboardScreen extends Screen {
                 String id = Json.str(item, "skyblockId");
                 if (title == null && id == null) continue;
                 index.add(new Found(title != null ? title : ProfileData.title(id), haystack(title, id), where(name, e.getKey()),
-                        (int) Json.num(item, "count", 1), item, null, null, open));
+                        (int) Json.num(item, "count", 1), item, null, null, opener(name, item)));
             }
         }
         for (var e : Json.obj(d.raw, "sacks").entrySet()) {
@@ -3835,10 +3949,10 @@ public class ProfileDashboardScreen extends Screen {
             index.add(new Found("§f" + (title != null ? title : ProfileData.title(id)), haystack(title, id), "Sacks",
                     (int) Math.min(Integer.MAX_VALUE, n), null, id, null, null));
         }
-        Runnable pets = opener(Page.PETS, null, null);
         for (ProfileData.Pet p : d.pets) {
             String title = "§7[Lvl " + p.level() + "] " + rarityCode(p.tier()) + p.name();
-            index.add(new Found(title, haystack(p.name() + " pet", p.type()), p.active() ? "Pets · Active" : "Pets", 1, null, null, p, pets));
+            index.add(new Found(title, haystack(p.name() + " pet", p.type()), p.active() ? "Pets · Active" : "Pets", 1, null, null, p,
+                    opener(Page.PETS, null, null, p)));
         }
         searchIndex = List.copyOf(index);
         searchIndexKey = key.toString();

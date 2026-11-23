@@ -2839,6 +2839,38 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.rareDropAnimationEffects = v; AlpakaConfig.save(); },
                 "rare drop animation special effects glow rays sparkles light rainbow beam slayer colors off"));
 
+        OPTIONS.add(new ConfigOption("Teleport Warp", ConfigCategory.COSMETICS));
+
+        OPTIONS.add(new ConfigOption("teleport_warp", "Teleport Warp",
+                "The picture warps for a moment when you teleport with an item, like the Aspect of the End or Aspect of the Void. Only you see it; the teleport itself is unchanged.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpEnabled,
+                v -> { AlpakaConfig.instance.teleportWarpEnabled = v; AlpakaConfig.save(); },
+                "teleport warp effect distortion screen aote aotv aspect of the end void instant transmission etherwarp hyperion wither impact zoom lens"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_strength", "Strength",
+                "How strongly the picture warps.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpStrength,
+                v -> { AlpakaConfig.instance.teleportWarpStrength = v; AlpakaConfig.save(); },
+                0.25f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "teleport warp strength intensity strong weak"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_duration", "Duration",
+                "How long the warp takes to fade.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpDuration,
+                v -> { AlpakaConfig.instance.teleportWarpDuration = v; AlpakaConfig.save(); },
+                0.2f, 1.5f, val -> String.format(Locale.ROOT, "%.2f s", val),
+                "teleport warp duration time long short seconds"));
+
+        OPTIONS.add(new ConfigOption("teleport_warp_etherwarp", "Etherwarp",
+                "Warps the picture for an Etherwarp too, not only for the plain teleport.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.teleportWarpEtherwarp,
+                v -> { AlpakaConfig.instance.teleportWarpEtherwarp = v; AlpakaConfig.save(); },
+                "teleport warp etherwarp ether transmission sneak aotv"));
+
         OPTIONS.add(new ConfigOption("Damage Tags", ConfigCategory.COSMETICS));
 
         OPTIONS.add(new ConfigOption("custom_damage_tags", "Custom Damage Tags",

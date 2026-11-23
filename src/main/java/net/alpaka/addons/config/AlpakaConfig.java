@@ -171,6 +171,18 @@ public class AlpakaConfig {
      */
     public boolean rareDropAnimationEffects = true;
 
+    /**
+     * The picture warps for a moment after the player teleports with an item (Aspect of the End,
+     * Aspect of the Void, ...). Drawn by this client only; the teleport itself is untouched.
+     */
+    public boolean teleportWarpEnabled = false;
+    /** How strong the warp is, as a factor. */
+    public float teleportWarpStrength = 1.0f;
+    /** How long the warp takes to fade, in seconds. */
+    public float teleportWarpDuration = 0.45f;
+    /** Whether an Etherwarp (sneak + right-click) warps the picture too. */
+    public boolean teleportWarpEtherwarp = true;
+
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.
     public boolean playerScaleEnabled = false;
@@ -1962,6 +1974,7 @@ public class AlpakaConfig {
         this.chromaHatEnabled = false;
         this.auraEnabled = false;
         this.rareDropAnimationEnabled = false;
+        this.teleportWarpEnabled = false;
         this.playerScaleEnabled = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;

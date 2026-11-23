@@ -4,6 +4,7 @@ import net.alpaka.addons.utils.SkyblockUtils
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.PlayerInfo
 import net.minecraft.world.level.GameType
+import java.lang.ref.WeakReference
 
 /** One row of the tab list's party section. */
 data class PartyMember(val name: String, val dungeonClass: String) {
@@ -48,11 +49,29 @@ object DungeonParty {
     fun parseAll(lines: List<String>): List<PartyMember> =
         lines.mapNotNull(::parse).distinctBy { it.name.lowercase() }
 
+    /** How long one read of the tab list is shared, in nanoseconds: a little under the map's reads. */
+    private const val SHARED_NANOS = 200_000_000L
+
+    private var shared: List<PartyMember> = emptyList()
+    private var sharedAt = 0L
+    /** Weak: the connection holds the level and every entity in it, long after a disconnect. */
+    private var sharedFrom: WeakReference<Any>? = null
+
+    /**
+     * The party as the tab list shows it now. The Dungeon Map, Teammate Class Glow and the Leap Menu
+     * each ask a few times a second; one read (sorting the whole tab list and reading every line) is
+     * shared between them for a moment. Client thread only.
+     */
     fun read(mc: Minecraft): List<PartyMember> {
         val connection = mc.connection ?: return emptyList()
+        val now = System.nanoTime()
+        if (sharedFrom?.get() === connection && now - sharedAt < SHARED_NANOS) return shared
         val lines = connection.listedOnlinePlayers
             .sortedWith(TAB_ORDER)
             .mapNotNull { info -> info.tabListDisplayName?.let { SkyblockUtils.cleanColor(it.string) } }
-        return parseAll(lines)
+        shared = parseAll(lines)
+        sharedAt = now
+        if (sharedFrom?.get() !== connection) sharedFrom = WeakReference(connection)
+        return shared
     }
 }

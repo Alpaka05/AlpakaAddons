@@ -17,10 +17,9 @@ import net.minecraft.world.entity.HumanoidArm;
  * way, about 300 ms in all. That is too quick to tell one path from another, so the Speed setting
  * scales that 0.4 step (see {@link #stepScale}): at the default 50% a switch takes about twice as
  * long. The item is still swapped where vanilla swaps it, once the hand is all the way down, so
- * the styles only change the path; Drop In alone swaps it at once and spends the whole switch
- * bringing the new item down (see {@link #replacesAtOnce}). The path is given as a function of the
- * equip progress (0 at rest, 1 fully away), the same for the item leaving and the one arriving, so
- * a switch that interrupts another continues from wherever the item is.
+ * the styles only change the path. The path is given as a function of the equip progress (0 at rest, 1 fully
+ * away), the same for the item leaving and the one arriving, so a switch that interrupts another
+ * continues from wherever the item is.
  *
  * Only real slot switches get a style. The other times vanilla lowers the hand - the dip after an
  * attack while the item recharges, or while the hands are busy - stay as they are, since a spin
@@ -34,7 +33,7 @@ public final class EquipAnimation {
         VANILLA("Vanilla"),
         RISE_SPIN("Rise + Spin"),
         POP("Pop"),
-        DROP_IN("Drop In");
+        SWOOSH("Swoosh");
 
         public final String title;
 
@@ -62,12 +61,6 @@ public final class EquipAnimation {
     private static boolean previewRequested;
     /** A test run is lowering the main hand item, which vanilla would otherwise keep raised. */
     private static boolean previewLowering;
-    /**
-     * By {@link InteractionHand#ordinal()}: the hand was put straight into the arriving phase this
-     * tick, so its height from the start of the tick has to follow, or the frames until the next
-     * tick would draw the new item moving up out of the hand before it comes down.
-     */
-    private static final boolean[] SNAPPED = new boolean[2];
 
     public static boolean active() {
         AlpakaConfig c = AlpakaConfig.instance;
@@ -97,31 +90,6 @@ public final class EquipAnimation {
         return switching ? speed() : 1.0f;
     }
 
-    /**
-     * Whether the old item is replaced on the spot instead of first leaving the hand: Drop In
-     * brings the new item down from above, and an old item rising up to meet it read as the wrong
-     * way round.
-     */
-    public static boolean replacesAtOnce() {
-        return active() && !instant() && style() == Style.DROP_IN;
-    }
-
-    /**
-     * Starts the arriving phase for a hand whose item is replaced at once; the renderer has just
-     * put its height to 0, so the new item starts from where the style brings it in.
-     */
-    public static void arriveNow(InteractionHand hand) {
-        PHASES[hand.ordinal()] = Phase.ARRIVING;
-        SNAPPED[hand.ordinal()] = true;
-    }
-
-    /** Whether the hand jumped into the arriving phase this tick; clears the mark. */
-    public static boolean takeSnapped(InteractionHand hand) {
-        boolean snapped = SNAPPED[hand.ordinal()];
-        SNAPPED[hand.ordinal()] = false;
-        return snapped;
-    }
-
     /** Plays the animation once on the item in the main hand, only on this screen; the item stays where it is. */
     public static void preview() {
         if (Minecraft.getInstance().player != null) previewRequested = true;
@@ -139,7 +107,6 @@ public final class EquipAnimation {
         int i = hand.ordinal();
         if (!active() || instant()) {
             PHASES[i] = Phase.NONE;
-            SNAPPED[i] = false;
             previewRequested = false;
             previewLowering = false;
             return height;
@@ -147,11 +114,6 @@ public final class EquipAnimation {
         if (hand == InteractionHand.MAIN_HAND) {
             if (previewRequested) {
                 previewRequested = false;
-                if (!swapPending && replacesAtOnce()) {
-                    // Nothing leaves: the same item drops in again from above.
-                    arriveNow(hand);
-                    return 0.0f;
-                }
                 if (!swapPending) {
                     previewLowering = true;
                     PHASES[i] = Phase.LEAVING;
@@ -231,13 +193,16 @@ public final class EquipAnimation {
                 pose.translate(0.0f, -0.08f * k * e, 0.0f);
                 aroundItem(pose, side, () -> pose.scale(s, s, s));
             }
-            case DROP_IN -> {
-                // Comes down into the hand from above and behind, tilted outward, straightening as it
-                // lands. Only ever played arriving: the old item is replaced at once (replacesAtOnce).
-                pose.translate(0.05f * side * k * e, 0.55f * k * e, -0.35f * k * e);
+            case SWOOSH -> {
+                // Sweeps out to the side, tipping over until it lies flat, and the next one sweeps in
+                // from low at the side and swings upright, like a sword being drawn. The sideways part
+                // runs ahead of the drop (e against e squared), so the path is an arc: the item leaves
+                // sideways first and then dips out of view, and the next one rises first and then
+                // swings in.
+                pose.translate(0.55f * side * k * e, -0.35f * k * e * e, 0.0f);
                 aroundItem(pose, side, () -> {
-                    pose.mulPose(Axis.ZP.rotationDegrees(-side * 45.0f * k * e));
-                    pose.mulPose(Axis.XP.rotationDegrees(-15.0f * k * e));
+                    pose.mulPose(Axis.ZP.rotationDegrees(-side * 80.0f * k * e));
+                    pose.mulPose(Axis.YP.rotationDegrees(side * 20.0f * k * e));
                 });
             }
         }

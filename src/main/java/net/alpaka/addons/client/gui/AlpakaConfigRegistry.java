@@ -1523,7 +1523,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemEquipAnimationEnabled,
                 v -> { AlpakaConfig.instance.itemEquipAnimationEnabled = v; AlpakaConfig.save(); },
-                "equip animation switch slot swap hotbar scroll reequip spin pop drop rise"));
+                "equip animation switch slot swap hotbar scroll reequip spin pop swoosh sweep rise"));
 
         OPTIONS.add(new ConfigOption("item_equip_animation_test", "Test Animation",
                 "Plays the animation once on the item in your hand, only on your screen.",
@@ -1539,7 +1539,7 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.itemEquipAnimationStyle = Math.round(v); AlpakaConfig.save(); },
                 0.0f, (float) (net.alpaka.addons.features.viewmodel.EquipAnimation.STYLE_NAMES.length - 1),
                 val -> net.alpaka.addons.features.viewmodel.EquipAnimation.STYLE_NAMES[Math.round(val)],
-                "equip animation style vanilla rise spin pop drop in")
+                "equip animation style vanilla rise spin pop swoosh sweep")
                 .choices(net.alpaka.addons.features.viewmodel.EquipAnimation.STYLE_NAMES));
 
         OPTIONS.add(new ConfigOption("item_equip_animation_intensity", "Intensity",

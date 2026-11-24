@@ -892,7 +892,7 @@ public final class DevScreenshotTour {
             }, () -> true, 30),
             new Stop("motion-blur-pickaxe-1", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop("motion-blur-pickaxe-2", () -> {}, () -> true, 3),
-            new Stop(null, () -> AlpakaConfig.instance.itemSwingSpeed = 1.0f, () -> true, 20),
+            new Stop(null, () -> motionBlur(net.minecraft.world.item.Items.DIAMOND_SWORD, 1.0f), () -> true, 20),
             screen("motion-blur-menu", () -> AlpakaConfigScreen.openOn("Viewmodel", "Swing Motion Blur")),
             new Stop(null, () -> {
                 Minecraft.getInstance().gui.setScreen(null);

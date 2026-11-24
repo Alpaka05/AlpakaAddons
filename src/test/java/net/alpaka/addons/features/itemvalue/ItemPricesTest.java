@@ -58,4 +58,17 @@ class ItemPricesTest {
         assertNull(ItemPrices.quote("NOTHING", bazaar, bins, false));
         assertNull(ItemPrices.quote("BOOK", null, null, false));
     }
+
+    @Test
+    void takesTheMedianSaleOfAVariantsMonth() throws IOException {
+        // SkyCofl's history: one row per day, its average price and how many sold.
+        assertEquals(15e9, VariantPrices.parseHistory(new StringReader("""
+                [{"min":1.4E10,"max":1.6E10,"avg":1.5E10,"volume":3,"time":"2026-11-01T00:00:00"},
+                 {"min":1.8E10,"max":1.8E10,"avg":1.8E10,"volume":1,"time":"2026-11-07T00:00:00"},
+                 {"min":9E9,"max":9E9,"avg":9E9,"volume":1,"time":"2026-11-09T00:00:00"}]""")));
+        assertEquals(18e9, VariantPrices.parseHistory(new StringReader(
+                "[{\"min\":1.8E+10,\"max\":1.8E+10,\"avg\":18000000000.0,\"volume\":1,\"time\":\"2026-11-07T00:00:00\"}]")));
+        // A month without a sale gives nothing, so the last price found stays.
+        assertNull(VariantPrices.parseHistory(new StringReader("[]")));
+    }
 }

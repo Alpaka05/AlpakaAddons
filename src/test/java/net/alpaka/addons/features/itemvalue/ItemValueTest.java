@@ -81,6 +81,30 @@ class ItemValueTest {
         return null;
     }
 
+    // ---- Rare forms under an ordinary id ----------------------------------------------------------
+
+    @Test
+    void pricesAPersonalizedSpaceHelmetByItsOwnSales() {
+        Table prices = new Table().ah("DCTR_SPACE_HELM", 340_000_000).ah("DCTR_SPACE_HELM;PERSONALIZED", 15_000_000_000.0);
+        Breakdown personalized = ItemValue.of(json(
+                "{\"id\":\"DCTR_SPACE_HELM\",\"edition\":204,\"recipient_name\":\"its_Eleminator\",\"sender_name\":\"Dctr\"}"),
+                prices, new Listing());
+        assertEquals(15_000_000_000.0, personalized.total());
+        assertFalse(part(personalized, "Base Item").estimated());
+
+        // The ordinary helmets, without an edition, stay at their lowest BIN.
+        Breakdown ordinary = ItemValue.of(json("{\"id\":\"DCTR_SPACE_HELM\"}"), prices, new Listing());
+        assertEquals(340_000_000, ordinary.total());
+    }
+
+    @Test
+    void aPersonalizedSpaceHelmetWithoutSalesIsAnEstimateAtTheOrdinaryPrice() {
+        Breakdown b = ItemValue.of(json("{\"id\":\"DCTR_SPACE_HELM\",\"edition\":204}"),
+                new Table().ah("DCTR_SPACE_HELM", 340_000_000), new Listing());
+        assertEquals(340_000_000, b.total());
+        assertTrue(part(b, "Base Item").estimated());
+    }
+
     // ---- A weapon -------------------------------------------------------------------------------
 
     @Test

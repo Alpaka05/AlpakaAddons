@@ -5,6 +5,7 @@ import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.mainmenu.CustomMainMenuScreen;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -109,6 +110,11 @@ public final class DevScreenshotTour {
                 AlpakaConfig.instance.chestValueSackContents = false;
             }, () -> true, 10),
             new Stop(null, () -> AlpakaConfig.instance.chestValueSackContents = true, () -> true, 1)
+    ) : "oneconfig".equals(System.getenv(ENV)) ? List.of(
+            new Stop("oneconfig-mods", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen()), () -> true, 120),
+            new Stop("oneconfig-alpaka", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen("alpaka")), () -> true, 120),
+            new Stop("oneconfig-alpaka-chat", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen("alpaka", "Chat")), () -> true, 120),
+            new Stop("oneconfig-alpaka-design", () -> Minecraft.getInstance().gui.setScreen(oneConfigScreen("alpaka", "Design")), () -> true, 120)
     ) : "dungeon-map".equals(System.getenv(ENV)) ? List.of(
             screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
             screen("dungeon-map-player-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_icons")),
@@ -853,6 +859,48 @@ public final class DevScreenshotTour {
             // swing also tells the server, which only Outbound may.
             new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
+            // Swing Trail on a swing slowed to a second: early in the strike, and on the way back,
+            // when the sweep is left hanging. Then at half speed, with the sword turned and
+            // shrunk, and on a pickaxe - the sweep has to hang on the tip every time.
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, 0.0f, 1.0f), () -> true, 20),
+            new Stop("swing-trail-strike", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop("swing-trail-back", () -> {}, () -> true, 5),
+            // Each swing is left to play out before the next setup: changed mid-swing, the item jumps.
+            new Stop(null, () -> {}, () -> true, 15),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.5f, 0.0f, 1.0f), () -> true, 20),
+            new Stop("swing-trail-full", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop(null, () -> {}, () -> true, 10),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, -40.0f, 0.6f), () -> true, 30),
+            new Stop("swing-trail-turned", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop(null, () -> {}, () -> true, 20),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_PICKAXE, 0.25f, 0.0f, 1.0f), () -> true, 30),
+            new Stop("swing-trail-pickaxe", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop(null, () -> {}, () -> true, 20),
+            // Turning fast while striking: the hand lags behind the view, which must move the
+            // sweep along with the item and not draw it out across the screen.
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, 0.0f, 1.0f), () -> true, 30),
+            new Stop("swing-trail-turning", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> tourTurn(60.0f), 5),
+            new Stop(null, DevScreenshotTour::tourTurnBack, () -> true, 20),
+            // At night, where a white sweep stands out.
+            new Stop(null, () -> {
+                swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, 0.0f, 1.0f);
+                tourTime("midnight");
+            }, () -> true, 30),
+            new Stop("swing-trail-night", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop("swing-trail-night-back", () -> {}, () -> true, 6),
+            new Stop("swing-trail-night-fading", () -> {}, () -> true, 5),
+            new Stop(null, () -> tourTime("noon"), () -> true, 20),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.itemSwingSpeed = 1.0f;
+                AlpakaConfig.instance.itemSwingTrailDuration = 250.0f;
+                AlpakaConfig.instance.itemRotationZ = 0.0f;
+                AlpakaConfig.instance.itemScale = 1.0f;
+            }, () -> true, 25),
+            screen("swing-trail-menu", () -> AlpakaConfigScreen.openOn("Viewmodel", "Swing Trail")),
+            new Stop(null, () -> {
+                Minecraft.getInstance().gui.setScreen(null);
+                AlpakaConfig.instance.itemSwingTrailEnabled = false;
+            }, () -> true, 5),
             // Inspect Animation: every variant of a few kinds at four points, frozen there.
             new Stop(null, () -> {
                 AlpakaConfig.instance.itemInspectEnabled = true;
@@ -1022,6 +1070,25 @@ public final class DevScreenshotTour {
         text.codePoints().forEach(c -> screen().charTyped(new net.minecraft.client.input.CharacterEvent(c)));
     }
 
+    /**
+     * OneConfig's own menu, on the mod's page (and a category of it): ALPAKA_SCREENSHOT_TOUR=oneconfig.
+     * Only in a dev client that has OneConfig, which is not a dependency: its jar and the Compose
+     * bundle it needs go into run/mods by hand, and without a display server AWT has to stay
+     * headless (JAVA_TOOL_OPTIONS=-Djava.awt.headless=true). The screen's class is OneConfig's
+     * internal one, hence by name.
+     */
+    private static net.minecraft.client.gui.screens.Screen oneConfigScreen(String... args) {
+        try {
+            Class<?> type = Class.forName("org.polyfrost.oneconfig.internal.ui.compose.impls.OneConfigUIScreen");
+            Class<?>[] types = new Class<?>[args.length];
+            java.util.Arrays.fill(types, String.class);
+            return (net.minecraft.client.gui.screens.Screen) type.getConstructor(types).newInstance((Object[]) args);
+        } catch (ReflectiveOperationException e) {
+            AlpakaAddons.LOGGER.error("Screenshot tour: OneConfig's menu could not be opened", e);
+            return null;
+        }
+    }
+
     /** A left click at this point of the open screen, as the player's mouse would deliver it. */
     private static void click(int[] point) {
         screen().mouseClicked(new net.minecraft.client.input.MouseButtonEvent(point[0], point[1],
@@ -1177,7 +1244,12 @@ public final class DevScreenshotTour {
 
     private DevScreenshotTour() {}
 
+    /**
+     * Only in the dev client: the variable alone could be set on a player's machine, and the tour
+     * opens screens, presses keys and quits the game.
+     */
     public static void register() {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) return;
         if (System.getenv(ENV) == null) return;
         AlpakaAddons.LOGGER.info("Screenshot tour on: {} stops", STOPS.size());
         ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
@@ -1337,6 +1409,53 @@ public final class DevScreenshotTour {
             net.minecraft.world.item.ItemStack sword = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD);
             if (glint) sword.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
             player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, sword);
+        });
+    }
+
+    private static void tourTime(String time) {
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server != null) {
+            server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "time set " + time));
+        }
+    }
+
+    /** How far {@link #tourTurn} has turned the player, to turn back by. */
+    private static float tourTurned = 0.0f;
+
+    /** Turns the player's view by so many degrees, the way moving the mouse does. Always true, to serve as a stop's condition that turns every tick. */
+    private static boolean tourTurn(float degrees) {
+        net.minecraft.client.player.LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.setYRot(player.getYRot() + degrees);
+            player.yRotO += degrees;
+            tourTurned += degrees;
+        }
+        return true;
+    }
+
+    private static void tourTurnBack() {
+        tourTurn(-tourTurned);
+    }
+
+    /** An item in hand with the swing trail on, swinging at the given speed, turned and scaled as given. */
+    private static void swingTrail(net.minecraft.world.item.Item item, float swingSpeed, float rotationZ, float scale) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.itemSizeFeatureEnabled = true;
+        AlpakaConfig.instance.itemStarlightEnabled = false;
+        AlpakaConfig.instance.itemSwingTrailEnabled = true;
+        AlpakaConfig.instance.itemSwingSpeed = swingSpeed;
+        // The sweep stays as much longer as the swing is slower, so the picture is the one a
+        // swing at full speed gives.
+        AlpakaConfig.instance.itemSwingTrailDuration = 250.0f / swingSpeed;
+        AlpakaConfig.instance.itemRotationZ = rotationZ;
+        AlpakaConfig.instance.itemScale = scale;
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(item));
         });
     }
 

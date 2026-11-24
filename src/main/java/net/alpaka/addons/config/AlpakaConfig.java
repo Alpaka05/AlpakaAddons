@@ -1282,6 +1282,14 @@ public class AlpakaConfig {
     /** Number of ghost copies spread over the trail length. */
     public float itemMotionBlurSteps = 8.0f;
 
+    // Swing trail: the tip of the held item draws a sweep in the air while it strikes; see SwingTrailFeature.
+    public boolean itemSwingTrailEnabled = false;
+    public int itemSwingTrailColor = 0xFFFFFFFF;
+    /** How long the sweep stays after it was drawn, in milliseconds. */
+    public float itemSwingTrailDuration = 250.0f;
+    /** How thick the sweep is, 1.0 its usual thickness: a fifth of the item's length. */
+    public float itemSwingTrailWidth = 1.0f;
+
     // Equip animation: how the held item leaves and arrives when you switch slots; see EquipAnimation.
     public boolean itemEquipAnimationEnabled = false;
     /** Index into EquipAnimation.Style. */
@@ -1328,6 +1336,10 @@ public class AlpakaConfig {
         public float motionBlurLength = 80.0f;
         public float motionBlurOpacity = 0.35f;
         public float motionBlurSteps = 8.0f;
+        public boolean swingTrailEnabled = false;
+        public int swingTrailColor = 0xFFFFFFFF;
+        public float swingTrailDuration = 250.0f;
+        public float swingTrailWidth = 1.0f;
         public boolean equipAnimationEnabled = false;
         public int equipAnimationStyle = 1;
         public float equipAnimationIntensity = 100.0f;
@@ -1404,6 +1416,10 @@ public class AlpakaConfig {
             this.itemMotionBlurLength = preset.motionBlurLength;
             this.itemMotionBlurOpacity = preset.motionBlurOpacity;
             this.itemMotionBlurSteps = preset.motionBlurSteps;
+            this.itemSwingTrailEnabled = preset.swingTrailEnabled;
+            this.itemSwingTrailColor = preset.swingTrailColor;
+            this.itemSwingTrailDuration = preset.swingTrailDuration;
+            this.itemSwingTrailWidth = preset.swingTrailWidth;
             this.itemEquipAnimationEnabled = preset.equipAnimationEnabled;
             this.itemEquipAnimationStyle = preset.equipAnimationStyle;
             this.itemEquipAnimationIntensity = preset.equipAnimationIntensity;
@@ -1445,6 +1461,10 @@ public class AlpakaConfig {
         this.itemMotionBlurLength = 80.0f;
         this.itemMotionBlurOpacity = 0.35f;
         this.itemMotionBlurSteps = 8.0f;
+        this.itemSwingTrailEnabled = false;
+        this.itemSwingTrailColor = 0xFFFFFFFF;
+        this.itemSwingTrailDuration = 250.0f;
+        this.itemSwingTrailWidth = 1.0f;
         this.itemEquipAnimationEnabled = false;
         this.itemEquipAnimationStyle = 1;
         this.itemEquipAnimationIntensity = 100.0f;
@@ -1512,6 +1532,10 @@ public class AlpakaConfig {
         preset.motionBlurLength = this.itemMotionBlurLength;
         preset.motionBlurOpacity = this.itemMotionBlurOpacity;
         preset.motionBlurSteps = this.itemMotionBlurSteps;
+        preset.swingTrailEnabled = this.itemSwingTrailEnabled;
+        preset.swingTrailColor = this.itemSwingTrailColor;
+        preset.swingTrailDuration = this.itemSwingTrailDuration;
+        preset.swingTrailWidth = this.itemSwingTrailWidth;
         preset.equipAnimationEnabled = this.itemEquipAnimationEnabled;
         preset.equipAnimationStyle = this.itemEquipAnimationStyle;
         preset.equipAnimationIntensity = this.itemEquipAnimationIntensity;
@@ -2093,6 +2117,7 @@ public class AlpakaConfig {
         this.storagePreviewEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
+        this.itemSwingTrailEnabled = false;
         this.itemEquipAnimationEnabled = false;
         this.itemInspectEnabled = false;
         this.bossSpawnAlertEnabled = false;

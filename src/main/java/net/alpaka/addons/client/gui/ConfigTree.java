@@ -32,7 +32,7 @@ public final class ConfigTree {
         /** The sidebar entry it is listed under; set when the layout places it. */
         public Section section;
 
-        Feature(String title, String description, ConfigOption master) {
+        public Feature(String title, String description, ConfigOption master) {
             this.title = title;
             this.description = description;
             this.master = master;
@@ -73,7 +73,7 @@ public final class ConfigTree {
         public final String title;
         public final List<Feature> features = new ArrayList<>();
 
-        Section(String title) {
+        public Section(String title) {
             this.title = title;
         }
     }
@@ -83,7 +83,7 @@ public final class ConfigTree {
         public final String title;
         public final List<Section> sections = new ArrayList<>();
 
-        Group(String title) {
+        public Group(String title) {
             this.title = title;
         }
     }
@@ -107,7 +107,7 @@ public final class ConfigTree {
             "mention_notification", "chat_peek", "chat_tabs",
             "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "dungeon_map_enabled", "dungeon_door_highlight", "leap_menu_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
-            "item_size_feature", "item_equip_animation", "item_starlight", "item_motion_blur", "item_inspect", "item_viewmodel_reset",
+            "item_size_feature", "item_starlight", "item_motion_blur", "item_swing_trail", "item_equip_animation", "item_inspect", "item_viewmodel_reset",
             // Block overlay: one feature, outline, fill, animation and filters its settings
             "block_overlay_enabled",
             // SkyBlock
@@ -198,7 +198,7 @@ public final class ConfigTree {
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar", "#Scoreboard"},
                     {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_copy", "chat_peek", "compact_chat",
                             "message_filter", "expand_chat_history", "mention_notification"},
-                    {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_equip_animation", "item_starlight", "item_motion_blur", "item_inspect",
+                    {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur", "item_swing_trail", "item_equip_animation", "item_inspect",
                             "render_hand_third_person", "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "rare_drop_animation", "teleport_warp", "inventory_snow"}},
             {{"SkyBlock"},

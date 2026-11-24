@@ -47,7 +47,7 @@ class DisableAllFeaturesTest {
             "compactChatEnabled", "mentionNotificationEnabled", "chatPeekEnabled", "chatTabsEnabled",
             "playerModelEnabled", "performanceHudEnabled",
             "inventoryHudEnabled", "scoreboardBlurEnabled", "scoreboardAlpakaFooter",
-            "itemSizeFeatureEnabled", "itemStarlightEnabled", "itemMotionBlurEnabled", "itemEquipAnimationEnabled", "blockOverlayEnabled",
+            "itemSizeFeatureEnabled", "itemStarlightEnabled", "itemMotionBlurEnabled", "itemSwingTrailEnabled", "itemEquipAnimationEnabled", "blockOverlayEnabled",
             "etherwarpOverlayEnabled", "etherwarpSoundEnabled",
             // SkyBlock
             "slayerDropTrackerEnabled", "slayerRngDropGuildChatEnabled",

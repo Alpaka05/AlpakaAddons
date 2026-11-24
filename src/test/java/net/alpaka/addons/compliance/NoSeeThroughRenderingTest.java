@@ -34,8 +34,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The dungeon solvers draw nothing through walls and touch no interaction, read from the compiled
- * classes of {@code features/dungeon}.
+ * The dungeon features draw nothing through walls and touch no interaction, read from the compiled
+ * classes of {@code features/dungeon} (the solvers), {@code features/dungeonmobs} (Starred Mobs)
+ * and {@code features/teammateglow} (Teammate Class Glow).
  *
  * The solvers promise visual help only: every box, line and label is depth-tested, so a wall hides
  * it like any block, and they never cancel, change or make a click, a use or an attack
@@ -48,8 +49,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   pass ({@code CompareOp.ALWAYS_PASS}, {@code NOT_EQUAL}), the mod's own
  *   {@code BlockOverlayRenderTypes.noDepthQuads}, {@code submitNameTag} (it can add a see-through
  *   copy), and the glow outline ({@code setGlowingTag}, {@code RenderTypes.outline},
- *   {@code RenderPipelines.OUTLINE_NO_CULL}, {@code shouldShowEntityOutlines}), which is drawn over
- *   everything. A pipeline of its own could set any depth test, so the package may not build one
+ *   {@code RenderPipelines.OUTLINE_NO_CULL}, {@code shouldShowEntityOutlines}, an entity's
+ *   {@code outlineColor} and {@code EntityHighlight.outline}), which is drawn over everything. Only
+ *   the methods in {@link #OUTLINE_ALLOWED} may set that color, each for an entity the player
+ *   sees anyway. A pipeline of its own could set any depth test, so the package may not build one
  *   either: no {@code DepthStencilState}, no {@code RenderPipeline.Builder}, and not the mod's
  *   accessors that register pipelines and render types. Vanilla's depth-tested types are all it needs;
  * - acting in the world or sending: anything of {@code MultiPlayerGameMode} and {@code Connection},
@@ -60,7 +63,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code compliance/Outbound}; OutboundBytecodeScanTest guards that path.
  */
 class NoSeeThroughRenderingTest {
-    private static final String PACKAGE = "net/alpaka/addons/features/dungeon";
+    private static final List<String> PACKAGES = List.of(
+            "net/alpaka/addons/features/dungeon",
+            "net/alpaka/addons/features/dungeonmobs",
+            "net/alpaka/addons/features/teammateglow");
 
     private static final String PACKET = "Lnet/minecraft/network/protocol/Packet;";
 
@@ -72,6 +78,23 @@ class NoSeeThroughRenderingTest {
             "net/alpaka/addons/features/blockoverlay/BlockOverlayRenderTypes", Set.of("noDepthQuads"),
             "net/minecraft/client/renderer/rendertype/RenderTypes", Set.of("outline"),
             "net/minecraft/client/renderer/RenderPipelines", Set.of("OUTLINE_NO_CULL"));
+
+    /**
+     * The glowing outline of an entity, which is drawn through walls: setting its color on a render
+     * state, directly or through the shared helper.
+     */
+    private static final String OUTLINE_STATE = "net/minecraft/client/renderer/entity/state/EntityRenderState";
+    private static final String OUTLINE_HELPER = "net/alpaka/addons/utils/EntityHighlight";
+
+    /**
+     * The only methods that may give an entity that outline, each with why it shows nothing a wall
+     * hides. Anything else that sets it fails, and so does an entry here that no longer does.
+     */
+    private static final Map<String, String> OUTLINE_ALLOWED = Map.of(
+            "net/alpaka/addons/features/dungeonmobs/StarredMobsHighlight.applyOutline",
+            "only mobs in the player's line of sight and not invisible are highlighted (StarredMobsHighlight.tick)",
+            "net/alpaka/addons/features/teammateglow/TeammateClassGlow.applyOutline",
+            "only recolors an outline Hypixel already gave a teammate; never adds one");
 
     /** Names that are forbidden on any owner: a subclass or another collector has them too. */
     private static final Set<String> FORBIDDEN_NAMES = Set.of("setGlowingTag", "submitNameTag", "shouldShowEntityOutlines");
@@ -91,23 +114,27 @@ class NoSeeThroughRenderingTest {
     private static final String FABRIC_PLAYER_EVENTS = "net/fabricmc/fabric/api/event/player/";
 
     @Test
-    void theDungeonSolversDrawNothingThroughWallsAndTouchNoInteraction() throws IOException {
+    void theDungeonFeaturesDrawNothingThroughWallsAndTouchNoInteraction() throws IOException {
         Map<String, String> found = new TreeMap<>();
-        int scanned = 0;
-        for (Path dir : classDirectories()) {
-            Path root = dir.resolve(PACKAGE);
-            if (!Files.isDirectory(root)) continue;
-            try (Stream<Path> files = Files.walk(root)) {
-                for (Path file : (Iterable<Path>) files::iterator) {
-                    if (!file.toString().endsWith(".class")) continue;
-                    scanned++;
-                    String why = forbidden(Files.readAllBytes(file));
-                    if (why != null) found.put(dir.relativize(file).toString(), why);
+        Map<String, Integer> scanned = new TreeMap<>();
+        for (String pkg : PACKAGES) {
+            for (Path dir : classDirectories()) {
+                Path root = dir.resolve(pkg);
+                if (!Files.isDirectory(root)) continue;
+                try (Stream<Path> files = Files.walk(root)) {
+                    for (Path file : (Iterable<Path>) files::iterator) {
+                        if (!file.toString().endsWith(".class")) continue;
+                        scanned.merge(pkg, 1, Integer::sum);
+                        String why = forbidden(Files.readAllBytes(file));
+                        if (why != null) found.put(dir.relativize(file).toString(), why);
+                    }
                 }
             }
         }
-        assertTrue(scanned > 30, "Found only " + scanned + " compiled dungeon classes; the scan looked in the wrong place");
-        assertEquals(Map.of(), found, "The dungeon solvers must only draw depth-tested and never act: " + found);
+        assertTrue(scanned.getOrDefault(PACKAGES.get(0), 0) > 30 && scanned.size() == PACKAGES.size(),
+                "Found too few compiled classes " + scanned + "; the scan looked in the wrong place");
+        assertEquals(Map.of(), found, "The dungeon features must only draw depth-tested and never act: " + found);
+        assertEquals(OUTLINE_ALLOWED.keySet(), Set.copyOf(OUTLINE_USED), "OUTLINE_ALLOWED lists a method that no longer sets the outline");
     }
 
     /** The checks themselves, on references written out by hand. */
@@ -156,6 +183,14 @@ class NoSeeThroughRenderingTest {
                 "(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/phys/Vec3;ILnet/minecraft/network/chat/Component;ZILnet/minecraft/client/renderer/state/level/CameraRenderState;)V")));
         assertNull(check(call("net/minecraft/client/renderer/OrderedSubmitNodeCollector", "submitText",
                 "(Lcom/mojang/blaze3d/vertex/PoseStack;FFLnet/minecraft/util/FormattedCharSequence;ZLnet/minecraft/client/gui/Font$DisplayMode;IIII)V")));
+
+        // The glowing outline, through the render state or the shared helper.
+        assertTrue(isOutline(new FieldInsnNode(Opcodes.PUTFIELD, OUTLINE_STATE, "outlineColor", "I")));
+        assertTrue(isOutline(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, OUTLINE_HELPER, "outline",
+                "(L" + OUTLINE_STATE + ";I)V")));
+        assertTrue(!isOutline(new FieldInsnNode(Opcodes.GETFIELD, OUTLINE_STATE, "outlineColor", "I")));
+        assertTrue(!isOutline(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, OUTLINE_HELPER, "submitHitboxes",
+                "(Lnet/fabricmc/fabric/api/client/rendering/v1/level/LevelRenderContext;Lnet/alpaka/addons/utils/EntityColors;)V")));
 
         // Acting: any use of the game mode, the connection, sending, Fabric's interaction events.
         assertNotNull(check(field("net/minecraft/client/Minecraft", "gameMode", "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;")));
@@ -220,12 +255,34 @@ class NoSeeThroughRenderingTest {
             String why = inDescriptor(method.desc);
             if (why != null) return node.name + "." + method.name + ": " + why;
             if (method.instructions == null) continue;
+            boolean outlineAllowed = OUTLINE_ALLOWED.containsKey(node.name + "." + method.name);
             for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                 why = check(insn);
+                if (why == null && isOutline(insn)) {
+                    if (outlineAllowed) OUTLINE_USED.add(node.name + "." + method.name);
+                    else why = "the glowing outline, drawn through walls";
+                }
                 if (why != null) return node.name + "." + method.name + ": " + why;
             }
         }
         return null;
+    }
+
+    /** The allowed outline methods seen setting it in this run. */
+    private static final Set<String> OUTLINE_USED = new java.util.concurrent.ConcurrentSkipListSet<>();
+
+    /** Whether the instruction gives an entity the glowing outline. */
+    private static boolean isOutline(AbstractInsnNode insn) {
+        if (insn instanceof FieldInsnNode field) {
+            return field.getOpcode() == Opcodes.PUTFIELD && field.name.equals("outlineColor");
+        }
+        if (insn instanceof MethodInsnNode call) return call.owner.equals(OUTLINE_HELPER) && call.name.equals("outline");
+        if (insn instanceof InvokeDynamicInsnNode indy) {
+            for (Object arg : indy.bsmArgs) {
+                if (arg instanceof Handle h && h.getOwner().equals(OUTLINE_HELPER) && h.getName().equals("outline")) return true;
+            }
+        }
+        return false;
     }
 
     /** Why this instruction is forbidden, or null. */

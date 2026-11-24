@@ -3,6 +3,7 @@ package net.alpaka.addons.mixin;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
+import net.alpaka.addons.features.viewmodel.SwingTrailFeature;
 import net.minecraft.client.renderer.SubmitNodeCollection;
 import net.minecraft.client.renderer.feature.submit.SubmitNode;
 import net.minecraft.client.renderer.feature.submit.TranslucentSubmit;
@@ -28,6 +29,7 @@ public class SubmitNodeCollectionMixin {
         HandItemLightingFeature.onItemSubmitted(submit);
         HandItemStarlightFeature.onItemSubmitted(submit);
         ItemMotionBlurFeature.onItemSubmitted(submit);
+        SwingTrailFeature.onItemSubmitted(submit);
         return submit;
     }
 
@@ -39,6 +41,7 @@ public class SubmitNodeCollectionMixin {
         HandItemLightingFeature.onItemSubmitted(submit);
         HandItemStarlightFeature.onItemSubmitted(submit);
         ItemMotionBlurFeature.onItemSubmitted(submit);
+        SwingTrailFeature.onItemSubmitted(submit);
         return submit;
     }
 }

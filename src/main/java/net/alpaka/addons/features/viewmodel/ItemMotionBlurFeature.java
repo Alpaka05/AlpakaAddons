@@ -4,6 +4,9 @@ import com.mojang.blaze3d.pipeline.BindGroupLayout;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.textures.GpuSampler;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.alpaka.addons.config.AlpakaConfig;
@@ -41,37 +44,37 @@ import java.util.Map;
 
 /**
  * Motion blur for the first-person held item: while the item swings, it smears along the path it
- * covered over the last few dozen milliseconds instead of jumping from pose to pose. Nothing changes while the item rests, walks or turns with the camera; the
- * trail only follows the attack swing, which is the motion fast enough to look choppy.
+ * covered over the last few dozen milliseconds instead of jumping from pose to pose. Nothing
+ * changes while the item rests, walks or turns with the camera; the blur only follows the attack
+ * swing, which is the motion fast enough to look choppy.
  *
  * How it works: every frame, the hand renderer submits the item as one {@code ItemSubmit} per model
  * layer, each carrying a copy of the layer's final pose. The submits made for the local player's
  * hand are captured (the same way the lighting feature does), and their poses are stored in a short
  * per-hand history stamped with the frame time. Right after the real submit, the same quads are
- * submitted again with poses sampled back along that history, spaced evenly in time over the trail
- * length and interpolated between the two recorded frames around each sample time, so the result is
- * the same at 60 and at 240 fps. The ghost submits are remembered by identity together with their
- * alpha; when the feature renderer draws one, its render type is swapped for a translucent twin of
- * the item type and its quad color gets the alpha.
+ * submitted again as samples with poses taken back along that history, interpolated between the two
+ * recorded frames around each one, so the result is the same at 60 and at 240 fps. The sample
+ * submits are remembered by identity together with their alpha; when the feature renderer draws
+ * one, its render type is swapped for a translucent twin of the item type and its quad color gets
+ * the alpha.
  *
- * What makes it a blur rather than a row of copies is the sampling: the number of samples follows
- * how far the item travelled on screen, so neighbouring samples sit only a few pixels apart, and
- * each one is so faint that no single copy is visible on its own (see {@link MotionBlurSampling}).
- * Stacked, they add up to a time average of the motion: where the item spent most of the trail the
- * smear is strong, where it only passed through it is faint, and it fades out towards the end.
+ * What makes it a blur rather than a row of copies is the sampling (see {@link MotionBlurSampling}):
+ * the samples are spread evenly along the distance the item travelled on screen, a few pixels
+ * apart, and each one is so faint that no single copy shows on its own. Where they sit is shifted
+ * by a random fraction of their spacing every frame, so even the faint edges between them blend.
  *
- * The twin is a clone of the vanilla item pipeline that blends but does not write depth. Without
- * that, overlapping ghosts would occlude each other where one is a hair nearer and the smear would
- * break into visible steps. Two clones exist because the lighting feature draws the hand item with
- * a differently-lit pipeline, and a ghost has to match the item it trails. If cloning fails for any
- * reason, the plain vanilla translucent types stand in - a stepped trail beats no trail.
- * The ghost types also skip the per-frame quad sorting vanilla does for translucency: the samples
- * are so faint that the order they blend in makes no visible difference, and sorting a few dozen
- * copies of the item every frame would be the most expensive part of the effect.
+ * The twin is a clone of the vanilla item pipeline that blends but does not write depth, culls back
+ * faces and samples the texture smoothly (see {@link #cloneForSamples} and {@link #smoothSampler}).
+ * Two clones exist because the lighting feature draws the hand item with a differently-lit
+ * pipeline, and a sample has to match the item it trails. If cloning fails for any reason, the
+ * plain vanilla translucent types stand in - a coarser blur beats none. The sample types also skip
+ * the per-frame quad sorting vanilla does for translucency: the samples are so faint that the order
+ * they blend in makes no visible difference, and sorting dozens of copies of the item every frame
+ * would be the most expensive part of the effect.
  *
- * Only quads on the vanilla item and block-item sheets are trailed. A layer drawn by a special
+ * Only quads on the vanilla item and block-item sheets are blurred. A layer drawn by a special
  * renderer (banner, shield, head) never reaches the collector as an ItemSubmit and simply gets no
- * ghost, which is far better than an opaque duplicate.
+ * samples, which is far better than an opaque duplicate.
  */
 public final class ItemMotionBlurFeature {
 
@@ -87,9 +90,16 @@ public final class ItemMotionBlurFeature {
     public static final float MIN_LENGTH_MS = 20.0f;
     public static final float MAX_LENGTH_MS = 400.0f;
 
-    /** Quality levels of the config slider: the most samples one swing frame may take. */
+    /** Quality levels of the config slider: the most samples one frame may take. */
     public static final String[] QUALITY_NAMES = {"Low", "Medium", "High", "Ultra"};
-    private static final int[] QUALITY_SAMPLES = {12, 24, 40, 64};
+    private static final int[] QUALITY_SAMPLES = {24, 48, 96, 160};
+
+    /**
+     * The most quads all samples of one frame may add up to, per quality level. A plain sword has
+     * about 80, so it always gets the full sample count; a detailed 3D model from a resource pack
+     * can have hundreds and gets fewer samples instead of costing frames.
+     */
+    private static final int[] QUALITY_QUAD_BUDGET = {3_000, 6_000, 12_000, 24_000};
 
     /**
      * The field of view the hand is drawn with. Vanilla ignores the FOV setting for the hand and
@@ -97,8 +107,18 @@ public final class ItemMotionBlurFeature {
      */
     private static final float HAND_FOV_DEGREES = 70.0f;
 
+    /** Half the screen's height in units of the focal length, from the hand's field of view. */
+    private static final float HALF_SCREEN_HEIGHT = (float) Math.tan(Math.toRadians(HAND_FOV_DEGREES / 2.0f));
+
+    /** The window's width over its height, set each frame before measuring. */
+    private static float screenAspect = 16.0f / 9.0f;
+
     /** The eight corners of the item's model bounds, refilled each frame. */
     private static final float[] BOUNDS_CORNERS = new float[24];
+    /** The item's outermost vertices in eight directions, refilled each frame; see fillBoundsCorners. */
+    private static final float[] EXTREME_POINTS = new float[24];
+    private static final float[] EXTREME_SCORES = new float[8];
+    private static final java.util.Random JITTER = new java.util.Random();
     private static final Vector3f PROJECT_A = new Vector3f();
     private static final Vector3f PROJECT_B = new Vector3f();
 
@@ -237,44 +257,73 @@ public final class ItemMotionBlurFeature {
         // Whether each layer can be ghosted depends on its quads alone, so it is checked once here
         // rather than again for every sample of the trail.
         boolean[] ghostable = new boolean[poses.length];
-        boolean any = false;
+        int quadsPerSample = 0;
         for (int layer = 0; layer < poses.length; layer++) {
-            ghostable[layer] = usesVanillaSheets(currentSubmits.get(layer).quads());
-            any |= ghostable[layer];
+            List<BakedQuad> quads = currentSubmits.get(layer).quads();
+            ghostable[layer] = usesVanillaSheets(quads);
+            if (ghostable[layer]) {
+                quadsPerSample += quads.size();
+            }
         }
-        if (!any || !fillBoundsCorners(currentSubmits)) {
+        if (quadsPerSample == 0 || !fillBoundsCorners(currentSubmits)) {
             currentSubmits.clear();
             return;
         }
 
-        float pathPixels = screenPath(frames, now - trailNanos);
-        int samples = MotionBlurSampling.sampleCount(pathPixels, QUALITY_SAMPLES[quality]);
+        // How far the item travelled on screen, frame by frame, over the trail.
+        long since = now - trailNanos;
+        int first = Math.max(0, olderFrame(frames, since));
+        float[] distance = travelledPixels(frames, first);
+        int last = frames.length - 1;
+        float startDistance = distance[first];
+        if (first < last && frames[first].nanos < since) {
+            float t = (since - frames[first].nanos) / (float) (frames[first + 1].nanos - frames[first].nanos);
+            startDistance = Mth.lerp(t, distance[first], distance[first + 1]);
+        }
+        float pathPixels = distance[last] - startDistance;
+        int maxSamples = Math.min(QUALITY_SAMPLES[quality], QUALITY_QUAD_BUDGET[quality] / quadsPerSample);
+        int samples = MotionBlurSampling.sampleCount(pathPixels, maxSamples);
         if (samples == 0) {
             currentSubmits.clear();
             return;
         }
-        float[] alphas = MotionBlurSampling.sampleAlphas(samples, opacity);
+        float spacing = pathPixels / samples;
+        float overlap = MotionBlurSampling.overlap(unitPixels(frames[last]), spacing);
+        // Where the samples sit is shifted by a different fraction of the spacing every frame, so
+        // the faint edges of neighbouring samples never stay in the same place: on screen they
+        // blend into one even smear rather than standing as fine ridges.
+        float jitter = JITTER.nextFloat();
 
         try {
-            // Oldest sample first, so that with blending the newer, stronger ones land on top.
+            // Oldest sample first, so that with blending the newer, stronger ones land on top. The
+            // samples are spread evenly along the distance travelled, not over time, so they sit
+            // as close together where the swing is fastest as where it is slow.
+            int interval = first;
             for (int step = samples; step >= 1; step--) {
-                float alpha = alphas[step - 1];
+                float at = distance[last] - (step - 1 + jitter) * spacing;
+                while (interval > first && distance[interval] > at) {
+                    interval--;
+                }
+                while (interval < last - 1 && distance[interval + 1] < at) {
+                    interval++;
+                }
+                if (interval >= last) {
+                    break;
+                }
+                float segment = distance[interval + 1] - distance[interval];
+                float t = segment > 0.0f ? Mth.clamp((at - distance[interval]) / segment, 0.0f, 1.0f) : 1.0f;
+                long sampleNanos = frames[interval].nanos + (long) (t * (frames[interval + 1].nanos - frames[interval].nanos));
+                float age = (now - sampleNanos) / (float) trailNanos;
+                float alpha = MotionBlurSampling.alpha(age, opacity, overlap);
                 if (alpha < MotionBlurSampling.MIN_VISIBLE_ALPHA) {
                     continue;
-                }
-                long sampleTime = now - trailNanos * step / samples;
-                int older = olderFrame(frames, sampleTime);
-                if (older < 0) {
-                    continue; // The history does not reach back this far: no layer gets a ghost.
                 }
                 for (int layer = 0; layer < poses.length; layer++) {
                     if (!ghostable[layer]) {
                         continue;
                     }
                     ItemFeatureRenderer.Submit submit = currentSubmits.get(layer);
-                    if (!samplePose(frames, older, sampleTime, layer, GHOST_STACK.last())) {
-                        continue;
-                    }
+                    lerpPose(frames[interval].poses[layer], frames[interval + 1].poses[layer], t, GHOST_STACK.last());
                     pendingGhostAlpha = alpha;
                     collector.submitItem(GHOST_STACK, submit.displayContext(), submit.lightCoords(),
                             submit.overlayCoords(), 0, submit.tintLayers(), submit.quads(),
@@ -288,22 +337,38 @@ public final class ItemMotionBlurFeature {
     }
 
     /**
-     * Collects the corners of the box around every quad of the item into {@link #BOUNDS_CORNERS},
-     * in model space. False when there are no quads at all.
+     * Collects, in model space, the corners of the box around every quad of the item into
+     * {@link #BOUNDS_CORNERS}, and its outermost points into {@link #EXTREME_POINTS}: the vertices
+     * farthest left, right, down and up and along both diagonals. Those are real points of the
+     * item - the tip of a blade, the end of a handle - unlike the corners of the box, which for a
+     * diagonal sword lie in empty air and can swing close past the eye. False when there are no
+     * quads at all.
      */
     private static boolean fillBoundsCorners(List<ItemFeatureRenderer.Submit> submits) {
         float minX = Float.POSITIVE_INFINITY, minY = Float.POSITIVE_INFINITY, minZ = Float.POSITIVE_INFINITY;
         float maxX = Float.NEGATIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY, maxZ = Float.NEGATIVE_INFINITY;
+        float[] best = EXTREME_SCORES;
+        java.util.Arrays.fill(best, Float.NEGATIVE_INFINITY);
         for (ItemFeatureRenderer.Submit submit : submits) {
             for (BakedQuad quad : submit.quads()) {
                 for (int v = 0; v < 4; v++) {
                     Vector3fc p = quad.position(v);
-                    minX = Math.min(minX, p.x());
-                    minY = Math.min(minY, p.y());
-                    minZ = Math.min(minZ, p.z());
-                    maxX = Math.max(maxX, p.x());
-                    maxY = Math.max(maxY, p.y());
-                    maxZ = Math.max(maxZ, p.z());
+                    float x = p.x(), y = p.y(), z = p.z();
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    minZ = Math.min(minZ, z);
+                    maxX = Math.max(maxX, x);
+                    maxY = Math.max(maxY, y);
+                    maxZ = Math.max(maxZ, z);
+                    // Scores along the eight directions: -x, +x, -y, +y and the four diagonals.
+                    considerExtreme(0, -x, x, y, z);
+                    considerExtreme(1, x, x, y, z);
+                    considerExtreme(2, -y, x, y, z);
+                    considerExtreme(3, y, x, y, z);
+                    considerExtreme(4, x + y, x, y, z);
+                    considerExtreme(5, -x - y, x, y, z);
+                    considerExtreme(6, x - y, x, y, z);
+                    considerExtreme(7, y - x, x, y, z);
                 }
             }
         }
@@ -318,41 +383,87 @@ public final class ItemMotionBlurFeature {
         return true;
     }
 
-    /**
-     * How many pixels the item travelled on screen since {@code since}: for every pair of recorded
-     * frames in that span, the farthest any corner of its bounds moved, summed up. Measured on the
-     * first layer only, since all layers of one item share their pose.
-     */
-    private static float screenPath(Frame[] frames, long since) {
-        int start = olderFrame(frames, since);
-        if (start < 0) {
-            start = 0;
+    private static void considerExtreme(int index, float score, float x, float y, float z) {
+        if (score > EXTREME_SCORES[index]) {
+            EXTREME_SCORES[index] = score;
+            EXTREME_POINTS[index * 3] = x;
+            EXTREME_POINTS[index * 3 + 1] = y;
+            EXTREME_POINTS[index * 3 + 2] = z;
         }
-        float focal = Minecraft.getInstance().getWindow().getHeight()
-                / (2.0f * (float) Math.tan(Math.toRadians(HAND_FOV_DEGREES / 2.0f)));
-        float path = 0.0f;
-        for (int i = start; i < frames.length - 1; i++) {
+    }
+
+    /**
+     * How far, in pixels, the item had travelled on screen at each recorded frame from
+     * {@code first} on, counted from 0 at {@code first}. Between two frames it is the farthest any
+     * of its outermost points moved. Measured on the first layer only, since all layers of one item
+     * share their pose.
+     */
+    private static float[] travelledPixels(Frame[] frames, int first) {
+        float[] distance = new float[frames.length];
+        float focal = focalPixels();
+        com.mojang.blaze3d.platform.Window window = Minecraft.getInstance().getWindow();
+        screenAspect = window.getHeight() > 0 ? window.getWidth() / (float) window.getHeight() : 16.0f / 9.0f;
+        for (int i = first; i < frames.length - 1; i++) {
             Matrix4f a = frames[i].poses[0].pose();
             Matrix4f b = frames[i + 1].poses[0].pose();
             float farthest = 0.0f;
-            for (int corner = 0; corner < 8; corner++) {
-                float x = BOUNDS_CORNERS[corner * 3];
-                float y = BOUNDS_CORNERS[corner * 3 + 1];
-                float z = BOUNDS_CORNERS[corner * 3 + 2];
+            for (int point = 0; point < 8; point++) {
+                float x = EXTREME_POINTS[point * 3];
+                float y = EXTREME_POINTS[point * 3 + 1];
+                float z = EXTREME_POINTS[point * 3 + 2];
                 a.transformPosition(x, y, z, PROJECT_A);
                 b.transformPosition(x, y, z, PROJECT_B);
-                // The hand is drawn in camera space, looking down -Z; a corner at or behind the eye
-                // has no place on screen.
-                if (PROJECT_A.z > -0.01f || PROJECT_B.z > -0.01f) {
-                    continue;
-                }
-                float dx = PROJECT_A.x / -PROJECT_A.z - PROJECT_B.x / -PROJECT_B.z;
-                float dy = PROJECT_A.y / -PROJECT_A.z - PROJECT_B.y / -PROJECT_B.z;
-                farthest = Math.max(farthest, (float) Math.sqrt(dx * dx + dy * dy));
+                farthest = Math.max(farthest, screenDistance(PROJECT_A, PROJECT_B));
             }
-            path += farthest * focal;
+            distance[i + 1] = distance[i] + farthest * focal;
         }
-        return path;
+        return distance;
+    }
+
+    /** Writes the pose a share {@code t} of the way from {@code a} to {@code b} into {@code out}. */
+    private static void lerpPose(PoseStack.Pose a, PoseStack.Pose b, float t, PoseStack.Pose out) {
+        // set() first so the pose keeps its flags; the matrices are then overwritten in place.
+        out.set(a);
+        a.pose().lerp(b.pose(), t, out.pose());
+        a.normal().lerp(b.normal(), t, out.normal());
+    }
+
+    /**
+     * How many pixels one model unit (the item's whole 16-pixel texture) spans on screen in the
+     * newest frame: the longer of the bounds' two front edges.
+     */
+    private static float unitPixels(Frame newest) {
+        Matrix4f pose = newest.poses[0].pose();
+        pose.transformPosition(BOUNDS_CORNERS[0], BOUNDS_CORNERS[1], BOUNDS_CORNERS[2], PROJECT_A);
+        pose.transformPosition(BOUNDS_CORNERS[3], BOUNDS_CORNERS[4], BOUNDS_CORNERS[5], PROJECT_B);
+        float across = screenDistance(PROJECT_A, PROJECT_B);
+        pose.transformPosition(BOUNDS_CORNERS[6], BOUNDS_CORNERS[7], BOUNDS_CORNERS[8], PROJECT_B);
+        float up = screenDistance(PROJECT_A, PROJECT_B);
+        return Math.max(across, up) * focalPixels();
+    }
+
+    /**
+     * The distance between two points of the hand's space once projected, in units of the focal
+     * length. The hand's space has the eye at the origin and depth along Z; which way Z points has
+     * changed between versions, so only its size is used.
+     *
+     * Each point is first held to the edges of the screen: the end of a handle often swings below
+     * the bottom edge and close past the eye, where a small move projects to thousands of pixels
+     * that nobody sees. Measured that way, the samples would be spread over motion off screen and
+     * stand far apart on it.
+     */
+    private static float screenDistance(Vector3f a, Vector3f b) {
+        float depthA = Math.max(Math.abs(a.z), 0.05f);
+        float depthB = Math.max(Math.abs(b.z), 0.05f);
+        float halfHeight = HALF_SCREEN_HEIGHT;
+        float halfWidth = halfHeight * screenAspect;
+        float dx = Mth.clamp(a.x / depthA, -halfWidth, halfWidth) - Mth.clamp(b.x / depthB, -halfWidth, halfWidth);
+        float dy = Mth.clamp(a.y / depthA, -halfHeight, halfHeight) - Mth.clamp(b.y / depthB, -halfHeight, halfHeight);
+        return (float) Math.sqrt(dx * dx + dy * dy);
+    }
+
+    private static float focalPixels() {
+        return Minecraft.getInstance().getWindow().getHeight() / (2.0f * HALF_SCREEN_HEIGHT);
     }
 
     /**
@@ -368,30 +479,6 @@ public final class ItemMotionBlurFeature {
             older--;
         }
         return older;
-    }
-
-    /**
-     * Writes the pose of {@code layer} at {@code time} into {@code out}, interpolated between the
-     * two recorded frames around it ({@code older} from {@link #olderFrame}). False when the history
-     * does not reach back that far - a ghost that would have to be guessed is better left out than
-     * piled onto the oldest frame.
-     */
-    private static boolean samplePose(Frame[] frames, int older, long time, int layer, PoseStack.Pose out) {
-        if (older < 0) {
-            return false;
-        }
-        Frame a = frames[older];
-        if (older == frames.length - 1 || a.nanos == time) {
-            out.set(a.poses[layer]);
-            return true;
-        }
-        Frame b = frames[older + 1];
-        float t = (time - a.nanos) / (float) (b.nanos - a.nanos);
-        // set() first so the pose keeps its flags; the matrices are then overwritten in place.
-        out.set(a.poses[layer]);
-        a.poses[layer].pose().lerp(b.poses[layer].pose(), t, out.pose());
-        a.poses[layer].normal().lerp(b.poses[layer].normal(), t, out.normal());
-        return true;
     }
 
     private static boolean usesVanillaSheets(List<BakedQuad> quads) {
@@ -471,23 +558,26 @@ public final class ItemMotionBlurFeature {
                 // Same pipeline the lighting feature draws the unlit hand item with, minus depth write.
                 if (ghostUnlitPipeline == null) {
                     ghostUnlitPipeline = RenderPipelinesAccessor.alpaka$register(
-                            cloneWithoutDepthWrite(RenderPipelines.BREEZE_WIND, "item_ghost_unlit"));
+                            cloneForSamples(RenderPipelines.BREEZE_WIND, "item_ghost_unlit"));
                 }
                 RenderPipeline pipeline = ghostUnlitPipeline;
                 RenderSetup setup = RenderSetup.builder(pipeline)
-                        .withTexture("Sampler0", sheet)
+                        .withTexture("Sampler0", sheet, ItemMotionBlurFeature::smoothSampler)
                         .setTextureTransform(new TextureTransform.OffsetTextureTransform(0.0f, 0.0f))
                         .useLightmap()
                         .createRenderSetup();
                 return RenderTypeInvoker.alpaka$create("alpaka_item_ghost_unlit", setup);
             }
             if (ghostPipeline == null) {
-                ghostPipeline = RenderPipelinesAccessor.alpaka$register(cloneWithoutDepthWrite(RenderPipelines.ITEM_TRANSLUCENT, "item_ghost"));
+                ghostPipeline = RenderPipelinesAccessor.alpaka$register(cloneForSamples(RenderPipelines.ITEM_TRANSLUCENT, "item_ghost"));
             }
             RenderPipeline pipeline = ghostPipeline;
+            // The overlay (the red damage tint) is part of vanilla's item setup and the item shader
+            // mixes it in; left out, the shader reads an unbound texture and draws the item black.
             RenderSetup setup = RenderSetup.builder(pipeline)
-                    .withTexture("Sampler0", sheet)
+                    .withTexture("Sampler0", sheet, ItemMotionBlurFeature::smoothSampler)
                     .useLightmap()
+                    .useOverlay()
                     .createRenderSetup();
             return RenderTypeInvoker.alpaka$create("alpaka_item_ghost", setup);
         } catch (Throwable t) {
@@ -497,11 +587,27 @@ public final class ItemMotionBlurFeature {
     }
 
     /**
-     * A copy of {@code base} that keeps everything - shaders, defines, bind group layouts, vertex
-     * bindings, blending, culling - but does not write depth. Built from the public getters only,
-     * so it follows whatever the vanilla pipeline is on this version.
+     * The texture sampler the samples are drawn with: linear filtering instead of the item's crisp
+     * nearest-pixel look, and (in the cloned pipelines) no alpha cutout. Each sample then has soft
+     * edges a texture pixel wide instead of hard pixel steps; drawn crisp, the stepped outline of a
+     * diagonal blade repeated in every sample and left a fine hatching across the smear.
      */
-    private static RenderPipeline cloneWithoutDepthWrite(RenderPipeline base, String name) {
+    private static GpuSampler smoothSampler() {
+        return RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
+    }
+
+    /**
+     * A copy of {@code base} that keeps everything - shaders, defines, bind group layouts, vertex
+     * bindings, blending - but does not write depth, always culls back faces and has no alpha
+     * cutout (see {@link #smoothSampler}). Built from the public getters only, so it follows
+     * whatever the vanilla pipeline is on this version.
+     *
+     * Culling matters because nothing hides one part of a sample behind another without depth
+     * writes: an unculled sample would blend in the item's back face and every side face too, and
+     * those are shaded darker than the front, so the smear came out grey instead of the item's
+     * colors.
+     */
+    private static RenderPipeline cloneForSamples(RenderPipeline base, String name) {
         DepthStencilState depth = base.getDepthStencilState();
         RenderPipeline.Builder builder = RenderPipeline.builder()
                 .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/" + name))
@@ -509,7 +615,7 @@ public final class ItemMotionBlurFeature {
                 .withFragmentShader(base.getFragmentShader())
                 .withPrimitiveTopology(base.getPrimitiveTopology())
                 .withPolygonMode(base.getPolygonMode())
-                .withCull(base.isCull())
+                .withCull(true)
                 .withDepthStencilState(new DepthStencilState(depth.depthTest(), false,
                         depth.depthBiasScaleFactor(), depth.depthBiasConstant()));
         VertexFormat[] vertexBindings = base.getVertexFormatBindings();
@@ -534,6 +640,9 @@ public final class ItemMotionBlurFeature {
             builder.withShaderDefine(flag);
         }
         for (Map.Entry<String, String> define : defines.values().entrySet()) {
+            if (define.getKey().equals("ALPHA_CUTOUT")) {
+                continue; // see smoothSampler
+            }
             String value = define.getValue();
             if (value.contains(".") || value.contains("e") || value.contains("E")) {
                 builder.withShaderDefine(define.getKey(), Float.parseFloat(value));

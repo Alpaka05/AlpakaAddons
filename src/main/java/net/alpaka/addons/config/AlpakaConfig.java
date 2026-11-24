@@ -1276,7 +1276,7 @@ public class AlpakaConfig {
     // Swing motion blur: the held item smears along its path while it swings; see ItemMotionBlurFeature.
     public boolean itemMotionBlurEnabled = false;
     /** How far back in time the trail reaches, in milliseconds. */
-    public float itemMotionBlurLength = 80.0f;
+    public float itemMotionBlurLength = 50.0f;
     /** Opacity the smear reaches where the item covered a spot for the whole trail, 0..1. */
     public float itemMotionBlurOpacity = 0.6f;
     /** Index into ItemMotionBlurFeature.QUALITY_NAMES: how many samples the smear may take. */
@@ -1316,7 +1316,7 @@ public class AlpakaConfig {
         public float swingArcZ = 0.0f;
         // Newer than the constructor below; presets saved before these existed load with the defaults.
         public boolean motionBlurEnabled = false;
-        public float motionBlurLength = 80.0f;
+        public float motionBlurLength = 50.0f;
         public float motionBlurOpacity = 0.6f;
         public float motionBlurQuality = 2.0f;
         /**
@@ -1425,7 +1425,7 @@ public class AlpakaConfig {
         this.itemStarlightStrength = 0.8f;
         this.itemStarlightMode = 0;
         this.itemMotionBlurEnabled = false;
-        this.itemMotionBlurLength = 80.0f;
+        this.itemMotionBlurLength = 50.0f;
         this.itemMotionBlurOpacity = 0.6f;
         this.itemMotionBlurQuality = 2.0f;
         this.itemInspectSpeed = 1.0f;

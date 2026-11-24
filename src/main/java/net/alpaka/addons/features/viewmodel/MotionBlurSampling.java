@@ -5,21 +5,39 @@ package net.alpaka.addons.features.viewmodel;
  * opaque each one is. Kept apart from the rendering so it can be tested on its own.
  *
  * The goal is a smear, not a row of copies. Samples are placed close enough that their edges are
- * only a few pixels apart, and their alphas are chosen so that a spot covered by every sample of
- * the trail ends up exactly at the configured opacity. A spot the item only passed through gets
- * proportionally less, which is what a camera with a slow shutter would show. Newer samples weigh
- * more than older ones, so the smear is densest right behind the item and fades out at its end.
+ * only a few pixels apart, and each one is faint, so no single copy stands out. How faint follows
+ * from how many samples overlap on any one spot: a sword blade is only two or three texture pixels
+ * wide, so as it sweeps past, a spot on screen is covered by the few samples whose blade lies over
+ * it, not by all of them. The alphas are chosen so that those few add up to the configured opacity
+ * right behind the item; a big block covers a spot with more of them and simply gets more solid.
+ * The samples are spread evenly along the distance the item travelled rather than over time, so
+ * they are as close together in the fastest part of the swing as in the slow ones. Along the
+ * trail the samples fade out with a smooth curve, so the smear is densest right behind
+ * the item and dissolves towards its end instead of stopping at an edge.
  */
 public final class MotionBlurSampling {
 
     /** Neighbouring samples are kept about this many pixels apart on screen. */
-    static final float TARGET_SPACING_PIXELS = 2.5f;
+    static final float TARGET_SPACING_PIXELS = 2.0f;
 
     /** Below this much on-screen travel there is nothing to blur. */
     static final float MIN_PATH_PIXELS = 1.5f;
 
     /** At least this many samples once there is a blur at all, so it never shows as one copy. */
     static final int MIN_SAMPLES = 4;
+
+    /**
+     * Width of the thin parts of an item - a blade, a handle - in texture pixels, out of the 16 a
+     * texture is wide. It decides how many samples overlap on one spot as such a part sweeps past.
+     */
+    static final float THIN_PART_TEXELS = 2.5f;
+
+    /**
+     * No sample is drawn stronger than this. When the samples have to sit far apart (a very fast
+     * swing at a low quality), a strong one would show its edges as a copy of the item; capped,
+     * the smear just gets fainter.
+     */
+    static final float MAX_SAMPLE_ALPHA = 0.3f;
 
     /** A sample fainter than this rounds to zero in an 8-bit framebuffer and is skipped. */
     public static final float MIN_VISIBLE_ALPHA = 0.5f / 255.0f;
@@ -43,29 +61,38 @@ public final class MotionBlurSampling {
     }
 
     /**
-     * The alpha of each of {@code samples} samples, newest first. Sample i (1-based, counted back
-     * from the item) weighs {@code 1 - (i - 0.5) / samples}, and its alpha is set so that the
-     * transmittance of all of them multiplied together is {@code 1 - opacity}: with ordinary alpha
-     * blending, a pixel every sample covers ends up at exactly that opacity, however many samples
-     * there are.
+     * How many neighbouring samples cover one spot as a thin part of the item sweeps past it, for
+     * an item whose texture spans {@code unitPixels} on screen and samples {@code spacingPixels}
+     * apart. Never less than one.
      */
-    public static float[] sampleAlphas(int samples, float opacity) {
-        float[] alphas = new float[Math.max(samples, 0)];
-        if (samples <= 0 || opacity <= 0.0f) {
-            return alphas;
+    public static float overlap(float unitPixels, float spacingPixels) {
+        if (!(spacingPixels > 0.0f) || !(unitPixels > 0.0f)) {
+            return 1.0f;
         }
-        double logTransmittance = Math.log(1.0 - Math.min(opacity, MAX_OPACITY));
-        double weightSum = 0.0;
-        for (int i = 1; i <= samples; i++) {
-            weightSum += weight(i, samples);
-        }
-        for (int i = 1; i <= samples; i++) {
-            alphas[i - 1] = (float) (1.0 - Math.exp(logTransmittance * weight(i, samples) / weightSum));
-        }
-        return alphas;
+        return Math.max(1.0f, THIN_PART_TEXELS * unitPixels / 16.0f / spacingPixels);
     }
 
-    private static double weight(int i, int samples) {
-        return 1.0 - (i - 0.5) / samples;
+    /**
+     * The alpha of a sample whose pose is {@code age} of the trail length old (0 at the item, 1 at
+     * the end of the trail). It is set so that {@code overlap} fresh samples laid over each other
+     * reach {@code opacity} - their transmittances multiplied together are {@code 1 - opacity} -
+     * and fades out with {@link #weight} towards the end of the trail.
+     */
+    public static float alpha(float age, float opacity, float overlap) {
+        if (!(opacity > 0.0f)) {
+            return 0.0f;
+        }
+        double logTransmittance = Math.log(1.0 - Math.min(opacity, MAX_OPACITY));
+        double alpha = 1.0 - Math.exp(logTransmittance / Math.max(1.0f, overlap) * weight(age));
+        return (float) Math.min(MAX_SAMPLE_ALPHA, alpha);
+    }
+
+    /**
+     * How much a sample {@code age} of the trail length old counts: 1 at the item, easing down to
+     * 0 at the end of the trail along a smoothstep, so the smear fades without a visible end.
+     */
+    static double weight(float age) {
+        double a = Math.clamp(age, 0.0, 1.0);
+        return 1.0 - a * a * (3.0 - 2.0 * a);
     }
 }

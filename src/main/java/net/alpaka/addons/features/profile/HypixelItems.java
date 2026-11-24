@@ -51,6 +51,8 @@ final class HypixelItems {
         item.add("lore", lore);
         item.add("count", number(compound.get("Count"), 1));
         item.add("damage", number(compound.get("Damage"), 0));
+        // Leather armor's own dye; the item list only knows the color an item comes in.
+        if (display.get("color") instanceof Number color) item.addProperty("color", color.intValue() & 0xFFFFFF);
         skyblock(item, map(tag.get("ExtraAttributes")));
         String texture = skinTexture(tag);
         if (texture != null) item.getAsJsonObject("attributes").addProperty("skin_texture", texture);

@@ -173,6 +173,8 @@ public class ProfileDashboardScreen extends Screen {
     private boolean clipping;
     private ResolvableProfile face;
     private String faceFor;
+    /** The player as a figure on the overview, made once per dashboard. */
+    private final ProfileFigure figure = new ProfileFigure();
 
     private record Hit(int x, int y, int w, int h, Runnable action) {}
 
@@ -859,15 +861,86 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(d.farmingWeight > 0
                 ? new Tile(Metrics.FARMING_WEIGHT, "Farming Weight", Coins.full(Math.round(d.farmingWeight * 10) / 10.0), null)
                 : new Tile(Metrics.BANK, "Bank", Coins.compact(d.bank + d.personalBank), null));
-        y = tiles(graphics, tiles, x, y, w, 4);
-
         String metric = metricFor(Page.OVERVIEW);
-        y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y + 6, w, 130);
+        // The player beside the numbers and the graph, as profile viewers show them; with too little
+        // room for the tiles four in a row, beside the graph alone, and on the narrowest not at all.
+        int figureW = Math.max(120, Math.min(160, w / 5));
+        if (w - figureW - 6 >= 380) {
+            int top = y;
+            int rx = x + figureW + 6;
+            int rw = w - figureW - 6;
+            y = tiles(graphics, tiles, rx, y, rw, 4);
+            y = chartCard(graphics, metric, metricMaxLevel(d, metric), rx, y + 6, rw, 130);
+            figureCard(graphics, d, x, top, figureW, y - top, now);
+        } else {
+            y = tiles(graphics, tiles, x, y, w, 4);
+            figureW = 100;
+            if (w - figureW - 6 >= 180) {
+                figureCard(graphics, d, x, y + 6, figureW, 150, now);
+                y = chartCard(graphics, metric, metricMaxLevel(d, metric), x + figureW + 6, y + 6, w - figureW - 6, 150);
+            } else {
+                y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y + 6, w, 130);
+            }
+        }
 
         int colW = (w - 6) / 2;
         int leftEnd = nextUp(graphics, d, x, y + 6, w >= 420 ? colW : w);
         int rightEnd = w >= 420 ? milestones(graphics, d, x + colW + 6, y + 6, colW, now) : milestones(graphics, d, x, leftEnd + 6, w, now);
         return Math.max(leftEnd, rightEnd);
+    }
+
+    /**
+     * The player in the armor they wear, with the pet they have out floating beside them and named
+     * below. Outside a world, where no figure can be made, the face instead.
+     */
+    private void figureCard(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w, int h, long now) {
+        card(graphics, x, y, w, h);
+        ProfileData.Pet pet = null;
+        for (ProfileData.Pet p : d.pets) {
+            if (p.active()) {
+                pet = p;
+                break;
+            }
+        }
+        int captionH = pet != null ? 26 : 0;
+        int petSize = w >= 130 ? 32 : 24;
+        int petW = pet != null ? petSize + 2 : 0;
+        // The figure's box: what is left beside the pet and above its name.
+        int bx = x + 6;
+        int by = y + 8;
+        int bw = w - 12 - petW;
+        int bh = h - 14 - captionH;
+        // A player in armor is a little over two blocks tall, turned towards the mouse, and about
+        // one wide, arms included.
+        int scale = (int) Math.max(8, Math.min(bh / 2.5f, bw / 1.1f));
+        String uuid = session.uuid != null ? session.uuid : d.uuid;
+        float lookX = clippedMouseX() > -10000 ? clippedMouseX() : bx + bw / 2f + 30;
+        float lookY = clippedMouseY() > -10000 ? clippedMouseY() : by + bh / 2f - scale * 0.9f;
+        boolean drawn = uuid != null && figure.draw(graphics, uuid, session.inventory("armor"), bx, by, bx + bw, by + bh, scale, lookX, lookY);
+        if (!drawn) {
+            ResolvableProfile profile = face();
+            int size = Math.min(48, Math.min(bw, bh) - 8);
+            if (profile != null && size > 8) {
+                net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(graphics, profile,
+                        bx + (bw - size) / 2, by + (bh - size) / 2, size);
+            }
+        }
+        if (pet == null) return;
+        ItemStack head = PetIcons.icon(pet);
+        // Bobbing gently by whole pixels, so the head stays sharp.
+        int bob = (int) Math.round(Math.sin(now / 520.0) * 2);
+        int px = x + w - 6 - petSize;
+        int py = by + Math.max(0, (int) (bh / 2 - scale * 0.85f)) + bob;
+        if (head != null) stackIcon(graphics, head, px, py, petSize / 16f);
+        String name = pet.name();
+        String level = "Lvl " + pet.level();
+        int ny = y + h - 6 - captionH + 4;
+        text(graphics, AlpakaStyle.ellipsize(this.font, name, w - 12), x + (w - Math.min(w - 12, textW(name))) / 2, ny,
+                ink(ProfileData.rarityColor(pet.tier())));
+        text(graphics, level, x + (w - textW(level)) / 2, ny + 11, pet.level() >= pet.maxLevel() ? ink(GOLD) : AlpakaStyle.TEXT_MUTED);
+        if (hover(px, py - bob, petSize, petSize) || hover(x, ny - 2, w, captionH)) {
+            tip("figurePet", name + " · " + level + "\n" + petTip(pet));
+        }
     }
 
     /** A strip saying what grew since the previous visit; nothing on the first one. */

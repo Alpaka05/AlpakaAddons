@@ -40,7 +40,9 @@ session always win over this file.
     or NPC Prompts notice sends what a click on that chat line would send: the command on it, or for an NPC
     dialog its click action (`Outbound.dialogueResponse`, `skyblock:dialogue_response` only).
     `OutboundBytecodeScanTest` scans the compiled classes and fails the build if anything else
-    sends to the server (packets, chat, commands, gameplay actions, method references included).
+    sends to the server (packets, chat, commands, gameplay actions, closing a menu or sign,
+    simulated key presses, held-slot changes, reflection, method references included), and lists
+    the reviewed exceptions per method, not per class.
     The documented exceptions: `Outbound.latencyProbe()`, the Performance HUD's ping (at most every
     5 s), `Outbound.quickJoinSkyblock()`, Quick Join's opt-in /skyblock after joining Hypixel
     (at most every 30 s), party chat answers to a party member's "!tps"-style command when the

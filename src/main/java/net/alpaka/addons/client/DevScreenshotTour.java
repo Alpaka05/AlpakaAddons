@@ -5,6 +5,7 @@ import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.mainmenu.CustomMainMenuScreen;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -1177,7 +1178,12 @@ public final class DevScreenshotTour {
 
     private DevScreenshotTour() {}
 
+    /**
+     * Only in the dev client: the variable alone could be set on a player's machine, and the tour
+     * opens screens, presses keys and quits the game.
+     */
     public static void register() {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) return;
         if (System.getenv(ENV) == null) return;
         AlpakaAddons.LOGGER.info("Screenshot tour on: {} stops", STOPS.size());
         ClientTickEvents.END_CLIENT_TICK.register(client -> tick());

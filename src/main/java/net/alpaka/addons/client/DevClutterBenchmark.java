@@ -5,6 +5,7 @@ import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.server.IntegratedServer;
@@ -90,7 +91,12 @@ public final class DevClutterBenchmark {
 
     private DevClutterBenchmark() {}
 
+    /**
+     * Only in the dev client: the variable alone could be set on a player's machine, and the
+     * benchmark spawns entities and quits the game.
+     */
     public static void register() {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) return;
         String wanted = System.getenv(ENV);
         if (wanted == null) return;
         defineScenarios(wanted);

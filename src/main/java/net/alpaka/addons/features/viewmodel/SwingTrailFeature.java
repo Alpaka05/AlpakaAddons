@@ -28,7 +28,7 @@ import java.util.Map;
  * Swing trail: a sweep drawn in the air behind the tip of the first-person held item while it
  * strikes, a solid crescent of pixels like Minecraft's sweep attack particle.
  *
- * The hand item's submits are captured the way {@link ItemMotionBlurFeature} does it. Each carries
+ * The hand item's submits are captured the way {@link HandItemLightingFeature} does it. Each carries
  * the item's final pose - the model's own display transform, the swing, and everything the
  * viewmodel settings add - and its quads. {@link SwingTrailTip} finds the tip and the grip end in
  * the quads, the pose takes both to where they are drawn, and {@link SwingTrailRibbon} draws the
@@ -128,7 +128,7 @@ public final class SwingTrailFeature {
     }
 
     /**
-     * Called right after the real submit returns, before any motion blur ghost is submitted.
+     * Called right after the real submit returns.
      * Records where the tip is this frame and submits the sweep through the same collector.
      */
     public static void endHandItem(SubmitNodeCollector collector) {

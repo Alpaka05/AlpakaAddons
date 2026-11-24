@@ -77,7 +77,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 <details>
 <summary><b>Visuals</b></summary>
 
-- **Item Viewmodel:** position, size, rotation and swing of the held item, with swing motion blur and three presets.
+- **Item Viewmodel:** position, size, rotation and swing of the held item, with three presets.
 - **Block Overlay:** custom outline and fill for the targeted block, with chroma and fade-in.
 - **Etherwarp Overlay:** shows where you will land, with a line to the target and optional custom warp sounds.
 - **Hide Mob Deaths**, **Hide Damage Flash**, **Clean Blaze** and **Only Show Crit Damage**.

@@ -1550,6 +1550,14 @@ public class AlpakaConfigRegistry {
                 0.0f, 200.0f, val -> val == 0.0f ? "Instant (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "equip animation intensity strength amount percent distance instant"));
 
+        OPTIONS.add(new ConfigOption("item_equip_animation_speed", "Speed",
+                "How fast the switch plays. 100% is vanilla's pace, lower values slow it down so the motion is easier to see.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemEquipAnimationSpeed,
+                v -> { AlpakaConfig.instance.itemEquipAnimationSpeed = (float) Math.round(v); AlpakaConfig.save(); },
+                20.0f, 200.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
+                "equip animation speed fast slow duration time pace percent"));
+
         OPTIONS.add(new ConfigOption("Starlight", ConfigCategory.VIEWMODEL));
 
         OPTIONS.add(new ConfigOption("item_starlight", "Starlight Effect",

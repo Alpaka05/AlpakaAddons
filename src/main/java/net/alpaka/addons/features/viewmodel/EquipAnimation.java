@@ -14,9 +14,10 @@ import net.minecraft.world.entity.HumanoidArm;
  *
  * Vanilla lowers the old item out of view and raises the new one along one straight line, driven
  * by the renderer's hand height: it falls by 0.4 a tick until the swap, then climbs back the same
- * way, about 300 ms in all. Every style here keeps that clock and only changes the path, so the
- * item still changes at the same moment as in vanilla and nothing about the timing of a slot
- * switch is different. The path is given as a function of the equip progress (0 at rest, 1 fully
+ * way, about 300 ms in all. That is too quick to tell one path from another, so the Speed setting
+ * scales that 0.4 step (see {@link #stepScale}): at the default 50% a switch takes about twice as
+ * long. The item is still swapped where vanilla swaps it, once the hand is all the way down, so
+ * the styles only change the path. The path is given as a function of the equip progress (0 at rest, 1 fully
  * away), the same for the item leaving and the one arriving, so a switch that interrupts another
  * continues from wherever the item is.
  *
@@ -71,6 +72,24 @@ public final class EquipAnimation {
         return active() && AlpakaConfig.instance.itemEquipAnimationIntensity <= 0.0f;
     }
 
+    /** The Speed setting as a factor of vanilla's pace, never so low that a switch drags on. */
+    static float speed() {
+        return Mth.clamp(AlpakaConfig.instance.itemEquipAnimationSpeed / 100.0f, 0.2f, 2.0f);
+    }
+
+    /**
+     * How much of vanilla's 0.4 step a hand may move this tick. Only a hand in a slot switch (or the
+     * test run) is slowed down; the dip after an attack keeps vanilla's pace.
+     *
+     * @param swapPending whether the renderer still shows an item the hand no longer holds
+     */
+    public static float stepScale(InteractionHand hand, boolean swapPending) {
+        if (!active() || instant()) return 1.0f;
+        boolean switching = swapPending || PHASES[hand.ordinal()] != Phase.NONE
+                || (hand == InteractionHand.MAIN_HAND && (previewLowering || previewRequested));
+        return switching ? speed() : 1.0f;
+    }
+
     /** Plays the animation once on the item in the main hand, only on this screen; the item stays where it is. */
     public static void preview() {
         if (Minecraft.getInstance().player != null) previewRequested = true;
@@ -106,7 +125,7 @@ public final class EquipAnimation {
                     previewLowering = false;
                 } else {
                     // Lowered at vanilla's pace; once down, vanilla raises it again as after a swap.
-                    float lowered = oldHeight - 0.4f;
+                    float lowered = oldHeight - 0.4f * speed();
                     if (lowered >= 0.1f) return lowered;
                     previewLowering = false;
                     PHASES[i] = Phase.ARRIVING;

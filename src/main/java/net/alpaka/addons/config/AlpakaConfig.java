@@ -1288,6 +1288,8 @@ public class AlpakaConfig {
     public int itemEquipAnimationStyle = 1;
     /** How far the item moves, in percent: 0 swaps instantly, 100 is the style as designed, 200 doubles it. */
     public float itemEquipAnimationIntensity = 100.0f;
+    /** Percent of vanilla's re-equip pace; below 100 the switch takes longer, so the path can be seen. */
+    public float itemEquipAnimationSpeed = 50.0f;
 
     // Inspect Animation: the hand shows off the held item on a key press; see ItemInspectFeature.
     public boolean itemInspectEnabled = false;
@@ -1329,6 +1331,7 @@ public class AlpakaConfig {
         public boolean equipAnimationEnabled = false;
         public int equipAnimationStyle = 1;
         public float equipAnimationIntensity = 100.0f;
+        public float equipAnimationSpeed = 50.0f;
         /**
          * First-Person Hand in F5. Null in presets saved before it was part of them, so loading
          * one of those leaves the switch as it is instead of turning it off.
@@ -1404,6 +1407,7 @@ public class AlpakaConfig {
             this.itemEquipAnimationEnabled = preset.equipAnimationEnabled;
             this.itemEquipAnimationStyle = preset.equipAnimationStyle;
             this.itemEquipAnimationIntensity = preset.equipAnimationIntensity;
+            this.itemEquipAnimationSpeed = preset.equipAnimationSpeed;
             if (preset.renderHandInThirdPerson != null) this.renderHandInThirdPerson = preset.renderHandInThirdPerson;
             this.activeItemPresetIndex = index;
             save();
@@ -1444,6 +1448,7 @@ public class AlpakaConfig {
         this.itemEquipAnimationEnabled = false;
         this.itemEquipAnimationStyle = 1;
         this.itemEquipAnimationIntensity = 100.0f;
+        this.itemEquipAnimationSpeed = 50.0f;
         this.itemInspectSpeed = 1.0f;
 
         this.swingDriftX = 0.0f;
@@ -1510,6 +1515,7 @@ public class AlpakaConfig {
         preset.equipAnimationEnabled = this.itemEquipAnimationEnabled;
         preset.equipAnimationStyle = this.itemEquipAnimationStyle;
         preset.equipAnimationIntensity = this.itemEquipAnimationIntensity;
+        preset.equipAnimationSpeed = this.itemEquipAnimationSpeed;
         preset.renderHandInThirdPerson = this.renderHandInThirdPerson;
         return preset;
     }

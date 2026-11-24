@@ -287,8 +287,10 @@ public final class StoragePreviewFeature {
         if (stored != null) {
             RegistryOps<JsonElement> ops = connection.registryAccess().createSerializationContext(JsonOps.INSTANCE);
             for (Map.Entry<String, JsonElement> page : stored.entrySet()) {
+                // A damaged or hand-edited file: that page is left out rather than crashing the tooltip.
+                if (!(page.getValue() instanceof JsonArray items)) continue;
                 List<ItemStack> content = new ArrayList<>();
-                for (JsonElement item : page.getValue().getAsJsonArray()) {
+                for (JsonElement item : items) {
                     content.add(ItemStack.OPTIONAL_CODEC.parse(ops, item).result().orElse(ItemStack.EMPTY));
                 }
                 profile.put(page.getKey(), content);

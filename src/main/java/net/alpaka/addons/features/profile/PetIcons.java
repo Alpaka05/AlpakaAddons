@@ -139,7 +139,12 @@ public final class PetIcons {
                     String json = AtomicJsonFile.read(file());
                     if (json != null) {
                         Map<String, String> fromFile = GSON.fromJson(json, new TypeToken<Map<String, String>>() {}.getType());
-                        if (fromFile != null) fresh.putAll(fromFile);
+                        // One by one: a hand-edited "null" would make putAll throw on the render thread.
+                        if (fromFile != null) {
+                            fromFile.forEach((id, texture) -> {
+                                if (id != null && texture != null) fresh.put(id, texture);
+                            });
+                        }
                     }
                 } catch (IOException | JsonParseException e) {
                     AlpakaAddons.LOGGER.warn("Couldn't read the pet heads; asking for them again", e);

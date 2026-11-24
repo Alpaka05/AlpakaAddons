@@ -61,9 +61,13 @@ final class Networth {
                 // One taken out of the museum is with the player, and counted where it is.
                 if (museum && Museum.borrowed(item)) continue;
                 int count = Math.max(1, (int) Json.num(item, "count", 1));
-                double value = ItemValue.of(data.getAsJsonObject(), prices, catalog).total() * count;
+                ItemValue.Breakdown breakdown = ItemValue.of(data.getAsJsonObject(), prices, catalog);
+                double value = breakdown.total() * count;
                 if (!(value > 0)) continue;
-                items.add(valued(Json.str(item, "name"), Json.str(item, "skyblockId"), count, Json.str(item, "uuid"), value));
+                JsonObject entry = valued(Json.str(item, "name"), Json.str(item, "skyblockId"), count, Json.str(item, "uuid"), value);
+                at(entry, inventory.getKey(), slot.getKey());
+                entry.add("parts", parts(breakdown, count));
+                items.add(entry);
                 sum += value;
                 if (!museum && !soulbound(item)) liquid += value;
             }
@@ -84,10 +88,16 @@ final class Networth {
             JsonObject data = new JsonObject();
             data.addProperty("id", "PET");
             data.add("petInfo", info);
-            double value = ItemValue.of(data, prices, catalog).total();
+            ItemValue.Breakdown breakdown = ItemValue.of(data, prices, catalog);
+            double value = breakdown.total();
             if (!(value > 0)) continue;
             String type = Json.str(pet, "type");
-            pets.add(valued("[Lvl " + (int) Json.num(pet, "level", 1) + "] " + ProfileData.title(type), type, 1, Json.str(pet, "uuid"), value));
+            JsonObject entry = valued("[Lvl " + (int) Json.num(pet, "level", 1) + "] " + ProfileData.title(type), type, 1, Json.str(pet, "uuid"), value);
+            // Which of the profile's pets it is, to be shown with its head.
+            copy(pet, entry, "tier");
+            entry.addProperty("level", (int) Json.num(pet, "level", 1));
+            entry.add("parts", parts(breakdown, 1));
+            pets.add(entry);
             petSum += value;
         }
         if (!pets.isEmpty()) {
@@ -151,6 +161,31 @@ final class Networth {
             if (line.isJsonPrimitive() && line.getAsString().contains("Soulbound")) return true;
         }
         return false;
+    }
+
+    /** Where an item lies: the inventory and the slot in it, so it can be found there again. */
+    private static void at(JsonObject entry, String inventory, String slot) {
+        entry.addProperty("inventory", inventory);
+        entry.addProperty("slot", slot);
+    }
+
+    /**
+     * What an item's worth is made of, the priced parts only, each with its {@link ItemValue.Group}
+     * and what it comes to for all {@code count} of the item: {@code [{"group": "STARS",
+     * "label": "Wither Essence", "count": 5, "value": 120}]}.
+     */
+    private static JsonArray parts(ItemValue.Breakdown breakdown, int count) {
+        JsonArray out = new JsonArray();
+        for (ItemValue.Part part : breakdown.parts()) {
+            if (!part.priced() || !(part.total() > 0)) continue;
+            JsonObject p = new JsonObject();
+            p.addProperty("group", part.group().name());
+            p.addProperty("label", part.label());
+            p.addProperty("count", part.count());
+            p.addProperty("value", part.total() * count);
+            out.add(p);
+        }
+        return out;
     }
 
     private static JsonObject category(double total, JsonArray items) {

@@ -646,9 +646,10 @@ public class ProfileDashboardScreen extends Screen {
         } else {
             text(graphics, "Profile", x + PAD, rowY, AlpakaStyle.fade(AlpakaStyle.TEXT_MUTED, wide));
             // The magnifier just after the label opens the item search in its place.
-            // Ten pixels, centered on the label: at eight the glass was too small to read as round.
+            // Ten pixels, centered on the label's capitals rather than its full height with the
+            // descenders, which sat it a pixel low: at eight the glass was too small to read as round.
             int gx = x + PAD + textW("Profile") + 4;
-            int gy = rowY - 1;
+            int gy = rowY - 2;
             boolean hoverGlass = open && AlpakaStyle.inside(mx, my, gx - 2, gy - 2, 14, 14) && !menuOpen;
             MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, gx, gy, 10,
                     AlpakaStyle.fade(hoverGlass ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED, wide));
@@ -914,8 +915,10 @@ public class ProfileDashboardScreen extends Screen {
         // one wide, arms included.
         int scale = (int) Math.max(8, Math.min(bh / 2.5f, bw / 1.1f));
         String uuid = session.uuid != null ? session.uuid : d.uuid;
-        float lookX = clippedMouseX() > -10000 ? clippedMouseX() : bx + bw / 2f + 30;
-        float lookY = clippedMouseY() > -10000 ? clippedMouseY() : by + bh / 2f - scale * 0.9f;
+        // Looks at the mouse wherever it is on the screen, the sidebar and header too, as the
+        // inventory's player does; only stopping at the content's edge read as a glitch.
+        float lookX = mx;
+        float lookY = my;
         boolean drawn = uuid != null && figure.draw(graphics, uuid, session.inventory("armor"), bx, by, bx + bw, by + bh, scale, lookX, lookY);
         if (!drawn) {
             ResolvableProfile profile = face();
@@ -927,18 +930,25 @@ public class ProfileDashboardScreen extends Screen {
         }
         if (pet == null) return;
         ItemStack head = PetIcons.icon(pet);
-        // Bobbing gently by whole pixels, so the head stays sharp.
-        int bob = (int) Math.round(Math.sin(now / 520.0) * 2);
+        // Floating up and down, a little over a second each way. Moved by fractions of a pixel, not
+        // whole ones: stepping a pixel at a time read as lag.
+        float bob = (float) Math.sin(now * (2 * Math.PI / 2600.0)) * petSize * 0.2f;
         int px = x + w - 6 - petSize;
-        int py = by + Math.max(0, (int) (bh / 2 - scale * 0.85f)) + bob;
-        if (head != null) stackIcon(graphics, head, px, py, petSize / 16f);
+        int py = by + Math.max((int) Math.ceil(petSize * 0.2f), (int) (bh / 2 - scale * 0.85f));
+        if (head != null) {
+            graphics.pose().pushMatrix();
+            graphics.pose().translate(px, py + bob);
+            graphics.pose().scale(petSize / 16f, petSize / 16f);
+            graphics.item(head, 0, 0);
+            graphics.pose().popMatrix();
+        }
         String name = pet.name();
         String level = "Lvl " + pet.level();
         int ny = y + h - 6 - captionH + 4;
         text(graphics, AlpakaStyle.ellipsize(this.font, name, w - 12), x + (w - Math.min(w - 12, textW(name))) / 2, ny,
                 ink(ProfileData.rarityColor(pet.tier())));
         text(graphics, level, x + (w - textW(level)) / 2, ny + 11, pet.level() >= pet.maxLevel() ? ink(GOLD) : AlpakaStyle.TEXT_MUTED);
-        if (hover(px, py - bob, petSize, petSize) || hover(x, ny - 2, w, captionH)) {
+        if (hover(px, py, petSize, petSize) || hover(x, ny - 2, w, captionH)) {
             tip("figurePet", name + " · " + level + "\n" + petTip(pet));
         }
     }

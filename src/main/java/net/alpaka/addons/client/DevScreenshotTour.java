@@ -394,7 +394,8 @@ public final class DevScreenshotTour {
             // their pet, which only exist once a world is loaded; the own profile, so a kept one
             // shows without a login.
             profile("profile-overview-in-world", "", "OVERVIEW"),
-            new Stop("profile-overview-figure", () -> placeMouse(0.15, 0.3), () -> true, 60),
+            // The mouse on the sidebar: the figure still looks at it.
+            new Stop("profile-overview-figure", () -> placeMouse(0.08, 0.2), () -> true, 60),
             // The pets with their heads and skins, which only exist once a world is loaded; then the
             // Skills page with the item icons.
             profile("profile-pets-in-world", "Refraction", "PETS"),

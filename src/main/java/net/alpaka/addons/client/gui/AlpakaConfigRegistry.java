@@ -1517,6 +1517,48 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.itemSwingAlwaysFinishEnabled = v; AlpakaConfig.save(); },
                 "always finish swing complete attack animation"));
 
+        OPTIONS.add(new ConfigOption("Equip Animation", ConfigCategory.VIEWMODEL));
+
+        OPTIONS.add(new ConfigOption("item_equip_animation", "Equip Animation",
+                "Animates the held item when you switch slots, in one of several styles.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemEquipAnimationEnabled,
+                v -> { AlpakaConfig.instance.itemEquipAnimationEnabled = v; AlpakaConfig.save(); },
+                "equip animation switch slot swap hotbar scroll reequip spin pop swoosh sweep rise"));
+
+        OPTIONS.add(new ConfigOption("item_equip_animation_test", "Test Animation",
+                "Plays the animation once on the item in your hand, only on your screen.",
+                ConfigCategory.VIEWMODEL,
+                "Test Animation",
+                parent -> net.alpaka.addons.features.viewmodel.EquipAnimation.preview(),
+                "equip animation test preview try play switch"));
+
+        OPTIONS.add(new ConfigOption("item_equip_animation_style", "Style",
+                "How the old item leaves and the new one arrives.",
+                ConfigCategory.VIEWMODEL,
+                () -> (float) AlpakaConfig.instance.itemEquipAnimationStyle,
+                v -> { AlpakaConfig.instance.itemEquipAnimationStyle = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.viewmodel.EquipAnimation.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.viewmodel.EquipAnimation.STYLE_NAMES[Math.round(val)],
+                "equip animation style vanilla rise spin pop swoosh sweep")
+                .choices(net.alpaka.addons.features.viewmodel.EquipAnimation.STYLE_NAMES));
+
+        OPTIONS.add(new ConfigOption("item_equip_animation_intensity", "Intensity",
+                "How far the item moves. 0% swaps it instantly, 200% doubles the motion.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemEquipAnimationIntensity,
+                v -> { AlpakaConfig.instance.itemEquipAnimationIntensity = (float) Math.round(v); AlpakaConfig.save(); },
+                0.0f, 200.0f, val -> val == 0.0f ? "Instant (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
+                "equip animation intensity strength amount percent distance instant"));
+
+        OPTIONS.add(new ConfigOption("item_equip_animation_speed", "Speed",
+                "How fast the switch plays. 100% is vanilla's pace, lower values slow it down so the motion is easier to see.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemEquipAnimationSpeed,
+                v -> { AlpakaConfig.instance.itemEquipAnimationSpeed = (float) Math.round(v); AlpakaConfig.save(); },
+                20.0f, 200.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
+                "equip animation speed fast slow duration time pace percent"));
+
         OPTIONS.add(new ConfigOption("Starlight", ConfigCategory.VIEWMODEL));
 
         OPTIONS.add(new ConfigOption("item_starlight", "Starlight Effect",
@@ -1644,13 +1686,13 @@ public class AlpakaConfigRegistry {
                 "inspect animation speed fast slow duration pace multiplier"));
 
         OPTIONS.add(new ConfigOption("item_viewmodel_reset", "Reset Viewmodel Settings",
-                "Resets every viewmodel and swing value, Starlight, Swing Motion Blur and Swing Trail included. Presets are kept.",
+                "Resets every viewmodel and swing value, Starlight, Swing Motion Blur, Swing Trail and Equip Animation included. Presets are kept.",
                 ConfigCategory.VIEWMODEL,
                 "Reset Viewmodel Settings",
                 parent -> AlpakaConfig.instance.resetItemViewmodel(),
                 "reset viewmodel default defaults revert restore clear hand item size offset rotation swing starlight motion blur trail")
                 .confirm("Reset Viewmodel Settings",
-                        "Puts every viewmodel and swing value back to its default and turns Starlight, Swing Motion Blur and Swing Trail off. "
+                        "Puts every viewmodel and swing value back to its default and turns Starlight, Swing Motion Blur, Swing Trail and Equip Animation off. "
                                 + "Viewmodel Modifiers stays as it is, and saved presets are kept. This cannot be undone.",
                         "Reset", true));
 

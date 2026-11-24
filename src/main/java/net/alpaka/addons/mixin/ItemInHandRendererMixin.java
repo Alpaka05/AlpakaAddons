@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.viewmodel.EquipAnimation;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.InspectAnimation;
@@ -10,6 +11,7 @@ import net.alpaka.addons.features.viewmodel.SwingTrailFeature;
 import net.alpaka.addons.utils.AlpakaPerf;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.world.entity.LivingEntity;
@@ -56,6 +58,12 @@ public class ItemInHandRendererMixin {
 
     @Shadow
     private float oOffHandHeight;
+
+    @Shadow
+    private ItemStack mainHandItem;
+
+    @Shadow
+    private ItemStack offHandItem;
 
     @Shadow
     private void applyItemArmAttackTransform(PoseStack poseStack, HumanoidArm arm, float swingProgress) {
@@ -288,14 +296,50 @@ public class ItemInHandRendererMixin {
 
     @Inject(method = "shouldInstantlyReplaceVisibleItem", at = @At("HEAD"), cancellable = true)
     private void onShouldSkipAnimation(ItemStack from, ItemStack to, CallbackInfoReturnable<Boolean> cir) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) {
+        if ((AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) || EquipAnimation.instant()) {
             cir.setReturnValue(true);
         }
     }
 
+    /** Tells the equip animation where each hand is in a slot switch, and lets its test run lower the hand. */
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void alpaka$equipAnimationTick(CallbackInfo ci) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) return;
+        this.mainHandHeight = EquipAnimation.afterTick(InteractionHand.MAIN_HAND,
+                this.mainHandItem != player.getMainHandItem(), this.oMainHandHeight, this.mainHandHeight);
+        this.offHandHeight = EquipAnimation.afterTick(InteractionHand.OFF_HAND,
+                this.offHandItem != player.getOffhandItem(), this.oOffHandHeight, this.offHandHeight);
+    }
+
+    /**
+     * Equip animation speed: scales how far each hand's height may move in one tick, for the main
+     * hand (ordinal 2) and the off hand (ordinal 3). Ordinals 0 and 1 are the busy-hands branch,
+     * which is left alone.
+     */
+    @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Mth;clamp(FFF)F", ordinal = 2))
+    private float alpaka$equipSpeedMain(float value, float min, float max, Operation<Float> original) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        float k = player == null ? 1.0f : EquipAnimation.stepScale(InteractionHand.MAIN_HAND, this.mainHandItem != player.getMainHandItem());
+        return original.call(value, min * k, max * k);
+    }
+
+    @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Mth;clamp(FFF)F", ordinal = 3))
+    private float alpaka$equipSpeedOff(float value, float min, float max, Operation<Float> original) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        float k = player == null ? 1.0f : EquipAnimation.stepScale(InteractionHand.OFF_HAND, this.offHandItem != player.getOffhandItem());
+        return original.call(value, min * k, max * k);
+    }
+
+    /** Draws a hand in a slot switch along the chosen equip animation's path instead of vanilla's straight drop. */
+    @Inject(method = "applyItemArmTransform", at = @At("HEAD"), cancellable = true)
+    private void alpaka$equipAnimation(PoseStack poseStack, HumanoidArm arm, float equipProgress, CallbackInfo ci) {
+        if (EquipAnimation.apply(poseStack, arm, equipProgress)) ci.cancel();
+    }
+
     @Inject(method = "tick", at = @At("TAIL"))
     private void onUpdateHeldItems(CallbackInfo ci) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) {
+        if ((AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) || EquipAnimation.instant()) {
             this.mainHandHeight = 1.0f;
             this.offHandHeight = 1.0f;
             this.oMainHandHeight = 1.0f;

@@ -1290,6 +1290,15 @@ public class AlpakaConfig {
     /** How thick the sweep is, 1.0 its usual thickness: a fifth of the item's length. */
     public float itemSwingTrailWidth = 1.0f;
 
+    // Equip animation: how the held item leaves and arrives when you switch slots; see EquipAnimation.
+    public boolean itemEquipAnimationEnabled = false;
+    /** Index into EquipAnimation.Style. */
+    public int itemEquipAnimationStyle = 1;
+    /** How far the item moves, in percent: 0 swaps instantly, 100 is the style as designed, 200 doubles it. */
+    public float itemEquipAnimationIntensity = 100.0f;
+    /** Percent of vanilla's re-equip pace; below 100 the switch takes longer, so the path can be seen. */
+    public float itemEquipAnimationSpeed = 50.0f;
+
     // Inspect Animation: the hand shows off the held item on a key press; see ItemInspectFeature.
     public boolean itemInspectEnabled = false;
     /** How fast the inspect plays, 1.0 the animation's own length. */
@@ -1331,6 +1340,10 @@ public class AlpakaConfig {
         public int swingTrailColor = 0xFFFFFFFF;
         public float swingTrailDuration = 250.0f;
         public float swingTrailWidth = 1.0f;
+        public boolean equipAnimationEnabled = false;
+        public int equipAnimationStyle = 1;
+        public float equipAnimationIntensity = 100.0f;
+        public float equipAnimationSpeed = 50.0f;
         /**
          * First-Person Hand in F5. Null in presets saved before it was part of them, so loading
          * one of those leaves the switch as it is instead of turning it off.
@@ -1407,6 +1420,10 @@ public class AlpakaConfig {
             this.itemSwingTrailColor = preset.swingTrailColor;
             this.itemSwingTrailDuration = preset.swingTrailDuration;
             this.itemSwingTrailWidth = preset.swingTrailWidth;
+            this.itemEquipAnimationEnabled = preset.equipAnimationEnabled;
+            this.itemEquipAnimationStyle = preset.equipAnimationStyle;
+            this.itemEquipAnimationIntensity = preset.equipAnimationIntensity;
+            this.itemEquipAnimationSpeed = preset.equipAnimationSpeed;
             if (preset.renderHandInThirdPerson != null) this.renderHandInThirdPerson = preset.renderHandInThirdPerson;
             this.activeItemPresetIndex = index;
             save();
@@ -1448,6 +1465,10 @@ public class AlpakaConfig {
         this.itemSwingTrailColor = 0xFFFFFFFF;
         this.itemSwingTrailDuration = 250.0f;
         this.itemSwingTrailWidth = 1.0f;
+        this.itemEquipAnimationEnabled = false;
+        this.itemEquipAnimationStyle = 1;
+        this.itemEquipAnimationIntensity = 100.0f;
+        this.itemEquipAnimationSpeed = 50.0f;
         this.itemInspectSpeed = 1.0f;
 
         this.swingDriftX = 0.0f;
@@ -1515,6 +1536,10 @@ public class AlpakaConfig {
         preset.swingTrailColor = this.itemSwingTrailColor;
         preset.swingTrailDuration = this.itemSwingTrailDuration;
         preset.swingTrailWidth = this.itemSwingTrailWidth;
+        preset.equipAnimationEnabled = this.itemEquipAnimationEnabled;
+        preset.equipAnimationStyle = this.itemEquipAnimationStyle;
+        preset.equipAnimationIntensity = this.itemEquipAnimationIntensity;
+        preset.equipAnimationSpeed = this.itemEquipAnimationSpeed;
         preset.renderHandInThirdPerson = this.renderHandInThirdPerson;
         return preset;
     }
@@ -2093,6 +2118,7 @@ public class AlpakaConfig {
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.itemSwingTrailEnabled = false;
+        this.itemEquipAnimationEnabled = false;
         this.itemInspectEnabled = false;
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;

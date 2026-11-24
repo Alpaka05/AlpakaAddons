@@ -1273,14 +1273,14 @@ public class AlpakaConfig {
     /** 0: over every held item. 1: in place of the enchantment glint, so only on glinting items. */
     public int itemStarlightMode = 0;
 
-    // Swing motion blur: faded copies trail behind the held item while it swings; see ItemMotionBlurFeature.
+    // Swing motion blur: the held item smears along its path while it swings; see ItemMotionBlurFeature.
     public boolean itemMotionBlurEnabled = false;
     /** How far back in time the trail reaches, in milliseconds. */
     public float itemMotionBlurLength = 80.0f;
-    /** Opacity of the newest ghost copy; the older ones fade out from there. */
-    public float itemMotionBlurOpacity = 0.35f;
-    /** Number of ghost copies spread over the trail length. */
-    public float itemMotionBlurSteps = 8.0f;
+    /** Opacity the smear reaches where the item covered a spot for the whole trail, 0..1. */
+    public float itemMotionBlurOpacity = 0.6f;
+    /** Index into ItemMotionBlurFeature.QUALITY_NAMES: how many samples the smear may take. */
+    public float itemMotionBlurQuality = 2.0f;
 
     // Inspect Animation: the hand shows off the held item on a key press; see ItemInspectFeature.
     public boolean itemInspectEnabled = false;
@@ -1317,8 +1317,8 @@ public class AlpakaConfig {
         // Newer than the constructor below; presets saved before these existed load with the defaults.
         public boolean motionBlurEnabled = false;
         public float motionBlurLength = 80.0f;
-        public float motionBlurOpacity = 0.35f;
-        public float motionBlurSteps = 8.0f;
+        public float motionBlurOpacity = 0.6f;
+        public float motionBlurQuality = 2.0f;
         /**
          * First-Person Hand in F5. Null in presets saved before it was part of them, so loading
          * one of those leaves the switch as it is instead of turning it off.
@@ -1390,7 +1390,7 @@ public class AlpakaConfig {
             this.itemMotionBlurEnabled = preset.motionBlurEnabled;
             this.itemMotionBlurLength = preset.motionBlurLength;
             this.itemMotionBlurOpacity = preset.motionBlurOpacity;
-            this.itemMotionBlurSteps = preset.motionBlurSteps;
+            this.itemMotionBlurQuality = preset.motionBlurQuality;
             if (preset.renderHandInThirdPerson != null) this.renderHandInThirdPerson = preset.renderHandInThirdPerson;
             this.activeItemPresetIndex = index;
             save();
@@ -1426,8 +1426,8 @@ public class AlpakaConfig {
         this.itemStarlightMode = 0;
         this.itemMotionBlurEnabled = false;
         this.itemMotionBlurLength = 80.0f;
-        this.itemMotionBlurOpacity = 0.35f;
-        this.itemMotionBlurSteps = 8.0f;
+        this.itemMotionBlurOpacity = 0.6f;
+        this.itemMotionBlurQuality = 2.0f;
         this.itemInspectSpeed = 1.0f;
 
         this.swingDriftX = 0.0f;
@@ -1490,7 +1490,7 @@ public class AlpakaConfig {
         preset.motionBlurEnabled = this.itemMotionBlurEnabled;
         preset.motionBlurLength = this.itemMotionBlurLength;
         preset.motionBlurOpacity = this.itemMotionBlurOpacity;
-        preset.motionBlurSteps = this.itemMotionBlurSteps;
+        preset.motionBlurQuality = this.itemMotionBlurQuality;
         preset.renderHandInThirdPerson = this.renderHandInThirdPerson;
         return preset;
     }

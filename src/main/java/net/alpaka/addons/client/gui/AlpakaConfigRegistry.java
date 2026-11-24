@@ -1553,14 +1553,14 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Swing Motion Blur", ConfigCategory.VIEWMODEL));
 
         OPTIONS.add(new ConfigOption("item_motion_blur", "Swing Motion Blur",
-                "Leaves a fading trail behind the held item while it swings.",
+                "Blurs the held item along its path while it swings, like a camera with a slow shutter.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemMotionBlurEnabled,
                 v -> { AlpakaConfig.instance.itemMotionBlurEnabled = v; AlpakaConfig.save(); },
                 "motion blur trail ghost smear swing smooth afterimage fight swinging"));
 
         OPTIONS.add(new ConfigOption("item_motion_blur_length", "Blur Length",
-                "How long the trail lingers behind the item.",
+                "How far back along its path the item is blurred.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemMotionBlurLength,
                 v -> { AlpakaConfig.instance.itemMotionBlurLength = (float) Math.round(v); AlpakaConfig.save(); },
@@ -1569,21 +1569,21 @@ public class AlpakaConfigRegistry {
                 "motion blur trail length duration time long short far reaches"));
 
         OPTIONS.add(new ConfigOption("item_motion_blur_opacity", "Blur Opacity",
-                "How strongly the trail is drawn.",
+                "How strongly the blur is drawn.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemMotionBlurOpacity,
                 v -> { AlpakaConfig.instance.itemMotionBlurOpacity = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
                 0.05f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
                 "motion blur trail opacity alpha strength transparency intensity"));
 
-        OPTIONS.add(new ConfigOption("item_motion_blur_steps", "Blur Steps",
-                "How many ghost copies make up the trail.",
+        OPTIONS.add(new ConfigOption("item_motion_blur_quality", "Blur Quality",
+                "How smooth the blur is. Lower is easier on the frame rate.",
                 ConfigCategory.VIEWMODEL,
-                () -> AlpakaConfig.instance.itemMotionBlurSteps,
-                v -> { AlpakaConfig.instance.itemMotionBlurSteps = (float) Math.round(v); AlpakaConfig.save(); },
-                (float) ItemMotionBlurFeature.MIN_STEPS, (float) ItemMotionBlurFeature.MAX_STEPS,
-                val -> String.format(Locale.ROOT, "%.0f", val),
-                "motion blur trail steps copies ghosts quality samples number"));
+                () -> AlpakaConfig.instance.itemMotionBlurQuality,
+                v -> { AlpakaConfig.instance.itemMotionBlurQuality = (float) Math.round(v); AlpakaConfig.save(); },
+                0.0f, ItemMotionBlurFeature.QUALITY_NAMES.length - 1.0f,
+                val -> ItemMotionBlurFeature.QUALITY_NAMES[Math.clamp(Math.round(val), 0, ItemMotionBlurFeature.QUALITY_NAMES.length - 1)],
+                "motion blur trail steps quality samples smooth performance fps"));
 
         OPTIONS.add(new ConfigOption("Inspect Animation", ConfigCategory.VIEWMODEL));
 

@@ -1,6 +1,8 @@
 package net.alpaka.addons.features.viewmodel;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.alpaka.addons.config.AlpakaConfig;
+import net.minecraft.world.InteractionHand;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.Test;
 
@@ -58,5 +60,42 @@ class EquipAnimationTest {
         assertTrue(Math.abs(EquipAnimation.backOut(0.0f)) < 1.0e-5f);
         assertTrue(Math.abs(EquipAnimation.backOut(1.0f) - 1.0f) < 1.0e-5f);
         assertTrue(EquipAnimation.backOut(0.8f) > 1.0f);
+    }
+
+    /**
+     * With Disable Re-equip Animation on as well, the equip animation takes only a slot switch on
+     * the main hand, until it is over; an item changing in the same slot stays the option's.
+     */
+    @Test
+    void takesOnlySlotSwitchesFromDisableReequip() {
+        AlpakaConfig saved = AlpakaConfig.instance;
+        try {
+            AlpakaConfig c = new AlpakaConfig();
+            c.itemSizeFeatureEnabled = true;
+            c.itemNoEquipEnabled = true;
+            c.itemEquipAnimationEnabled = true;
+            AlpakaConfig.instance = c;
+
+            EquipAnimation.beforeTick(0);
+            EquipAnimation.afterTick(InteractionHand.MAIN_HAND, false, 1.0f, 1.0f);
+            EquipAnimation.beforeTick(0);
+            assertFalse(EquipAnimation.ownsHand(InteractionHand.MAIN_HAND), "same slot: item updated in place");
+
+            EquipAnimation.beforeTick(1);
+            assertTrue(EquipAnimation.ownsHand(InteractionHand.MAIN_HAND), "slot switch");
+            assertFalse(EquipAnimation.ownsHand(InteractionHand.OFF_HAND), "off hand is never taken");
+            EquipAnimation.afterTick(InteractionHand.MAIN_HAND, true, 1.0f, 0.6f);
+            EquipAnimation.beforeTick(1);
+            EquipAnimation.afterTick(InteractionHand.MAIN_HAND, false, 0.0f, 0.4f);
+            assertTrue(EquipAnimation.ownsHand(InteractionHand.MAIN_HAND), "still arriving");
+            EquipAnimation.afterTick(InteractionHand.MAIN_HAND, false, 1.0f, 1.0f);
+            assertFalse(EquipAnimation.ownsHand(InteractionHand.MAIN_HAND), "switch over");
+
+            c.itemEquipAnimationEnabled = false;
+            EquipAnimation.beforeTick(2);
+            assertFalse(EquipAnimation.ownsHand(InteractionHand.MAIN_HAND), "animation off");
+        } finally {
+            AlpakaConfig.instance = saved;
+        }
     }
 }

@@ -24,6 +24,11 @@ import net.minecraft.world.entity.HumanoidArm;
  * Only real slot switches get a style. The other times vanilla lowers the hand - the dip after an
  * attack while the item recharges, or while the hands are busy - stay as they are, since a spin
  * or a flip after every hit would be a different feature.
+ *
+ * Disable Re-equip Animation keeps the hand up through all of those, and through an item that
+ * changes in the same slot. A slot switch (or the test button) is the one thing it leaves to this
+ * animation while the animation is on (see {@link #ownsHand}), so both can be used together: the
+ * styled switch, and no dip after hits or when SkyBlock updates the item.
  */
 public final class EquipAnimation {
     private EquipAnimation() {}
@@ -61,6 +66,10 @@ public final class EquipAnimation {
     private static boolean previewRequested;
     /** A test run is lowering the main hand item, which vanilla would otherwise keep raised. */
     private static boolean previewLowering;
+    /** The hotbar slot at the last renderer tick, to tell a slot switch from an item that changed in place. */
+    private static int lastSelectedSlot = -1;
+    /** The main hand is in a switch the player made by changing slots. */
+    private static boolean slotSwitch;
 
     public static boolean active() {
         AlpakaConfig c = AlpakaConfig.instance;
@@ -90,6 +99,22 @@ public final class EquipAnimation {
         return switching ? speed() : 1.0f;
     }
 
+    /** Called at the start of each renderer tick, before vanilla decides whether to swap the item at once. */
+    public static void beforeTick(int selectedSlot) {
+        if (lastSelectedSlot >= 0 && selectedSlot != lastSelectedSlot && active() && !instant()) slotSwitch = true;
+        lastSelectedSlot = selectedSlot;
+    }
+
+    /**
+     * Whether this animation plays on the hand right now, so Disable Re-equip Animation has to leave
+     * it alone: only the main hand, in a slot switch or a test run. Everything else (an item updated
+     * in the same slot, the dip after an attack, the off hand) is still skipped by that option.
+     */
+    public static boolean ownsHand(InteractionHand hand) {
+        if (hand != InteractionHand.MAIN_HAND || !active() || instant()) return false;
+        return slotSwitch || previewRequested || previewLowering || PHASES[hand.ordinal()] != Phase.NONE;
+    }
+
     /** Plays the animation once on the item in the main hand, only on this screen; the item stays where it is. */
     public static void preview() {
         if (Minecraft.getInstance().player != null) previewRequested = true;
@@ -109,6 +134,7 @@ public final class EquipAnimation {
             PHASES[i] = Phase.NONE;
             previewRequested = false;
             previewLowering = false;
+            slotSwitch = false;
             return height;
         }
         if (hand == InteractionHand.MAIN_HAND) {
@@ -142,6 +168,8 @@ public final class EquipAnimation {
         if (PHASES[i] == Phase.ARRIVING && height >= 1.0f && oldHeight >= 1.0f) {
             PHASES[i] = Phase.NONE;
         }
+        // A switch to an identical item is swapped at once by vanilla and never starts a phase.
+        if (hand == InteractionHand.MAIN_HAND && PHASES[i] == Phase.NONE && !previewLowering) slotSwitch = false;
         return height;
     }
 

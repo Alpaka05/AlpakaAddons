@@ -1,7 +1,6 @@
 package net.alpaka.addons.client.gui;
 
 import java.util.Locale;
-import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.alpaka.addons.features.viewmodel.SwingTrailFeature;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
@@ -1593,41 +1592,6 @@ public class AlpakaConfigRegistry {
                 0.1f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
                 "starlight galaxy strength opacity intensity"));
 
-        OPTIONS.add(new ConfigOption("Swing Motion Blur", ConfigCategory.VIEWMODEL));
-
-        OPTIONS.add(new ConfigOption("item_motion_blur", "Swing Motion Blur",
-                "Leaves a fading trail behind the held item while it swings.",
-                ConfigCategory.VIEWMODEL,
-                () -> AlpakaConfig.instance.itemMotionBlurEnabled,
-                v -> { AlpakaConfig.instance.itemMotionBlurEnabled = v; AlpakaConfig.save(); },
-                "motion blur trail ghost smear swing smooth afterimage fight swinging"));
-
-        OPTIONS.add(new ConfigOption("item_motion_blur_length", "Blur Length",
-                "How long the trail lingers behind the item.",
-                ConfigCategory.VIEWMODEL,
-                () -> AlpakaConfig.instance.itemMotionBlurLength,
-                v -> { AlpakaConfig.instance.itemMotionBlurLength = (float) Math.round(v); AlpakaConfig.save(); },
-                ItemMotionBlurFeature.MIN_LENGTH_MS, ItemMotionBlurFeature.MAX_LENGTH_MS,
-                val -> String.format(Locale.ROOT, "%.0f ms", val),
-                "motion blur trail length duration time long short far reaches"));
-
-        OPTIONS.add(new ConfigOption("item_motion_blur_opacity", "Blur Opacity",
-                "How strongly the trail is drawn.",
-                ConfigCategory.VIEWMODEL,
-                () -> AlpakaConfig.instance.itemMotionBlurOpacity,
-                v -> { AlpakaConfig.instance.itemMotionBlurOpacity = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
-                0.05f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
-                "motion blur trail opacity alpha strength transparency intensity"));
-
-        OPTIONS.add(new ConfigOption("item_motion_blur_steps", "Blur Steps",
-                "How many ghost copies make up the trail.",
-                ConfigCategory.VIEWMODEL,
-                () -> AlpakaConfig.instance.itemMotionBlurSteps,
-                v -> { AlpakaConfig.instance.itemMotionBlurSteps = (float) Math.round(v); AlpakaConfig.save(); },
-                (float) ItemMotionBlurFeature.MIN_STEPS, (float) ItemMotionBlurFeature.MAX_STEPS,
-                val -> String.format(Locale.ROOT, "%.0f", val),
-                "motion blur trail steps copies ghosts quality samples number"));
-
         OPTIONS.add(new ConfigOption("Swing Trail", ConfigCategory.VIEWMODEL));
 
         OPTIONS.add(new ConfigOption("item_swing_trail", "Swing Trail",
@@ -1686,13 +1650,13 @@ public class AlpakaConfigRegistry {
                 "inspect animation speed fast slow duration pace multiplier"));
 
         OPTIONS.add(new ConfigOption("item_viewmodel_reset", "Reset Viewmodel Settings",
-                "Resets every viewmodel and swing value, Starlight, Swing Motion Blur, Swing Trail and Equip Animation included. Presets are kept.",
+                "Resets every viewmodel and swing value, Starlight, Swing Trail and Equip Animation included. Presets are kept.",
                 ConfigCategory.VIEWMODEL,
                 "Reset Viewmodel Settings",
                 parent -> AlpakaConfig.instance.resetItemViewmodel(),
-                "reset viewmodel default defaults revert restore clear hand item size offset rotation swing starlight motion blur trail")
+                "reset viewmodel default defaults revert restore clear hand item size offset rotation swing starlight trail")
                 .confirm("Reset Viewmodel Settings",
-                        "Puts every viewmodel and swing value back to its default and turns Starlight, Swing Motion Blur, Swing Trail and Equip Animation off. "
+                        "Puts every viewmodel and swing value back to its default and turns Starlight, Swing Trail and Equip Animation off. "
                                 + "Viewmodel Modifiers stays as it is, and saved presets are kept. This cannot be undone.",
                         "Reset", true));
 

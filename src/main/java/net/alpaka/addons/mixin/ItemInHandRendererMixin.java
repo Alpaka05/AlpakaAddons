@@ -6,7 +6,6 @@ import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.InspectAnimation;
 import net.alpaka.addons.features.viewmodel.ItemInspectFeature;
-import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.alpaka.addons.features.viewmodel.SwingTrailFeature;
 import net.alpaka.addons.utils.AlpakaPerf;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -366,8 +365,8 @@ public class ItemInHandRendererMixin {
     }
 
     /**
-     * Tells the motion blur and the swing trail which hand is about to be drawn and how far into its swing it is. Hooked
-     * at the renderItem call rather than at HEAD so the swing progress seen here is the one the
+     * Tells the swing trail which hand is about to be drawn and how far into its swing it is.
+     * Hooked at the renderItem call rather than at HEAD so the swing progress seen here is the one the
      * ModifyVariable above has already adjusted.
      */
     @Inject(
@@ -379,7 +378,6 @@ public class ItemInHandRendererMixin {
             float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
             SubmitNodeCollector queue, int light, CallbackInfo ci) {
         if (player == Minecraft.getInstance().player) {
-            ItemMotionBlurFeature.noteArmItem(hand, swingProgress);
             SwingTrailFeature.noteArmItem(hand, swingProgress);
         }
     }
@@ -400,8 +398,8 @@ public class ItemInHandRendererMixin {
     }
 
     // Everything the item state submits between these two points is one first-person hand item,
-    // which is how the hand item lighting, motion blur and swing trail features tell those submits apart from
-    // every other item in the world (this method also serves third-person held items, filtered out
+    // which is how the hand item lighting, starlight and swing trail features tell those submits
+    // apart from every other item in the world (this method also serves third-person held items, filtered out
     // by context).
     @Inject(method = "submitHandsWithItems", at = @At("HEAD"))
     private void alpaka$forgetLastFrameHandItems(CallbackInfo ci) {
@@ -409,7 +407,6 @@ public class ItemInHandRendererMixin {
         // point to clean up at; the start of the next hand render is the frame boundary instead.
         HandItemLightingFeature.endFrame();
         HandItemStarlightFeature.endFrame();
-        ItemMotionBlurFeature.endFrame();
     }
 
     @Inject(method = "renderItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT))
@@ -417,19 +414,14 @@ public class ItemInHandRendererMixin {
                                              PoseStack poseStack, SubmitNodeCollector collector, int light, CallbackInfo ci) {
         HandItemLightingFeature.beginHandItem(entity, context);
         HandItemStarlightFeature.beginHandItem(entity, context);
-        ItemMotionBlurFeature.beginHandItem(entity, context);
         SwingTrailFeature.beginHandItem(entity, context);
     }
 
     @Inject(method = "renderItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT, shift = At.Shift.AFTER))
     private void alpaka$afterHandItemSubmit(LivingEntity entity, ItemStack stack, ItemDisplayContext context,
                                             PoseStack poseStack, SubmitNodeCollector collector, int light, CallbackInfo ci) {
-        // The ghosts are submitted while the lighting feature is still capturing, so they lose their
-        // shading along with the item they trail; starlight stops first, so they trail plain, and
-        // so does the swing trail, which follows the item itself and not its ghosts.
         HandItemStarlightFeature.endHandItem();
         SwingTrailFeature.endHandItem(collector);
-        ItemMotionBlurFeature.endHandItem(collector);
         HandItemLightingFeature.endHandItem();
     }
 

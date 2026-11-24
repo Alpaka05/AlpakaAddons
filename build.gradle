@@ -77,6 +77,17 @@ repositories {
     maven { url = "https://maven.fabricmc.net/" }
     maven { url = "https://repo.spongepowered.org/repository/maven-public/" }
     maven { url = "https://maven.terraformersmc.com/" }
+    maven {
+        url = "https://repo.polyfrost.org/releases"
+        content { includeGroup "org.polyfrost.oneconfig" }
+    }
+}
+
+configurations {
+    // Seen by javac and the tests only, see below; not compileOnly, which Kotlin compiles against too.
+    oneconfigApi {
+        canBeConsumed = false
+    }
 }
 
 dependencies {
@@ -95,6 +106,16 @@ dependencies {
     compileOnly "com.terraformersmc:modmenu:20.0.1"
     localRuntime "com.terraformersmc:modmenu:20.0.1"
 
+    // OneConfig, the config menu of OneClient: compiled against, never shipped. The mod's settings
+    // are put into its menu through the oneconfig:config entrypoint (compat/oneconfig), which only
+    // OneConfig itself ever loads. Just the two config modules and, for the type its key field
+    // holds, the ui module with the utils module that type is built on, without what they depend
+    // on: the rest of OneConfig is its interface, which nothing here touches.
+    oneconfigApi("org.polyfrost.oneconfig:config:${project.property("oneconfig_version")}") { transitive = false }
+    oneconfigApi("org.polyfrost.oneconfig:config-impl:${project.property("oneconfig_version")}") { transitive = false }
+    oneconfigApi("org.polyfrost.oneconfig:ui:${project.property("oneconfig_version")}") { transitive = false }
+    oneconfigApi("org.polyfrost.oneconfig:utils:${project.property("oneconfig_version")}") { transitive = false }
+
     // Kotlin. Compiled against the stdlib of the Kotlin plugin above; at runtime players get it from
     // Fabric Language Kotlin, which fabric.mod.json requires. The dev client needs that mod too,
     // since the dependency check runs there as well.
@@ -108,7 +129,14 @@ dependencies {
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
+// OneConfig is built with a newer Kotlin than this project's compiler reads, and the compiler
+// refuses a classpath holding such a module even when no Kotlin source uses it. Only Java code
+// talks to OneConfig, so only javac (and the tests of that code) get to see it.
+tasks.named("compileJava") { classpath += configurations.oneconfigApi }
+tasks.named("compileTestJava") { classpath += configurations.oneconfigApi }
+
 tasks.named("test") {
+    classpath += configurations.oneconfigApi
     useJUnitPlatform()
     // The source scan reads src/main; tests run from the project directory.
     workingDir = projectDir

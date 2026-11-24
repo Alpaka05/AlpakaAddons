@@ -309,6 +309,9 @@ public class ItemInHandRendererMixin {
                 this.mainHandItem != player.getMainHandItem(), this.oMainHandHeight, this.mainHandHeight);
         this.offHandHeight = EquipAnimation.afterTick(InteractionHand.OFF_HAND,
                 this.offHandItem != player.getOffhandItem(), this.oOffHandHeight, this.offHandHeight);
+        // A hand that skipped straight to arriving starts this tick's frames where the new item comes in.
+        if (EquipAnimation.takeSnapped(InteractionHand.MAIN_HAND)) this.oMainHandHeight = this.mainHandHeight;
+        if (EquipAnimation.takeSnapped(InteractionHand.OFF_HAND)) this.oOffHandHeight = this.offHandHeight;
     }
 
     /**
@@ -319,14 +322,27 @@ public class ItemInHandRendererMixin {
     @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Mth;clamp(FFF)F", ordinal = 2))
     private float alpaka$equipSpeedMain(float value, float min, float max, Operation<Float> original) {
         LocalPlayer player = Minecraft.getInstance().player;
-        float k = player == null ? 1.0f : EquipAnimation.stepScale(InteractionHand.MAIN_HAND, this.mainHandItem != player.getMainHandItem());
+        if (player == null) return original.call(value, min, max);
+        boolean swapPending = this.mainHandItem != player.getMainHandItem();
+        if (swapPending && EquipAnimation.replacesAtOnce()) {
+            // Straight down to 0, so vanilla swaps the item later in this tick.
+            EquipAnimation.arriveNow(InteractionHand.MAIN_HAND);
+            return -this.mainHandHeight;
+        }
+        float k = EquipAnimation.stepScale(InteractionHand.MAIN_HAND, swapPending);
         return original.call(value, min * k, max * k);
     }
 
     @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Mth;clamp(FFF)F", ordinal = 3))
     private float alpaka$equipSpeedOff(float value, float min, float max, Operation<Float> original) {
         LocalPlayer player = Minecraft.getInstance().player;
-        float k = player == null ? 1.0f : EquipAnimation.stepScale(InteractionHand.OFF_HAND, this.offHandItem != player.getOffhandItem());
+        if (player == null) return original.call(value, min, max);
+        boolean swapPending = this.offHandItem != player.getOffhandItem();
+        if (swapPending && EquipAnimation.replacesAtOnce()) {
+            EquipAnimation.arriveNow(InteractionHand.OFF_HAND);
+            return -this.offHandHeight;
+        }
+        float k = EquipAnimation.stepScale(InteractionHand.OFF_HAND, swapPending);
         return original.call(value, min * k, max * k);
     }
 

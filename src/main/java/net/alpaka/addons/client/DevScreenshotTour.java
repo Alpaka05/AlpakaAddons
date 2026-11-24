@@ -854,6 +854,48 @@ public final class DevScreenshotTour {
             // swing also tells the server, which only Outbound may.
             new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
+            // Swing Trail on a swing slowed to a second: early in the strike, and on the way back,
+            // when the sweep is left hanging. Then at half speed, with the sword turned and
+            // shrunk, and on a pickaxe - the sweep has to hang on the tip every time.
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, 0.0f, 1.0f), () -> true, 20),
+            new Stop("swing-trail-strike", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop("swing-trail-back", () -> {}, () -> true, 5),
+            // Each swing is left to play out before the next setup: changed mid-swing, the item jumps.
+            new Stop(null, () -> {}, () -> true, 15),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.5f, 0.0f, 1.0f), () -> true, 20),
+            new Stop("swing-trail-full", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop(null, () -> {}, () -> true, 10),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, -40.0f, 0.6f), () -> true, 30),
+            new Stop("swing-trail-turned", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop(null, () -> {}, () -> true, 20),
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_PICKAXE, 0.25f, 0.0f, 1.0f), () -> true, 30),
+            new Stop("swing-trail-pickaxe", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop(null, () -> {}, () -> true, 20),
+            // Turning fast while striking: the hand lags behind the view, which must move the
+            // sweep along with the item and not draw it out across the screen.
+            new Stop(null, () -> swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, 0.0f, 1.0f), () -> true, 30),
+            new Stop("swing-trail-turning", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> tourTurn(60.0f), 5),
+            new Stop(null, DevScreenshotTour::tourTurnBack, () -> true, 20),
+            // At night, where a white sweep stands out.
+            new Stop(null, () -> {
+                swingTrail(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f, 0.0f, 1.0f);
+                tourTime("midnight");
+            }, () -> true, 30),
+            new Stop("swing-trail-night", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop("swing-trail-night-back", () -> {}, () -> true, 6),
+            new Stop("swing-trail-night-fading", () -> {}, () -> true, 5),
+            new Stop(null, () -> tourTime("noon"), () -> true, 20),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.itemSwingSpeed = 1.0f;
+                AlpakaConfig.instance.itemSwingTrailDuration = 250.0f;
+                AlpakaConfig.instance.itemRotationZ = 0.0f;
+                AlpakaConfig.instance.itemScale = 1.0f;
+            }, () -> true, 25),
+            screen("swing-trail-menu", () -> AlpakaConfigScreen.openOn("Viewmodel", "Swing Trail")),
+            new Stop(null, () -> {
+                Minecraft.getInstance().gui.setScreen(null);
+                AlpakaConfig.instance.itemSwingTrailEnabled = false;
+            }, () -> true, 5),
             // Inspect Animation: every variant of a few kinds at four points, frozen there.
             new Stop(null, () -> {
                 AlpakaConfig.instance.itemInspectEnabled = true;
@@ -1343,6 +1385,53 @@ public final class DevScreenshotTour {
             net.minecraft.world.item.ItemStack sword = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD);
             if (glint) sword.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
             player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, sword);
+        });
+    }
+
+    private static void tourTime(String time) {
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server != null) {
+            server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "time set " + time));
+        }
+    }
+
+    /** How far {@link #tourTurn} has turned the player, to turn back by. */
+    private static float tourTurned = 0.0f;
+
+    /** Turns the player's view by so many degrees, the way moving the mouse does. Always true, to serve as a stop's condition that turns every tick. */
+    private static boolean tourTurn(float degrees) {
+        net.minecraft.client.player.LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.setYRot(player.getYRot() + degrees);
+            player.yRotO += degrees;
+            tourTurned += degrees;
+        }
+        return true;
+    }
+
+    private static void tourTurnBack() {
+        tourTurn(-tourTurned);
+    }
+
+    /** An item in hand with the swing trail on, swinging at the given speed, turned and scaled as given. */
+    private static void swingTrail(net.minecraft.world.item.Item item, float swingSpeed, float rotationZ, float scale) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.itemSizeFeatureEnabled = true;
+        AlpakaConfig.instance.itemStarlightEnabled = false;
+        AlpakaConfig.instance.itemSwingTrailEnabled = true;
+        AlpakaConfig.instance.itemSwingSpeed = swingSpeed;
+        // The sweep stays as much longer as the swing is slower, so the picture is the one a
+        // swing at full speed gives.
+        AlpakaConfig.instance.itemSwingTrailDuration = 250.0f / swingSpeed;
+        AlpakaConfig.instance.itemRotationZ = rotationZ;
+        AlpakaConfig.instance.itemScale = scale;
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(item));
         });
     }
 

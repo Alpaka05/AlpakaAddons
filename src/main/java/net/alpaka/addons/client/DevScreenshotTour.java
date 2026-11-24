@@ -859,6 +859,45 @@ public final class DevScreenshotTour {
             // swing also tells the server, which only Outbound may.
             new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
+            // Swing Motion Blur on a sword: a swing at full speed, a picture every tick of it, then
+            // the same swing slowed to a quarter with the blur four times as long, so the pictures
+            // show what one frame of a full-speed swing looks like, just more of them. Then the same
+            // at night, unlit, and on a pickaxe.
+            new Stop(null, () -> motionBlur(net.minecraft.world.item.Items.DIAMOND_SWORD, 1.0f), () -> true, 30),
+            new Stop("motion-blur-fast-1", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 1),
+            new Stop("motion-blur-fast-2", () -> {}, () -> true, 1),
+            new Stop("motion-blur-fast-3", () -> {}, () -> true, 1),
+            new Stop("motion-blur-fast-4", () -> {}, () -> true, 1),
+            new Stop(null, () -> motionBlur(net.minecraft.world.item.Items.DIAMOND_SWORD, 0.25f), () -> true, 30),
+            new Stop("motion-blur-slow-1", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 2),
+            new Stop("motion-blur-slow-2", () -> {}, () -> true, 2),
+            new Stop("motion-blur-slow-3", () -> {}, () -> true, 2),
+            new Stop("motion-blur-slow-4", () -> {}, () -> true, 2),
+            new Stop("motion-blur-slow-5", () -> {}, () -> true, 2),
+            new Stop("motion-blur-slow-6", () -> {}, () -> true, 2),
+            new Stop("motion-blur-slow-7", () -> {}, () -> true, 2),
+            new Stop("motion-blur-slow-8", () -> {}, () -> true, 2),
+            new Stop(null, () -> tourTime("midnight"), () -> true, 30),
+            new Stop("motion-blur-night-1", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop("motion-blur-night-2", () -> {}, () -> true, 3),
+            new Stop(null, () -> {
+                tourTime("noon");
+                AlpakaConfig.instance.itemLightingDisabled = true;
+            }, () -> true, 30),
+            new Stop("motion-blur-unlit-1", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop("motion-blur-unlit-2", () -> {}, () -> true, 3),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.itemLightingDisabled = false;
+                motionBlur(net.minecraft.world.item.Items.DIAMOND_PICKAXE, 0.25f);
+            }, () -> true, 30),
+            new Stop("motion-blur-pickaxe-1", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
+            new Stop("motion-blur-pickaxe-2", () -> {}, () -> true, 3),
+            new Stop(null, () -> motionBlur(net.minecraft.world.item.Items.DIAMOND_SWORD, 1.0f), () -> true, 20),
+            screen("motion-blur-menu", () -> AlpakaConfigScreen.openOn("Viewmodel", "Swing Motion Blur")),
+            new Stop(null, () -> {
+                Minecraft.getInstance().gui.setScreen(null);
+                AlpakaConfig.instance.itemMotionBlurEnabled = false;
+            }, () -> true, 5),
             // Swing Trail on a swing slowed to a second: early in the strike, and on the way back,
             // when the sweep is left hanging. Then at half speed, with the sword turned and
             // shrunk, and on a pickaxe - the sweep has to hang on the tip every time.
@@ -1395,6 +1434,24 @@ public final class DevScreenshotTour {
             if (player == null) return;
             player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(item));
         });
+    }
+
+    /**
+     * A plain item in hand with Swing Motion Blur on at its defaults, swinging at the given speed.
+     * The blur is made as much longer as the swing is slower, so a picture shows what a swing at
+     * full speed gives.
+     */
+    private static void motionBlur(net.minecraft.world.item.Item item, float swingSpeed) {
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        AlpakaConfig defaults = new AlpakaConfig();
+        cfg.itemSizeFeatureEnabled = true;
+        cfg.itemStarlightEnabled = false;
+        cfg.itemMotionBlurEnabled = true;
+        cfg.itemMotionBlurOpacity = defaults.itemMotionBlurOpacity;
+        cfg.itemMotionBlurQuality = defaults.itemMotionBlurQuality;
+        cfg.itemMotionBlurLength = defaults.itemMotionBlurLength / swingSpeed;
+        cfg.itemSwingSpeed = swingSpeed;
+        holdItem(item);
     }
 
     private static void starlightGlint(boolean glint) {

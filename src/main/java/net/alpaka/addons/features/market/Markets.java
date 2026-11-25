@@ -71,6 +71,7 @@ public final class Markets {
 
     /** Lets a market menu shown in vanilla's chest screen count as left when it closes, as {@link MarketScreen} does. */
     public static void register() {
+        AccessorySearch.register();
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (!(screen instanceof AbstractContainerScreen<?> chest) || screen instanceof MarketScreen) return;
             MarketKind kind = context(chest);

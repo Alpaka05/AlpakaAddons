@@ -48,6 +48,8 @@ public class MarketInputScreen extends SignEditScreen {
 
     private final SignPrompt prompt;
     private final MarketKind context;
+    /** Whether this is the Accessory Bag's search, which then suggests only accessories. */
+    private final boolean accessories;
     /** The market menu the sign was opened from, for the heading. */
     private final String menuTitle = Markets.lastMenuTitle();
     private long openTimeMs = 0L;
@@ -113,9 +115,15 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     public MarketInputScreen(SignBlockEntity sign, boolean isFrontText, boolean filtered, SignPrompt prompt, MarketKind context) {
+        this(sign, isFrontText, filtered, prompt, context, false);
+    }
+
+    public MarketInputScreen(SignBlockEntity sign, boolean isFrontText, boolean filtered, SignPrompt prompt, MarketKind context,
+                             boolean accessories) {
         super(sign, isFrontText, filtered);
         this.prompt = prompt;
         this.context = context;
+        this.accessories = accessories;
         this.selling = prompt.type() == SignPrompt.Type.PRICE && prompt.auctionPrice() ? LowestBin.selling() : null;
         this.speedCap = RancherSpeeds.isSpeedCap(prompt);
     }
@@ -134,7 +142,10 @@ public class MarketInputScreen extends SignEditScreen {
         }
         SignPrompt prompt = SignPrompt.of(lines);
         if (prompt == null) return false;
-        mc.gui.setScreen(new MarketInputScreen(sign, isFrontText, filtered, prompt, Markets.recentContext(mc.gui.screen())));
+        // The Accessory Bag's search belongs to no market, even right after one was open.
+        boolean accessories = prompt.type() == SignPrompt.Type.SEARCH && AccessorySearch.from(mc.gui.screen());
+        MarketKind context = accessories ? null : Markets.recentContext(mc.gui.screen());
+        mc.gui.setScreen(new MarketInputScreen(sign, isFrontText, filtered, prompt, context, accessories));
         return true;
     }
 
@@ -266,7 +277,7 @@ public class MarketInputScreen extends SignEditScreen {
         AlpakaStyle.headerBand(graphics, x, y, w);
 
         // Header: what is asked, and a close button.
-        AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, speedCap ? "Rancher's Boots Speed Cap" : prompt.heading(context, menuTitle), w - 50), x + PAD + 2, y);
+        AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, speedCap ? "Rancher's Boots Speed Cap" : accessories ? "Search Accessories" : prompt.heading(context, menuTitle), w - 50), x + PAD + 2, y);
         int closeX = x + w - PAD - 16;
         int closeY = y + (HEADER_H - 16) / 2;
         boolean hoverClose = AlpakaStyle.inside(mouseX, mouseY, closeX, closeY, 16, 16);
@@ -331,15 +342,16 @@ public class MarketInputScreen extends SignEditScreen {
 
     /**
      * Works the suggestions out again when the text, or the names to search, changed: matching
-     * recent searches first, then item names from SkyCofl's list for this market. Only names that
-     * fit the sign are offered, so picking one always goes through.
+     * recent searches first, then item names from SkyCofl's list for this market, or every accessory
+     * for the Accessory Bag's search. Only names that fit the sign are offered, so picking one always
+     * goes through.
      */
     private void updateSuggestions() {
         if (prompt.type() != SignPrompt.Type.SEARCH) return;
         String text = text();
         boolean online = AlpakaConfig.instance.allowApiCalls;
-        List<String> names = online ? ItemTags.names(context) : null;
-        namesPending = online && names == null && ItemTags.loading();
+        List<String> names = !online ? null : accessories ? AccessorySearch.names() : ItemTags.names(context);
+        namesPending = online && names == null && (accessories ? ItemIcons.loading() : ItemTags.loading());
         String key = text + "|" + (names == null ? -1 : names.size());
         if (key.equals(suggestedFor)) return;
         suggestedFor = key;
@@ -433,7 +445,7 @@ public class MarketInputScreen extends SignEditScreen {
                 ModernGuiUtils.drawRoundedRect(graphics, rx, ry + 5, 2, SUGGESTION_H - 10, 1, accent);
             }
             // The item itself, by its tag; a recent search no list knows keeps a clock.
-            ItemStack icon = ItemIcons.forItem(ItemTags.suggestionTag(s.name(), context), s.name());
+            ItemStack icon = ItemIcons.forItem(accessories ? AccessorySearch.tag(s.name()) : ItemTags.suggestionTag(s.name(), context), s.name());
             if (!icon.isEmpty()) {
                 graphics.item(icon, rx + 6, ry + (SUGGESTION_H - 16) / 2);
             } else {
@@ -565,7 +577,7 @@ public class MarketInputScreen extends SignEditScreen {
         String text = text();
         if (text.isEmpty()) {
             // A little after the caret, which blinks at the very start.
-            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, speedCap ? "e.g. 328" : prompt.placeholder(), room - 3)), tx + 3, ty, AlpakaStyle.TEXT_MUTED, false);
+            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, speedCap ? "e.g. 328" : accessories ? "Accessory name…" : prompt.placeholder(), room - 3)), tx + 3, ty, AlpakaStyle.TEXT_MUTED, false);
         }
         int cursor = input.getCaret();
         int caretPx = GuiFont.width(this.font, text.substring(0, cursor));

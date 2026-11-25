@@ -480,6 +480,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         int bodyY = y + HEADER_H;
         int bodyH = h - HEADER_H;
 
+        drawZones(graphics, x, y, w, h, sideW, featX);
+
         hoveredTipThisFrame = null;
         hoveredTipTextThisFrame = null;
 
@@ -508,6 +510,25 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
         // Notices over the menu, where the HUD would hide them behind it.
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
+    }
+
+    /**
+     * The sidebar column and the header strip in their own tones, where the theme has them: each is
+     * the panel's rounded shape clipped to its part, so it keeps the window's outer corners.
+     */
+    private void drawZones(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int sideW, int featX) {
+        int radius = AlpakaStyle.PANEL_RADIUS;
+        if (AlpakaStyle.HEADER != AlpakaStyle.PANEL && featX < x + w) {
+            graphics.enableScissor(featX, y, x + w, y + HEADER_H);
+            ModernGuiUtils.drawRoundedRect(graphics, featX - radius * 2, y, x + w - featX + radius * 2,
+                    HEADER_H + radius * 2, radius, AlpakaStyle.HEADER);
+            graphics.disableScissor();
+        }
+        if (AlpakaStyle.SIDEBAR != AlpakaStyle.PANEL && sideW > 0) {
+            graphics.enableScissor(x, y, x + sideW, y + h);
+            ModernGuiUtils.drawRoundedRect(graphics, x, y, sideW + radius * 2, h, radius, AlpakaStyle.SIDEBAR);
+            graphics.disableScissor();
+        }
     }
 
     private Object hoveredTipThisFrame = null;
@@ -713,7 +734,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 rowY += 9;
             }
         }
-        AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, sidebarScroll.offset() > 0, sidebarScroll.offset() + 1 < sidebarScroll.max);
+        AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, sidebarScroll.offset() > 0, sidebarScroll.offset() + 1 < sidebarScroll.max,
+                AlpakaStyle.SIDEBAR);
         graphics.disableScissor();
     }
 

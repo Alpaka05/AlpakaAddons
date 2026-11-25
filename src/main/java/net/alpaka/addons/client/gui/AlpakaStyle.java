@@ -27,6 +27,13 @@ public final class AlpakaStyle {
 
     public static int BACKDROP = 0x80000000;
     public static int PANEL = 0xFF131313;
+    /**
+     * The config menu's sidebar column and the header strip over its other two columns. Most
+     * themes keep them in the panel's own color; the Alpaka theme gives them darker browns, so its
+     * menu reads in layers rather than as one flat color.
+     */
+    public static int SIDEBAR = 0xFF131313;
+    public static int HEADER = 0xFF131313;
     public static int LINE = 0xFF262626;
     public static int DIVIDER = 0xFF3A3A3A;
     public static int ROW = 0xFF1E1E1E;
@@ -69,20 +76,21 @@ public final class AlpakaStyle {
     public enum Theme {
         //     backdrop     panel        line         divider      row          row hover    row selected field
         //     text         text soft    text muted   track        toggle off   knob off     tooltip      knob ring
-        //     preview      danger       danger soft
+        //     preview      danger       danger soft  sidebar      header
         DARK(0x80000000, 0xFF131313, 0xFF262626, 0xFF3A3A3A, 0xFF1E1E1E, 0xFF242424, 0xFF2A2A2A, 0xFF1F1F1F,
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF3A3A3A, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF1A1A1A, 0xFFEDEDED,
-                0xFF0D0D0D, 0xFFE5534B, 0xFFC9726C),
+                0xFF0D0D0D, 0xFFE5534B, 0xFFC9726C, 0xFF131313, 0xFF131313),
         LIGHT(0x66000000, 0xFFF3F3F5, 0xFFDEDEE2, 0xFFC6C6CC, 0xFFE7E7EA, 0xFFE0E0E4, 0xFFD6D6DB, 0xFFE9E9EC,
                 0xFF1C1C21, 0xFF46464D, 0xFF85858D, 0xFFC6C6CC, 0xFF9C9CA3, 0xFF8A8A91, 0xFFFFFFFF, 0xFFFFFFFF,
-                0xFF2B2B2B, 0xFFD23B32, 0xFFC0564F),
+                0xFF2B2B2B, 0xFFD23B32, 0xFFC0564F, 0xFFF3F3F5, 0xFFF3F3F5),
         OLED(0xB0000000, 0xFF000000, 0xFF1A1A1A, 0xFF2C2C2C, 0xFF0D0D0D, 0xFF141414, 0xFF1B1B1B, 0xFF0F0F0F,
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF2E2E2E, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF0A0A0A, 0xFFEDEDED,
-                0xFF000000, 0xFFE5534B, 0xFFC9726C),
-        // Espresso browns with cream text, like the coffee themes of code editors.
+                0xFF000000, 0xFFE5534B, 0xFFC9726C, 0xFF000000, 0xFF000000),
+        // Espresso browns with cream text, like the coffee themes of code editors. The sidebar is
+        // the darkest roast and the header strip sits between it and the panel.
         ALPAKA(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF382C25,
                 0xFFF3E6D8, 0xFFD2BFAB, 0xFF9C8676, 0xFF54443A, 0xFF8A7464, 0xFFA48D7C, 0xFF32271F, 0xFFF3E6D8,
-                0xFF1A1411, 0xFFE5674F, 0xFFC98370);
+                0xFF1A1411, 0xFFE5674F, 0xFFC98370, 0xFF1D1612, 0xFF241B16);
 
         private final int[] c;
 
@@ -122,6 +130,8 @@ public final class AlpakaStyle {
         PREVIEW = c[16];
         DANGER = c[17];
         DANGER_SOFT = c[18];
+        SIDEBAR = c[19];
+        HEADER = c[20];
     }
 
     // ---- Metrics, in GUI pixels -----------------------------------------------------------------
@@ -672,10 +682,16 @@ public final class AlpakaStyle {
      */
     public static void scrollFades(GuiGraphicsExtractor graphics, int x, int y, int w, int h,
                                    boolean above, boolean below) {
+        scrollFades(graphics, x, y, w, h, above, below, PANEL);
+    }
+
+    /** The scroll fades over a part of a window that has a background of its own, like the sidebar. */
+    public static void scrollFades(GuiGraphicsExtractor graphics, int x, int y, int w, int h,
+                                   boolean above, boolean below, int background) {
         int fade = 6;
-        int clear = PANEL & 0x00FFFFFF;
-        if (above) graphics.fillGradient(x, y, x + w, y + fade, PANEL, clear);
-        if (below) graphics.fillGradient(x, y + h - fade, x + w, y + h, clear, PANEL);
+        int clear = background & 0x00FFFFFF;
+        if (above) graphics.fillGradient(x, y, x + w, y + fade, background, clear);
+        if (below) graphics.fillGradient(x, y + h - fade, x + w, y + h, clear, background);
     }
 
     /** The text cut to fit the width, with an ellipsis where it was cut. */

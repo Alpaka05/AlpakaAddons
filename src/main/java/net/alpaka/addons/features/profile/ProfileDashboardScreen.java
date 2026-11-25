@@ -175,6 +175,8 @@ public class ProfileDashboardScreen extends Screen {
     private String faceFor;
     /** The player as a figure on the overview, made once per dashboard. */
     private final ProfileFigure figure = new ProfileFigure();
+    /** Whether the right mouse button is down, which shows the figure without its armor. */
+    private boolean rightHeld;
 
     private record Hit(int x, int y, int w, int h, Runnable action) {}
 
@@ -920,7 +922,11 @@ public class ProfileDashboardScreen extends Screen {
         // inventory's player does; only stopping at the content's edge read as a glitch.
         float lookX = mx;
         float lookY = my;
-        boolean drawn = uuid != null && figure.draw(graphics, uuid, session.inventory("armor"), bx, by, bx + bw, by + bh, scale, lookX, lookY);
+        // Right mouse held on the card takes the armor off, to show the skin under it.
+        boolean bare = rightHeld && hover(x, y, w, h);
+        boolean drawn = uuid != null && figure.draw(graphics, uuid, bare ? null : session.inventory("armor"), bx, by, bx + bw, by + bh,
+                scale, lookX, lookY);
+        if (drawn && !bare && hover(bx, by, bw, bh)) tip("figure", "Hold right-click to see the skin without the armor.");
         if (!drawn) {
             ResolvableProfile profile = face();
             int size = Math.min(48, Math.min(bw, bh) - 8);
@@ -4508,7 +4514,14 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Input ----------------------------------------------------------------------------------
 
     @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (event.button() == 1) rightHeld = false;
+        return super.mouseReleased(event);
+    }
+
+    @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (event.button() == 1) rightHeld = true;
         if (event.button() != 0) return true;
         click = event;
         clickFrom = searchFocused ? search : itemSearchFocused ? itemSearch : null;

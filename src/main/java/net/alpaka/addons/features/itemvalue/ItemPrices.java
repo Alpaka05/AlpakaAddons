@@ -25,6 +25,7 @@ import java.util.zip.GZIPInputStream;
 /**
  * What items cost right now, for the Item Value breakdown: the Bazaar's instant buy and sell price of
  * every product, from Hypixel, and the lowest BIN of everything on the Auction House, from SkyCofl.
+ * Rare forms of an item that share its id are priced by their own sales ({@link VariantPrices}).
  *
  * The Bazaar comes through the AlpakaAddons API (api.alpaka.yt), which cuts Hypixel's public list
  * of 3.5 MB down to the prices, a few dozen KB; when that can't be reached, from Hypixel itself.
@@ -91,12 +92,14 @@ public final class ItemPrices {
         long now = System.currentTimeMillis();
         maybeFetch(BAZAAR, now, ItemPrices::parseBazaar);
         maybeFetch(LOWEST_BINS, now, ItemPrices::parseLowestBins);
+        VariantPrices.refresh(client(), VERSION::incrementAndGet);
     }
 
     /** Asks again right away for a list that failed, on the player's click. */
     public static void retry() {
         BAZAAR.retryAt = 0L;
         LOWEST_BINS.retryAt = 0L;
+        VariantPrices.retry();
         refresh();
     }
 
@@ -105,6 +108,9 @@ public final class ItemPrices {
      * pick, else its lowest BIN. Null while the lists load or for an item neither market has.
      */
     public static Quote quote(String id) {
+        // The rare form of an item, priced by its own sales: see ItemValue.VARIANTS.
+        Double variant = id == null ? null : VariantPrices.price(id);
+        if (variant != null) return new Quote(variant, MarketKind.AUCTION_HOUSE);
         return quote(id, BAZAAR.data, LOWEST_BINS.data, AlpakaConfig.instance.itemValueBazaarPrice == 1);
     }
 
@@ -130,7 +136,8 @@ public final class ItemPrices {
 
     /** Whether there is nothing to show yet because a list is still on its way. */
     public static boolean loading() {
-        return (BAZAAR.data == null && !BAZAAR.failed) || (LOWEST_BINS.data == null && !LOWEST_BINS.failed);
+        return (BAZAAR.data == null && !BAZAAR.failed) || (LOWEST_BINS.data == null && !LOWEST_BINS.failed)
+                || VariantPrices.loading();
     }
 
     /** Whether both lists failed to come and there is nothing to show at all. */

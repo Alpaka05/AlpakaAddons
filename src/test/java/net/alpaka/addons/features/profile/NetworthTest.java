@@ -88,6 +88,38 @@ class NetworthTest {
     }
 
     @Test
+    void eachItemSaysWhereItIsAndWhatItsWorthIsMadeOf() {
+        JsonObject model = JsonParser.parseString("""
+                {"pets": [{"uuid": "p1", "type": "TIGER", "tier": "LEGENDARY", "level": 100, "heldItem": "PET_ITEM_X"}]}""").getAsJsonObject();
+        Map<String, JsonElement> inventories = new LinkedHashMap<>();
+        inventories.put("ender_chest", items("\"47\": " + HYPERION, """
+                "48": {"skyblockId": "SOUL", "name": "§fSoul", "count": 3, "lore": [], "attributes": {}, "data": {"id": "SOUL"}}"""));
+
+        JsonObject worth = Networth.of(model, null, inventories, PRICES, CATALOG);
+
+        JsonElement hyperion = Json.arr(worth, "categories.ender_chest.items").get(0);
+        assertEquals("ender_chest", Json.str(hyperion, "inventory"));
+        assertEquals("47", Json.str(hyperion, "slot"));
+        // The item itself and the Recombobulator put on it, adding up to its worth.
+        assertEquals(2, Json.arr(hyperion, "parts").size());
+        assertEquals("BASE", Json.str(Json.arr(hyperion, "parts").get(0), "group"));
+        assertEquals(1000, Json.num(Json.arr(hyperion, "parts").get(0), "value", 0));
+        assertEquals(10, Json.num(Json.arr(hyperion, "parts").get(1), "value", 0));
+        // A stack's parts are worth what all of it is.
+        JsonElement souls = Json.arr(worth, "categories.ender_chest.items").get(1);
+        assertEquals(21, Json.num(souls, "networth", 0));
+        assertEquals(21, Json.num(Json.arr(souls, "parts").get(0), "value", 0));
+        // A pet says which one it is, and what it holds is a part of its worth.
+        JsonElement tiger = Json.arr(worth, "categories.pets.items").get(0);
+        assertEquals("LEGENDARY", Json.str(tiger, "tier"));
+        assertEquals(100, Json.num(tiger, "level", 0));
+        assertEquals(520, Json.num(tiger, "networth", 0));
+        double sum = 0;
+        for (JsonElement part : Json.arr(tiger, "parts")) sum += Json.num(part, "value", 0);
+        assertEquals(520, sum);
+    }
+
+    @Test
     void aProfileWithItsInventoryApiOffIsWorthItsCoins() {
         JsonObject model = JsonParser.parseString("{\"purse\": 5, \"bankBalance\": 7}").getAsJsonObject();
         JsonObject worth = Networth.of(model, null, Map.of(), PRICES, CATALOG);

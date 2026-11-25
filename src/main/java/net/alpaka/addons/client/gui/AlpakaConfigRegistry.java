@@ -1432,7 +1432,7 @@ public class AlpakaConfigRegistry {
                 "lighting light shading shadow flat unlit held item hand flicker"));
 
         OPTIONS.add(new ConfigOption("item_no_equip", "Disable Re-equip Animation",
-                "Skips the hand lowering and rising again when you switch slots.",
+                "Keeps the hand from dipping when the held item changes or after an attack. With Equip Animation on, switching slots still plays it.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemNoEquipEnabled,
                 v -> { AlpakaConfig.instance.itemNoEquipEnabled = v; AlpakaConfig.save(); },
@@ -1519,7 +1519,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Equip Animation", ConfigCategory.VIEWMODEL));
 
         OPTIONS.add(new ConfigOption("item_equip_animation", "Equip Animation",
-                "Animates the held item when you switch slots, in one of several styles.",
+                "Animates the held item when you switch slots, in one of several styles. Works together with Disable Re-equip Animation.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemEquipAnimationEnabled,
                 v -> { AlpakaConfig.instance.itemEquipAnimationEnabled = v; AlpakaConfig.save(); },

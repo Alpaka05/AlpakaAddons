@@ -33,7 +33,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ItemInHandRenderer.class)
 public class ItemInHandRendererMixin {
@@ -293,11 +292,37 @@ public class ItemInHandRendererMixin {
         return swingProgress;
     }
 
-    @Inject(method = "shouldInstantlyReplaceVisibleItem", at = @At("HEAD"), cancellable = true)
-    private void onShouldSkipAnimation(ItemStack from, ItemStack to, CallbackInfoReturnable<Boolean> cir) {
-        if ((AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) || EquipAnimation.instant()) {
-            cir.setReturnValue(true);
-        }
+    /** Notes the hotbar slot before vanilla compares the items, so a slot switch can be told from an item updated in place. */
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void alpaka$equipAnimationBeforeTick(CallbackInfo ci) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) EquipAnimation.beforeTick(player.getInventory().getSelectedSlot());
+    }
+
+    /** Swaps the main hand item at once (no re-equip), unless the equip animation plays a slot switch on it. */
+    @WrapOperation(method = "tick", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;shouldInstantlyReplaceVisibleItem(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)Z",
+            ordinal = 0))
+    private boolean alpaka$instantSwapMain(ItemInHandRenderer self, ItemStack from, ItemStack to, Operation<Boolean> original) {
+        return alpaka$skipReequip(InteractionHand.MAIN_HAND) || original.call(self, from, to);
+    }
+
+    @WrapOperation(method = "tick", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;shouldInstantlyReplaceVisibleItem(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)Z",
+            ordinal = 1))
+    private boolean alpaka$instantSwapOff(ItemInHandRenderer self, ItemStack from, ItemStack to, Operation<Boolean> original) {
+        return alpaka$skipReequip(InteractionHand.OFF_HAND) || original.call(self, from, to);
+    }
+
+    /**
+     * Disable Re-equip Animation, or the equip animation at 0% intensity. With both options on, a
+     * slot switch still plays the equip animation; the option only skips the rest.
+     */
+    @Unique
+    private static boolean alpaka$skipReequip(InteractionHand hand) {
+        if (EquipAnimation.instant()) return true;
+        AlpakaConfig c = AlpakaConfig.instance;
+        return c.itemSizeFeatureEnabled && c.itemNoEquipEnabled && !EquipAnimation.ownsHand(hand);
     }
 
     /** Tells the equip animation where each hand is in a slot switch, and lets its test run lower the hand. */
@@ -336,12 +361,15 @@ public class ItemInHandRendererMixin {
         if (EquipAnimation.apply(poseStack, arm, equipProgress)) ci.cancel();
     }
 
+    /** Keeps the hands up (no dip after an attack either), except a main hand the equip animation is playing on. */
     @Inject(method = "tick", at = @At("TAIL"))
     private void onUpdateHeldItems(CallbackInfo ci) {
-        if ((AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemNoEquipEnabled) || EquipAnimation.instant()) {
+        if (alpaka$skipReequip(InteractionHand.MAIN_HAND)) {
             this.mainHandHeight = 1.0f;
-            this.offHandHeight = 1.0f;
             this.oMainHandHeight = 1.0f;
+        }
+        if (alpaka$skipReequip(InteractionHand.OFF_HAND)) {
+            this.offHandHeight = 1.0f;
             this.oOffHandHeight = 1.0f;
         }
     }

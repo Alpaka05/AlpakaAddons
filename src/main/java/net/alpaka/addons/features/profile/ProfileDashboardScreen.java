@@ -8,6 +8,7 @@ import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.PloppAnimation;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.itemvalue.ItemValue;
 import net.alpaka.addons.features.market.Coins;
 import net.alpaka.addons.features.market.ItemIcons;
 import net.alpaka.addons.features.market.MarketIcons;
@@ -200,6 +201,67 @@ public class ProfileDashboardScreen extends Screen {
         }
     }
 
+    // ---- Scrollbar ------------------------------------------------------------------------------
+
+    /** The thumb never gets shorter than this, so a page of hundreds of rows still has one to grab. */
+    private static final int SCROLL_MIN_THUMB = 16;
+    /** Where the track is, in the margin right of the content; {@code scrollbarShown} false while the page fits. */
+    private boolean scrollbarShown;
+    private int barX, barTop, barH, thumbH;
+    /** Dragged by the thumb, and where on it it was grabbed, from its top. */
+    private boolean scrollDragging;
+    private double scrollGrab;
+    /** 0 thin, 1 wide: the bar widens under the mouse and while it is dragged. */
+    private float barWide;
+
+    /**
+     * The scrollbar along the content's right edge, for pages that run long - a networth list
+     * folded out to hundreds of items, a wide search. Thin, and wider under the mouse; the thumb
+     * can be dragged, and a press on the track jumps there.
+     */
+    private void drawScrollbar(GuiGraphicsExtractor graphics, float deltaSec) {
+        scrollbarShown = scroll.max > 0;
+        if (!scrollbarShown) {
+            scrollDragging = false;
+            return;
+        }
+        barX = clipX + clipW - 8;
+        barTop = clipY + 4;
+        barH = clipH - 8;
+        double content = clipH + scroll.max;
+        thumbH = Math.min(barH, Math.max(SCROLL_MIN_THUMB, (int) Math.round(barH * (clipH / content))));
+        int thumbY = barTop + (int) Math.round((barH - thumbH) * (scroll.current / scroll.max));
+        boolean near = !menuOpen && AlpakaStyle.inside(mx, my, barX - 2, barTop, 10, barH);
+        barWide = PloppAnimation.interpolate(barWide, near || scrollDragging ? 1.0f : 0.0f, deltaSec, 18.0f);
+        int w = Math.round(2 + 2 * barWide);
+        int x = barX + 6 - w;
+        if (barWide > 0.05f) ModernGuiUtils.drawRoundedRect(graphics, x, barTop, w, barH, w / 2, MarketIcons.fade(AlpakaStyle.TRACK, 0.6f * barWide));
+        boolean onThumb = near && my >= thumbY && my < thumbY + thumbH;
+        int color = scrollDragging ? AlpakaStyle.TEXT : onThumb ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED;
+        ModernGuiUtils.drawRoundedRect(graphics, x, thumbY, w, thumbH, w / 2, color);
+    }
+
+    /** A press on the bar: grabs the thumb, or on the track moves the thumb's middle there first. */
+    private boolean pressScrollbar(double mouseX, double mouseY) {
+        if (!scrollbarShown || !AlpakaStyle.inside(mouseX, mouseY, barX - 2, barTop, 10, barH)) return false;
+        int thumbY = barTop + (int) Math.round((barH - thumbH) * (scroll.current / scroll.max));
+        if (mouseY >= thumbY && mouseY < thumbY + thumbH) {
+            scrollGrab = mouseY - thumbY;
+        } else {
+            scrollGrab = thumbH / 2.0;
+            dragScrollbar(mouseY);
+        }
+        scrollDragging = true;
+        return true;
+    }
+
+    private void dragScrollbar(double mouseY) {
+        double travel = Math.max(1, barH - thumbH);
+        double frac = Math.max(0, Math.min(1, (mouseY - scrollGrab - barTop) / travel));
+        // Straight there, without the glide of the wheel: the thumb stays under the mouse.
+        scroll.current = scroll.target = frac * scroll.max;
+    }
+
     /** Where Escape goes back to: the config, when it was opened from there. */
     private final Screen parent;
 
@@ -357,6 +419,7 @@ public class ProfileDashboardScreen extends Screen {
         if (devScrollToEnd) scroll.current = scroll.target = scroll.max;
         scroll.update(deltaSec);
         AlpakaStyle.scrollFades(graphics, clipX, clipY, clipW, clipH, scroll.offset() > 0, scroll.offset() + 1 < scroll.max);
+        drawScrollbar(graphics, deltaSec);
         graphics.disableScissor();
 
         for (Runnable overlay : overlays) overlay.run();
@@ -2308,13 +2371,60 @@ public class ProfileDashboardScreen extends Screen {
 
     // ---- Networth -------------------------------------------------------------------------------
 
+    /** One category of the breakdown: what it is called and what it holds in all. */
     private record Part(String label, double value) {}
 
-    private record Valuable(String name, int count, String where, double value) {}
+    /** One part of an item's worth as the networth priced it, its {@link ItemValue.Group} by name. */
+    private record Piece(String group, String label, double count, double value) {}
+
+    /**
+     * One thing the networth counts - a stack in a slot, a pet, what a sack holds, an essence -
+     * with the category it is listed under, where it is in the game and what its worth is made
+     * of. {@code item} is the inventory item and {@code pet} the pet, to draw it and to open it
+     * where it is; null when there is none.
+     */
+    private record Holding(String name, String id, int count, String category, String where, double value,
+                           List<Piece> pieces, JsonElement item, ProfileData.Pet pet, String inventory) {}
+
+    /** A row of the item list: one holding, or every holding of the same item when they are grouped. */
+    private record Line(String key, List<Holding> holdings, double value, long count) {
+        Holding first() {
+            return holdings.get(0);
+        }
+    }
+
+    /** The rows the item list starts with, and how many more each "Show More" adds. */
+    private static final int WORTH_FIRST = 15;
+    private static final int WORTH_MORE = 25;
+    private static final int WORTH_ROW_H = 18;
+    /** The most parts and places an opened row lists before it sums up the rest. */
+    private static final int WORTH_DETAIL_MAX = 8;
+    /** Where the Value Spread card splits the items, from the top down. */
+    private static final double[] SPREAD_AT = {1e9, 1e8, 1e7, 1e6, 1e5, 0};
+    private static final String[] SPREAD_LABELS = {"1B+", "100M – 1B", "10M – 100M", "1M – 10M", "100k – 1M", "Under 100k"};
 
     private JsonElement breakdownFor;
+    private String breakdownProfile;
+    private int holdingsVersion;
     private List<Part> parts = List.of();
-    private List<Valuable> valuables = List.of();
+    private List<Holding> holdings = List.of();
+    /** The categories with something in them to list; Coins has nothing. */
+    private java.util.Set<String> holdingCategories = java.util.Set.of();
+    /** The category the insights and the item list are narrowed to, by its label; null for all of them. */
+    private String worthFilter;
+    /** Whether the item list puts the same item from different places on one row. */
+    private boolean worthGrouped;
+    private int worthShown = WORTH_FIRST;
+    /** The row of the item list that is folded open, by its key; null for none. */
+    private String worthOpen;
+    /** What the filter lets through, worked out again only when the filter, grouping or networth changes. */
+    private String worthFor;
+    private List<Holding> worthIn = List.of();
+    private List<Line> worthLines = List.of();
+    private double worthTotal;
+    private final double[] worthSources = new double[ItemValue.Group.values().length];
+    private final int[] spreadCounts = new int[SPREAD_AT.length];
+    private final double[] spreadValues = new double[SPREAD_AT.length];
 
     /** The networth, or what it is waiting for: it is worked out after the profile arrived, once prices are there. */
     private String networthText(ProfileData d) {
@@ -2348,10 +2458,61 @@ public class ProfileDashboardScreen extends Screen {
         }
         if (answer != breakdownFor) {
             breakdownFor = answer;
-            readBreakdown(answer);
+            readBreakdown(answer, d);
         }
 
-        // Where the networth sits: one bar split by category, and the categories listed under it.
+        y = worthBreakdown(graphics, x, y, w) + 6;
+        if (holdings.isEmpty()) return y;
+        narrowWorth();
+        if (worthIn.isEmpty()) return y;
+        int sourcesH = sourcesHeight();
+        int spreadH = spreadHeight();
+        if (w >= 380) {
+            // Side by side, as tall as the taller of them.
+            int lw = (w - 6) / 2;
+            int h = Math.max(sourcesH, spreadH);
+            worthSourcesCard(graphics, x, y, lw, h);
+            worthSpreadCard(graphics, x + lw + 6, y, w - lw - 6, h);
+            y += h + 6;
+        } else {
+            worthSourcesCard(graphics, x, y, w, sourcesH);
+            y += sourcesH + 6;
+            worthSpreadCard(graphics, x, y, w, spreadH);
+            y += spreadH + 6;
+        }
+        return worthItems(graphics, x, y, w);
+    }
+
+    /** The color a category has in the breakdown, which its items' bars in the list share. */
+    private int categoryColor(String label) {
+        for (int i = 0; i < parts.size(); i++) if (parts.get(i).label().equals(label)) return ink(PALETTE[i % PALETTE.length]);
+        return AlpakaStyle.TEXT_MUTED;
+    }
+
+    private static int groupColor(ItemValue.Group group) {
+        return ink(PALETTE[group.ordinal() % PALETTE.length]);
+    }
+
+    private static ItemValue.Group group(String name) {
+        try {
+            return ItemValue.Group.valueOf(name);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return ItemValue.Group.BASE;
+        }
+    }
+
+    private void filterWorth(String label) {
+        worthFilter = label == null || label.equals(worthFilter) ? null : label;
+        worthShown = WORTH_FIRST;
+        worthOpen = null;
+    }
+
+    private boolean hasHoldings(String label) {
+        return holdingCategories.contains(label);
+    }
+
+    /** Where the networth sits: one bar split by category, and the categories listed under it; a click narrows the page to one. */
+    private int worthBreakdown(GuiGraphicsExtractor graphics, int x, int y, int w) {
         double total = 0;
         for (Part p : parts) total += p.value();
         int listCols = w >= 380 ? 2 : 1;
@@ -2359,6 +2520,13 @@ public class ProfileDashboardScreen extends Screen {
         int h = 24 + 12 + rows * 13 + 6;
         card(graphics, x, y, w, h);
         text(graphics, "Breakdown", x + 8, y + 7, AlpakaStyle.TEXT);
+        if (worthFilter != null) {
+            String all = "Show All";
+            chip(graphics, all, x + w - 8 - textW(all) - 14, y + 4, false, () -> filterWorth(null));
+        } else if (!holdings.isEmpty()) {
+            String hint = "Click a category to look closer";
+            if (textW("Breakdown") + 24 + textW(hint) < w) text(graphics, hint, x + w - 8 - textW(hint), y + 7, AlpakaStyle.TEXT_MUTED);
+        }
         int bx = x + 8;
         int bw = w - 16;
         int by = y + 22;
@@ -2369,70 +2537,533 @@ public class ProfileDashboardScreen extends Screen {
             int from = bx + (int) Math.round(acc / total * bw);
             acc += p.value();
             int to = bx + (int) Math.round(acc / total * bw);
-            if (to - from >= 1) ModernGuiUtils.drawRect(graphics, from, by, to - from, 7, ink(PALETTE[i % PALETTE.length]));
+            if (to - from < 1) continue;
+            boolean chosen = worthFilter == null || worthFilter.equals(p.label());
+            int color = ink(PALETTE[i % PALETTE.length]);
+            ModernGuiUtils.drawRect(graphics, from, by, to - from, 7, chosen ? color : MarketIcons.fade(color, 0.3f));
+            if (hasHoldings(p.label())) {
+                String label = p.label();
+                if (hover(from, by - 2, to - from, 11)) tip(p, label + ": " + Coins.compact(p.value()) + ". Click to look closer.");
+                hit(from, by - 2, to - from, 11, () -> filterWorth(label));
+            }
         }
         int colW = (w - 16) / listCols;
         for (int i = 0; i < parts.size(); i++) {
             Part p = parts.get(i);
             int cx = x + 8 + (i % listCols) * colW;
             int cy = y + 36 + (i / listCols) * 13;
+            boolean clickable = hasHoldings(p.label());
+            boolean selected = p.label().equals(worthFilter);
+            boolean hover = clickable && hover(cx - 3, cy - 2, colW - 4, 12);
+            if (hover || selected) {
+                ModernGuiUtils.drawRoundedRect(graphics, cx - 3, cy - 2, colW - 4, 12, 3, selected ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW_HOVER);
+            }
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy + 2, 5, 5, 2, ink(PALETTE[i % PALETTE.length]));
-            text(graphics, p.label(), cx + 9, cy, AlpakaStyle.TEXT_SOFT);
+            int labelColor = selected ? AlpakaStyle.accent() : worthFilter != null ? AlpakaStyle.TEXT_MUTED : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+            text(graphics, p.label(), cx + 9, cy, labelColor);
             String value = Coins.compact(p.value());
             String share = String.format(Locale.US, "%.1f%%", total > 0 ? p.value() / total * 100 : 0);
             int right = cx + colW - 10;
             text(graphics, share, right - textW(share), cy, AlpakaStyle.TEXT_MUTED);
             text(graphics, value, right - textW(share) - 8 - textW(value), cy, AlpakaStyle.TEXT);
-        }
-        y += h + 6;
-
-        if (valuables.isEmpty()) return y;
-        int shown = Math.min(12, valuables.size());
-        h = 24 + shown * 14 + 4;
-        card(graphics, x, y, w, h);
-        text(graphics, "Most Valuable Items", x + 8, y + 7, AlpakaStyle.TEXT);
-        int ry = y + 22;
-        for (int i = 0; i < shown; i++) {
-            Valuable v = valuables.get(i);
-            String rank = (i + 1) + ".";
-            text(graphics, rank, x + 8, ry, AlpakaStyle.TEXT_MUTED);
-            String value = Coins.compact(v.value());
-            String where = v.where();
-            int right = x + w - 8;
-            text(graphics, value, right - textW(value), ry, AlpakaStyle.TEXT);
-            int whereX = right - textW(value) - 10 - textW(where);
-            text(graphics, where, whereX, ry, AlpakaStyle.TEXT_MUTED);
-            String name = v.name() + (v.count() > 1 ? " §8x" + v.count() : "");
-            int nameX = x + 24;
-            styled(graphics, name, nameX, ry, whereX - 8 - nameX);
-            ry += 14;
+            if (clickable) {
+                String label = p.label();
+                hit(cx - 3, cy - 2, colW - 4, 12, () -> filterWorth(label));
+            }
         }
         return y + h;
     }
 
-    private void readBreakdown(JsonElement answer) {
-        Map<String, Double> grouped = new LinkedHashMap<>();
-        List<Valuable> items = new ArrayList<>();
-        for (var category : Json.obj(answer, "categories").entrySet()) {
-            String label = categoryLabel(category.getKey());
-            double total = Json.num(category.getValue(), "total", 0);
-            if (total > 0) grouped.merge(label, total, Double::sum);
-            for (JsonElement item : Json.arr(category.getValue(), "items")) {
-                String name = Json.str(item, "item.name");
-                String id = Json.str(item, "item.skyblockId");
-                double value = Json.num(item, "networth", 0);
-                // Sacks and essence name raw ids; pets come without a name at all.
-                if (name == null || id == null || name.equals(id) || value <= 0
-                        || category.getKey().equals("sacks") || category.getKey().equals("essence")) continue;
-                items.add(new Valuable(name, (int) Json.num(item, "item.count", 1), label, value));
+    /** Works out what the filter lets through, the rows of the list and the sums of both insight cards. */
+    private void narrowWorth() {
+        String key = holdingsVersion + "/" + worthFilter + "/" + worthGrouped;
+        if (key.equals(worthFor)) return;
+        worthFor = key;
+        List<Holding> in = new ArrayList<>();
+        java.util.Arrays.fill(worthSources, 0);
+        java.util.Arrays.fill(spreadCounts, 0);
+        java.util.Arrays.fill(spreadValues, 0);
+        double total = 0;
+        Map<String, List<Holding>> byKey = new LinkedHashMap<>();
+        for (int i = 0; i < holdings.size(); i++) {
+            Holding h = holdings.get(i);
+            if (worthFilter != null && !worthFilter.equals(h.category())) continue;
+            in.add(h);
+            total += h.value();
+            if (h.pieces().isEmpty()) {
+                // Sacks and essence are the items themselves, nothing put on them.
+                worthSources[ItemValue.Group.BASE.ordinal()] += h.value();
+            } else {
+                for (Piece p : h.pieces()) worthSources[group(p.group()).ordinal()] += p.value();
+            }
+            int bucket = SPREAD_AT.length - 1;
+            for (int b = 0; b < SPREAD_AT.length; b++) {
+                if (h.value() >= SPREAD_AT[b]) {
+                    bucket = b;
+                    break;
+                }
+            }
+            spreadCounts[bucket]++;
+            spreadValues[bucket] += h.value();
+            byKey.computeIfAbsent(worthGrouped ? sameItem(h) : "#" + i, k -> new ArrayList<>()).add(h);
+        }
+        List<Line> lines = new ArrayList<>();
+        byKey.forEach((k, list) -> {
+            double value = 0;
+            long count = 0;
+            for (Holding h : list) {
+                value += h.value();
+                count += h.count();
+            }
+            lines.add(new Line(k, List.copyOf(list), value, count));
+        });
+        lines.sort((a, b) -> Double.compare(b.value(), a.value()));
+        worthIn = List.copyOf(in);
+        worthLines = List.copyOf(lines);
+        worthTotal = total;
+    }
+
+    /**
+     * What makes two holdings the same item for the grouped list: the same id under the same name.
+     * Enchanted books all share both, so for them the enchantments on them count too.
+     */
+    private static String sameItem(Holding h) {
+        String key = h.id() + "|" + SkyblockUtils.cleanColor(h.name());
+        if ("ENCHANTED_BOOK".equals(h.id())) {
+            StringBuilder b = new StringBuilder(key);
+            for (Piece p : h.pieces()) b.append('|').append(p.label());
+            return b.toString();
+        }
+        return key;
+    }
+
+    private int sourcesShown() {
+        int n = 0;
+        for (double v : worthSources) if (v > 0) n++;
+        return Math.max(1, n);
+    }
+
+    private int sourcesHeight() {
+        return 36 + sourcesShown() * 12 + 4;
+    }
+
+    /** What the items are worth as they are and what was put on them: stars, enchantments, gemstones and so on. */
+    private void worthSourcesCard(GuiGraphicsExtractor graphics, int x, int y, int w, int h) {
+        card(graphics, x, y, w, h);
+        text(graphics, "Value Sources", x + 8, y + 7, AlpakaStyle.TEXT);
+        double base = worthSources[ItemValue.Group.BASE.ordinal()];
+        if (worthTotal > base) {
+            String extra = "+" + Coins.compact(worthTotal - base) + " on top";
+            if (textW("Value Sources") + 24 + textW(extra) < w) {
+                text(graphics, extra, x + w - 8 - textW(extra), y + 7, AlpakaStyle.TEXT_MUTED);
+                if (hover(x + w - 8 - textW(extra), y + 5, textW(extra), 11)) {
+                    tip("worth-extra", "What was put on the items - stars, enchantments, gemstones, reforges and more - adds "
+                            + Coins.compact(worthTotal - base) + " to the " + Coins.compact(base) + " the items are worth as they are.");
+                }
             }
         }
-        List<Part> list = new ArrayList<>();
-        grouped.forEach((label, value) -> list.add(new Part(label, value)));
+        int bx = x + 8;
+        int bw = w - 16;
+        int by = y + 22;
+        ModernGuiUtils.drawRoundedRect(graphics, bx, by, bw, 7, 3, AlpakaStyle.TRACK);
+        double acc = 0;
+        ItemValue.Group[] groups = ItemValue.Group.values();
+        List<ItemValue.Group> order = new ArrayList<>();
+        for (ItemValue.Group g : groups) if (worthSources[g.ordinal()] > 0) order.add(g);
+        order.sort((a, b) -> Double.compare(worthSources[b.ordinal()], worthSources[a.ordinal()]));
+        for (ItemValue.Group g : order) {
+            int from = bx + (int) Math.round(acc / worthTotal * bw);
+            acc += worthSources[g.ordinal()];
+            int to = bx + (int) Math.round(acc / worthTotal * bw);
+            if (to - from >= 1) ModernGuiUtils.drawRect(graphics, from, by, to - from, 7, groupColor(g));
+        }
+        int ry = y + 36;
+        for (ItemValue.Group g : order) {
+            double v = worthSources[g.ordinal()];
+            ModernGuiUtils.drawRoundedRect(graphics, x + 8, ry + 2, 5, 5, 2, groupColor(g));
+            String share = String.format(Locale.US, "%.1f%%", v / worthTotal * 100);
+            String value = Coins.compact(v);
+            int right = x + w - 8;
+            text(graphics, share, right - textW(share), ry, AlpakaStyle.TEXT_MUTED);
+            int valueX = right - textW(share) - 8 - textW(value);
+            text(graphics, value, valueX, ry, AlpakaStyle.TEXT);
+            text(graphics, AlpakaStyle.ellipsize(this.font, g.title, valueX - 6 - (x + 17)), x + 17, ry, AlpakaStyle.TEXT_SOFT);
+            ry += 12;
+        }
+    }
+
+    private int spreadRows() {
+        int n = 0;
+        for (int c : spreadCounts) if (c > 0) n++;
+        return Math.max(1, n);
+    }
+
+    private int spreadHeight() {
+        return 24 + spreadRows() * 13 + 14;
+    }
+
+    /** How the worth is spread over cheap and dear items, and how much of it the few dearest hold. */
+    private void worthSpreadCard(GuiGraphicsExtractor graphics, int x, int y, int w, int h) {
+        card(graphics, x, y, w, h);
+        text(graphics, "Value Spread", x + 8, y + 7, AlpakaStyle.TEXT);
+        String counted = Coins.full(worthIn.size()) + (worthIn.size() == 1 ? " item" : " items");
+        if (textW("Value Spread") + 24 + textW(counted) < w) text(graphics, counted, x + w - 8 - textW(counted), y + 7, AlpakaStyle.TEXT_MUTED);
+        int labelW = 0;
+        int countW = 0;
+        int valueW = 0;
+        for (int b = 0; b < SPREAD_AT.length; b++) {
+            if (spreadCounts[b] == 0) continue;
+            labelW = Math.max(labelW, textW(SPREAD_LABELS[b]));
+            countW = Math.max(countW, textW("×" + Coins.full(spreadCounts[b])));
+            valueW = Math.max(valueW, textW(Coins.compact(spreadValues[b])));
+        }
+        int barX = x + 8 + labelW + 6;
+        int barW = x + w - 8 - valueW - 8 - countW - 8 - barX;
+        double most = 0;
+        for (double v : spreadValues) most = Math.max(most, v);
+        int ry = y + 22;
+        for (int b = 0; b < SPREAD_AT.length; b++) {
+            if (spreadCounts[b] == 0) continue;
+            text(graphics, SPREAD_LABELS[b], x + 8, ry, AlpakaStyle.TEXT_SOFT);
+            if (barW >= 16) {
+                ModernGuiUtils.drawRoundedRect(graphics, barX, ry + 2, barW, 5, 2, AlpakaStyle.TRACK);
+                int fill = (int) Math.round(spreadValues[b] / most * barW);
+                if (fill >= 2) ModernGuiUtils.drawRoundedRect(graphics, barX, ry + 2, fill, 5, 2, MarketIcons.fade(AlpakaStyle.TEXT_SOFT, 0.75f));
+            }
+            String count = "×" + Coins.full(spreadCounts[b]);
+            String value = Coins.compact(spreadValues[b]);
+            text(graphics, value, x + w - 8 - textW(value), ry, AlpakaStyle.TEXT);
+            text(graphics, count, x + w - 8 - valueW - 8 - textW(count), ry, AlpakaStyle.TEXT_MUTED);
+            if (hover(x + 4, ry - 2, w - 8, 12)) {
+                tip(SPREAD_LABELS[b], Coins.full(spreadCounts[b]) + (spreadCounts[b] == 1 ? " item" : " items") + " worth "
+                        + SPREAD_LABELS[b].replace("Under", "under") + " each, " + Coins.compact(spreadValues[b]) + " together ("
+                        + String.format(Locale.US, "%.1f%%", spreadValues[b] / worthTotal * 100) + ").");
+            }
+            ry += 13;
+        }
+        // How top-heavy it is: the share of the dearest item and of the ten dearest, one stack each.
+        double top1 = worthIn.isEmpty() ? 0 : maxValue(worthIn);
+        double top10 = topSum(worthIn, 10);
+        String line = "Top item " + percent(top1 / worthTotal) + " · Top 10 " + percent(top10 / worthTotal);
+        text(graphics, AlpakaStyle.ellipsize(this.font, line, w - 16), x + 8, y + h - 13, AlpakaStyle.TEXT_MUTED);
+    }
+
+    private static double maxValue(List<Holding> list) {
+        double max = 0;
+        for (Holding h : list) max = Math.max(max, h.value());
+        return max;
+    }
+
+    private static double topSum(List<Holding> list, int n) {
+        List<Double> values = new ArrayList<>(list.size());
+        for (Holding h : list) values.add(h.value());
+        values.sort(java.util.Comparator.reverseOrder());
+        double sum = 0;
+        for (int i = 0; i < Math.min(n, values.size()); i++) sum += values.get(i);
+        return sum;
+    }
+
+    private static String percent(double share) {
+        return String.format(Locale.US, "%.1f%%", share * 100);
+    }
+
+    /** Opens a holding where the dashboard shows it, or null where it doesn't (sacks, essence). */
+    private Runnable worthOpener(Holding h) {
+        if (h.pet() != null) return opener(Page.PETS, null, null, h.pet());
+        if (h.item() != null && h.inventory() != null) return opener(h.inventory(), h.item());
+        return null;
+    }
+
+    private static String openerTitle(Holding h) {
+        if (h.pet() != null) return "Show in Pets";
+        if ("museum".equals(h.inventory())) return "Show in Museum";
+        return "Show in Inventory";
+    }
+
+    /** The parts of a row's worth, those of every holding on it added up by what they are. */
+    private static List<Piece> pieces(Line line) {
+        if (line.holdings().size() == 1) return line.first().pieces();
+        Map<String, Piece> merged = new LinkedHashMap<>();
+        for (Holding h : line.holdings()) {
+            for (Piece p : h.pieces()) {
+                merged.merge(p.group() + "|" + p.label(), p,
+                        (a, b) -> new Piece(a.group(), a.label(), a.count() + b.count(), a.value() + b.value()));
+            }
+        }
+        List<Piece> out = new ArrayList<>(merged.values());
+        out.sort((a, b) -> Double.compare(b.value(), a.value()));
+        return out;
+    }
+
+    /** How tall the part a row folds open is. */
+    private int detailHeight(Line line) {
+        int h = 4;
+        List<Piece> pieces = pieces(line);
+        h += pieces.isEmpty() ? 12 : Math.min(WORTH_DETAIL_MAX, pieces.size()) * 12 + (pieces.size() > WORTH_DETAIL_MAX ? 12 : 0);
+        if (line.holdings().size() > 1) {
+            int places = line.holdings().size();
+            h += 6 + 12 + Math.min(WORTH_DETAIL_MAX, places) * 12 + (places > WORTH_DETAIL_MAX ? 12 : 0);
+        } else if (worthOpener(line.first()) != null) {
+            h += 4 + 15;
+        }
+        return h + 6;
+    }
+
+    /** Every item the networth counts, dearest first, a few at a time; a click on one shows what it is worth and where it is. */
+    private int worthItems(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        List<Line> lines = worthLines;
+        int shown = Math.min(worthShown, lines.size());
+        int h = 24;
+        for (int i = 0; i < shown; i++) {
+            h += WORTH_ROW_H;
+            if (lines.get(i).key().equals(worthOpen)) h += detailHeight(lines.get(i));
+        }
+        boolean more = lines.size() > shown;
+        boolean fewer = shown > WORTH_FIRST;
+        if (more || fewer) h += 22;
+        h += 4;
+        card(graphics, x, y, w, h);
+        String title = worthFilter == null ? "Items" : "Items · " + worthFilter;
+        text(graphics, title, x + 8, y + 7, AlpakaStyle.TEXT);
+        String group = "Group Same Items";
+        int groupX = x + w - 8 - textW(group) - 14;
+        chip(graphics, group, groupX, y + 4, worthGrouped, () -> {
+            worthGrouped = !worthGrouped;
+            worthOpen = null;
+        });
+        String count = Coins.full(lines.size()) + (lines.size() == 1 ? " item" : " items");
+        if (x + 8 + textW(title) + 12 + textW(count) < groupX - 8) text(graphics, count, groupX - 8 - textW(count), y + 7, AlpakaStyle.TEXT_MUTED);
+
+        double top = lines.isEmpty() ? 1 : lines.get(0).value();
+        double all = Math.max(1, worthTotalAll());
+        int rankW = textW(shown + ".");
+        String widest = "100.0%";
+        int shareW = textW(widest);
+        int ry = y + 22;
+        for (int i = 0; i < shown; i++) {
+            Line line = lines.get(i);
+            Holding first = line.first();
+            boolean open = line.key().equals(worthOpen);
+            boolean visible = ry <= clipY + clipH && ry + WORTH_ROW_H >= clipY;
+            if (visible) {
+                boolean hover = hover(x + 4, ry, w - 8, WORTH_ROW_H - 1);
+                if (hover || open) {
+                    ModernGuiUtils.drawRoundedRect(graphics, x + 4, ry, w - 8, WORTH_ROW_H - 1, AlpakaStyle.ROW_RADIUS,
+                            open ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW_HOVER);
+                }
+                String rank = (i + 1) + ".";
+                text(graphics, rank, x + 8 + rankW - textW(rank), ry + 5, AlpakaStyle.TEXT_MUTED);
+                int ix = x + 8 + rankW + 4;
+                ItemStack stack = first.item() != null ? InventoryItems.stack(first.item())
+                        : first.pet() != null ? PetIcons.icon(first.pet())
+                        : ItemIcons.forItem(first.id(), SkyblockUtils.cleanColor(first.name()));
+                if (stack != null && !stack.isEmpty()) graphics.item(stack, ix, ry);
+                int right = x + w - 18;
+                AlpakaStyle.chevron(graphics, x + w - 12, ry + 8, open, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED);
+                String share = percent(line.value() / all);
+                text(graphics, share, right - textW(share), ry + 5, AlpakaStyle.TEXT_MUTED);
+                String value = Coins.compact(line.value());
+                int valueX = right - shareW - 8 - textW(value);
+                text(graphics, value, valueX, ry + 5, AlpakaStyle.TEXT);
+                String where = line.holdings().size() > 1 ? line.holdings().size() + " places" : first.where();
+                int whereX = valueX - 10 - textW(where);
+                int nameX = ix + 20;
+                boolean roomForWhere = whereX - nameX > 60;
+                if (roomForWhere) text(graphics, where, whereX, ry + 5, AlpakaStyle.TEXT_MUTED);
+                int nameMax = (roomForWhere ? whereX : valueX) - 8 - nameX;
+                String amount = line.count() > 1 ? "×" + Coins.full(line.count()) : "";
+                int amountW = amount.isEmpty() ? 0 : textW(amount) + 5;
+                styled(graphics, first.name(), nameX, ry + 3, nameMax - amountW);
+                if (!amount.isEmpty()) {
+                    int nameW = Math.min(nameMax - amountW, this.font.width(GuiFont.text(first.name())));
+                    text(graphics, amount, nameX + nameW + 5, ry + 3, AlpakaStyle.TEXT_MUTED);
+                }
+                // How it compares with the dearest row, in its category's color.
+                int barMax = Math.max(0, nameMax);
+                int fill = (int) Math.round(line.value() / top * barMax);
+                if (fill >= 1) ModernGuiUtils.drawRect(graphics, nameX, ry + 13, fill, 1, MarketIcons.fade(categoryColor(first.category()), 0.7f));
+                String key = line.key();
+                hit(x + 4, ry, w - 8, WORTH_ROW_H - 1, () -> worthOpen = key.equals(worthOpen) ? null : key);
+                if (hover && first.item() != null) hoveredItem = first.item();
+            }
+            ry += WORTH_ROW_H;
+            if (open) ry = worthDetail(graphics, line, x + 4, ry, w - 8);
+        }
+        if (more || fewer) {
+            int cx = x + 8;
+            int cy = ry + 4;
+            if (more) {
+                int next = Math.min(WORTH_MORE, lines.size() - shown);
+                cx += chip(graphics, "Show " + next + " More", cx, cy, false, () -> worthShown = shown + next) + 4;
+                cx += chip(graphics, "Show All (" + Coins.full(lines.size()) + ")", cx, cy, false, () -> worthShown = Integer.MAX_VALUE) + 4;
+            }
+            if (fewer) {
+                chip(graphics, "Show Fewer", cx, cy, false, () -> {
+                    worthShown = WORTH_FIRST;
+                    worthOpen = null;
+                });
+            }
+        }
+        return y + h;
+    }
+
+    /** The networth over everything, which each row's share is of, whatever the filter. */
+    private double worthTotalAll() {
+        double total = 0;
+        for (Part p : parts) total += p.value();
+        return total;
+    }
+
+    /** A row folded open: what its worth is made of, and where it is. */
+    private int worthDetail(GuiGraphicsExtractor graphics, Line line, int x, int y, int w) {
+        int h = detailHeight(line);
+        boolean visible = y <= clipY + clipH && y + h >= clipY;
+        if (!visible) return y + h;
+        ModernGuiUtils.drawRect(graphics, x + 10, y + 2, 1, h - 6, AlpakaStyle.LINE);
+        int lx = x + 18;
+        int right = x + w - 14;
+        int ry = y + 4;
+        List<Piece> pieces = pieces(line);
+        if (pieces.isEmpty()) {
+            double each = line.value() / Math.max(1, line.count());
+            String text = Coins.full(line.count()) + " × " + Coins.compact(each) + " each";
+            text(graphics, text, lx, ry, AlpakaStyle.TEXT_SOFT);
+            ry += 12;
+        } else {
+            int n = Math.min(WORTH_DETAIL_MAX, pieces.size());
+            for (int i = 0; i < n; i++) {
+                Piece p = pieces.get(i);
+                ItemValue.Group g = group(p.group());
+                ModernGuiUtils.drawRoundedRect(graphics, lx, ry + 2, 5, 5, 2, groupColor(g));
+                String share = percent(p.value() / line.value());
+                String value = Coins.compact(p.value());
+                text(graphics, share, right - textW(share), ry, AlpakaStyle.TEXT_MUTED);
+                int valueX = right - textW("100.0%") - 8 - textW(value);
+                text(graphics, value, valueX, ry, AlpakaStyle.TEXT);
+                String label = p.label() + (p.count() > 1 ? " ×" + Coins.full(p.count()) : "");
+                String what = g == ItemValue.Group.BASE ? "" : g.title + " · ";
+                text(graphics, AlpakaStyle.ellipsize(this.font, what + label, valueX - 8 - (lx + 9)), lx + 9, ry,
+                        g == ItemValue.Group.BASE ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+                ry += 12;
+            }
+            if (pieces.size() > n) {
+                double rest = 0;
+                for (int i = n; i < pieces.size(); i++) rest += pieces.get(i).value();
+                String more = (pieces.size() - n) + " more parts";
+                text(graphics, more, lx + 9, ry, AlpakaStyle.TEXT_MUTED);
+                String value = Coins.compact(rest);
+                text(graphics, value, right - textW("100.0%") - 8 - textW(value), ry, AlpakaStyle.TEXT_MUTED);
+                ry += 12;
+            }
+        }
+        if (line.holdings().size() > 1) {
+            ry += 6;
+            text(graphics, "Where", lx, ry, AlpakaStyle.TEXT);
+            ry += 12;
+            List<Holding> places = new ArrayList<>(line.holdings());
+            places.sort((a, b) -> Double.compare(b.value(), a.value()));
+            int n = Math.min(WORTH_DETAIL_MAX, places.size());
+            for (int i = 0; i < n; i++) {
+                Holding place = places.get(i);
+                Runnable open = worthOpener(place);
+                boolean hover = open != null && hover(lx - 3, ry - 2, right - lx + 6, 12);
+                if (hover) ModernGuiUtils.drawRoundedRect(graphics, lx - 3, ry - 2, right - lx + 6, 12, 3, AlpakaStyle.ROW_HOVER);
+                String value = Coins.compact(place.value());
+                text(graphics, value, right - textW("100.0%") - 8 - textW(value), ry, AlpakaStyle.TEXT);
+                String label = place.where() + (place.count() > 1 ? " ×" + Coins.full(place.count()) : "");
+                text(graphics, AlpakaStyle.ellipsize(this.font, label, right - textW("100.0%") - 16 - textW(value) - lx), lx, ry,
+                        hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_SOFT);
+                if (open != null) {
+                    hit(lx - 3, ry - 2, right - lx + 6, 12, open);
+                    if (hover) tip(place, "Click to show it there.");
+                }
+                ry += 12;
+            }
+            if (places.size() > n) {
+                text(graphics, "and " + (places.size() - n) + " more places", lx, ry, AlpakaStyle.TEXT_MUTED);
+            }
+        } else {
+            Runnable open = worthOpener(line.first());
+            if (open != null) chip(graphics, openerTitle(line.first()), lx, ry + 4, false, open);
+        }
+        return y + h;
+    }
+
+    private void readBreakdown(JsonElement answer, ProfileData d) {
+        if (!d.profileId.equals(breakdownProfile)) {
+            // Another profile: the list starts over.
+            breakdownProfile = d.profileId;
+            worthFilter = null;
+            worthShown = WORTH_FIRST;
+            worthOpen = null;
+        }
+        Map<String, Double> grouped = new LinkedHashMap<>();
+        List<Holding> list = new ArrayList<>();
+        List<ProfileData.Pet> petsLeft = new ArrayList<>(d.pets);
+        for (var category : Json.obj(answer, "categories").entrySet()) {
+            String key = category.getKey();
+            String label = categoryLabel(key);
+            double total = Json.num(category.getValue(), "total", 0);
+            if (total > 0) grouped.merge(label, total, Double::sum);
+            for (JsonElement e : Json.arr(category.getValue(), "items")) {
+                double value = Json.num(e, "networth", 0);
+                String id = Json.str(e, "item.skyblockId");
+                if (!(value > 0) || id == null) continue;
+                int count = Math.max(1, (int) Json.num(e, "item.count", 1));
+                List<Piece> pieces = new ArrayList<>();
+                for (JsonElement p : Json.arr(e, "parts")) {
+                    pieces.add(new Piece(Json.str(p, "group"), String.valueOf(Json.str(p, "label")), Json.num(p, "count", 1), Json.num(p, "value", 0)));
+                }
+                pieces.sort((a, b) -> Double.compare(b.value(), a.value()));
+                String inventory = Json.str(e, "inventory");
+                String slot = Json.str(e, "slot");
+                JsonElement item = inventory == null || slot == null ? null : Json.obj(session.inventory(inventory), "items").get(slot);
+                if (item != null && !item.isJsonObject()) item = null;
+                ProfileData.Pet pet = null;
+                String name;
+                String where;
+                switch (key) {
+                    case "pets" -> {
+                        pet = takePet(petsLeft, id, Json.str(e, "tier"), (int) Json.num(e, "level", -1));
+                        name = pet != null ? "§7[Lvl " + pet.level() + "] " + rarityCode(pet.tier()) + pet.name() : "§f" + Json.str(e, "item.name");
+                        where = pet != null && pet.active() ? "Pets · Active" : "Pets";
+                    }
+                    case "sacks", "essence" -> {
+                        String title = ItemIcons.name(id);
+                        name = "§f" + (title != null ? title : ProfileData.title(id));
+                        where = label;
+                    }
+                    default -> {
+                        String title = Json.str(e, "item.name");
+                        name = title != null ? title : "§f" + ProfileData.title(id);
+                        where = inventory != null && slot != null ? where(inventory, slot) : label;
+                    }
+                }
+                list.add(new Holding(name, id, count, label, where, value, List.copyOf(pieces), item, pet, inventory));
+            }
+        }
+        List<Part> out = new ArrayList<>();
+        grouped.forEach((label, value) -> out.add(new Part(label, value)));
+        out.sort((a, b) -> Double.compare(b.value(), a.value()));
         list.sort((a, b) -> Double.compare(b.value(), a.value()));
-        items.sort((a, b) -> Double.compare(b.value(), a.value()));
-        parts = List.copyOf(list);
-        valuables = List.copyOf(items.subList(0, Math.min(20, items.size())));
+        parts = List.copyOf(out);
+        holdings = List.copyOf(list);
+        java.util.Set<String> categories = new java.util.HashSet<>();
+        for (Holding h : list) categories.add(h.category());
+        holdingCategories = categories;
+        holdingsVersion++;
+        if (worthFilter != null && !hasHoldings(worthFilter)) worthFilter = null;
+    }
+
+    /** The profile's pet a networth entry is about, by kind, rarity and level; each pet is taken once. */
+    private static ProfileData.Pet takePet(List<ProfileData.Pet> pets, String type, String tier, int level) {
+        for (int i = 0; i < pets.size(); i++) {
+            ProfileData.Pet p = pets.get(i);
+            if (p.type().equals(type) && (tier == null || tier.equalsIgnoreCase(p.tier())) && (level < 0 || p.level() == level)) {
+                return pets.remove(i);
+            }
+        }
+        return null;
     }
 
     private static String categoryLabel(String key) {
@@ -4375,7 +5006,8 @@ public class ProfileDashboardScreen extends Screen {
 
     /** Whether the mouse is on this area, and inside the content where the content is drawn. */
     private boolean hover(int x, int y, int w, int h) {
-        if (menuOpen) return false;
+        // Dragging the scrollbar, nothing it passes over lights up.
+        if (menuOpen || scrollDragging) return false;
         if (clipping && !AlpakaStyle.inside(mx, my, clipX, clipY, clipW, clipH)) return false;
         if (clipping && !drawingPin && my >= pinTop && my < pinBottom) return false;
         return AlpakaStyle.inside(mx, my, x, y, w, h);
@@ -4514,12 +5146,6 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Input ----------------------------------------------------------------------------------
 
     @Override
-    public boolean mouseReleased(MouseButtonEvent event) {
-        if (event.button() == 1) rightHeld = false;
-        return super.mouseReleased(event);
-    }
-
-    @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() == 1) rightHeld = true;
         if (event.button() != 0) return true;
@@ -4541,6 +5167,7 @@ public class ProfileDashboardScreen extends Screen {
             menuOpen = false;
             return true;
         }
+        if (pressScrollbar(event.x(), event.y())) return true;
         for (int i = hits.size() - 1; i >= 0; i--) {
             Hit hit = hits.get(i);
             if (AlpakaStyle.inside(event.x(), event.y(), hit.x(), hit.y(), hit.w(), hit.h())) {
@@ -4550,6 +5177,22 @@ public class ProfileDashboardScreen extends Screen {
             }
         }
         return true;
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
+        if (scrollDragging) {
+            dragScrollbar(event.y());
+            return true;
+        }
+        return super.mouseDragged(event, deltaX, deltaY);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        scrollDragging = false;
+        if (event.button() == 1) rightHeld = false;
+        return super.mouseReleased(event);
     }
 
     @Override

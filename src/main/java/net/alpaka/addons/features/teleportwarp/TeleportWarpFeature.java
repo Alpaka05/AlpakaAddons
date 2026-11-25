@@ -30,6 +30,8 @@ import org.lwjgl.system.MemoryStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -38,9 +40,13 @@ import java.util.Optional;
  * with an item, like the Aspect of the End's Instant Transmission or the Aspect of the Void's
  * Etherwarp.
  *
- * Two styles, one shader each: Warp ({@code teleport_warp}) pulls the picture towards the middle
+ * Three styles, one shader each: Warp ({@code teleport_warp}) pulls the picture towards the middle
  * with a ring running outward; Hyperspace ({@code teleport_hyperspace}) zooms in with streaks of
- * light shooting past to the edges, like a jump to light speed.
+ * light shooting past to the edges, like a jump to light speed; Dissolve
+ * ({@code teleport_dissolve}) breaks the picture of the old place up into sparkling blocks that
+ * give way to the new place. For that one the last frame before the teleport is kept
+ * ({@link #before}): copied every frame, but only in the second after a right-click with a
+ * teleport item, the only time a teleport can follow.
  *
  * Separately, Smooth Teleport ({@link SmoothTeleport}) lets the camera glide to the destination.
  *
@@ -69,14 +75,23 @@ public final class TeleportWarpFeature {
     private static final String[] TELEPORT_MARKERS = {"teleport", "transmission"};
 
     /** The styles, in the order of {@link #STYLE_SHADERS}; the setting stores the index. */
-    public static final String[] STYLE_NAMES = {"Warp", "Hyperspace"};
-    private static final String[] STYLE_SHADERS = {"teleport_warp", "teleport_hyperspace"};
+    public static final String[] STYLE_NAMES = {"Warp", "Hyperspace", "Dissolve"};
+    private static final String[] STYLE_SHADERS = {"teleport_warp", "teleport_hyperspace", "teleport_dissolve"};
+    private static final int DISSOLVE = 2;
+    /** The kept frame only counts as "before the teleport" if it is at most this old. */
+    private static final long BEFORE_MAX_AGE_NANOS = 250_000_000L;
 
     private static final RenderPipeline[] PIPELINES = new RenderPipeline[STYLE_SHADERS.length];
+    /** This frame, copied so the shader can read it while drawing over it. */
     private static TextureTarget snapshot;
-    /** A snapshot replaced after a resize, closed once the frame that sampled it is done. */
-    private static TextureTarget retired;
+    /** For Dissolve: the last frame before the teleport. */
+    private static TextureTarget before;
+    private static long beforeNanos;
+    /** Copies replaced after a resize or let go, closed once the frame that sampled them is done. */
+    private static final List<TextureTarget> RETIRED = new ArrayList<>();
     private static GpuBuffer config;
+    /** The style of the running effect, fixed when it starts. */
+    private static int runningStyle;
 
     /** When the current warp started, or -1 while none runs. */
     private static long startNanos = -1L;
@@ -92,17 +107,22 @@ public final class TeleportWarpFeature {
     public static void init() {
         for (int i = 0; i < STYLE_SHADERS.length; i++) {
             String name = STYLE_SHADERS[i];
+            BindGroupLayout.Builder layout = BindGroupLayout.builder().withSampler("InSampler");
+            if (i == DISSOLVE) layout = layout.withSampler("OldSampler");
             PIPELINES[i] = RenderPipelinesAccessor.alpaka$register(
                     RenderPipeline.builder(RenderPipelines.POST_PROCESSING_SNIPPET)
                             .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/" + name))
                             .withVertexShader(Identifier.withDefaultNamespace("core/screenquad"))
                             .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "post/" + name))
-                            .withBindGroupLayout(BindGroupLayout.builder()
-                                    .withSampler("InSampler")
+                            .withBindGroupLayout(layout
                                     .withUniform("WarpConfig", UniformType.UNIFORM_BUFFER)
                                     .build())
                             .build());
         }
+    }
+
+    private static int style() {
+        return Mth.clamp(AlpakaConfig.instance.teleportWarpStyle, 0, STYLE_SHADERS.length - 1);
     }
 
     /**
@@ -124,6 +144,11 @@ public final class TeleportWarpFeature {
     private static void start() {
         long now = System.nanoTime();
         float elapsed = startNanos < 0 ? Float.MAX_VALUE : (now - startNanos) / 1.0e9f;
+        boolean running = elapsed < duration();
+        // A Dissolve already running just goes on revealing whatever is there now; starting over
+        // would bring the first place back.
+        if (running && runningStyle == DISSOLVE) return;
+        if (!running) runningStyle = style();
         if (elapsed < RISE_SECONDS) return;
         // Spamming teleports keeps the warp up instead of snapping it back to nothing each time.
         float current = envelope(elapsed, duration());
@@ -180,15 +205,16 @@ public final class TeleportWarpFeature {
      * every frame; does nothing unless a warp is running.
      */
     public static void renderFrame() {
-        if (retired != null) {
-            retired.destroyBuffers();
-            retired = null;
-        }
+        for (TextureTarget old : RETIRED) old.destroyBuffers();
+        RETIRED.clear();
         long now = System.nanoTime();
         if (startNanos < 0) {
-            if (snapshot != null && now - lastWarpNanos > RELEASE_AFTER_NANOS) {
-                retired = snapshot;
+            keepFrameForDissolve(now);
+            if (now - lastWarpNanos > RELEASE_AFTER_NANOS && now - beforeNanos > RELEASE_AFTER_NANOS) {
+                if (snapshot != null) RETIRED.add(snapshot);
+                if (before != null) RETIRED.add(before);
                 snapshot = null;
+                before = null;
             }
             return;
         }
@@ -201,11 +227,12 @@ public final class TeleportWarpFeature {
         }
         lastWarpNanos = now;
         Minecraft mc = Minecraft.getInstance();
-        RenderPipeline pipeline = PIPELINES[Mth.clamp(AlpakaConfig.instance.teleportWarpStyle, 0, PIPELINES.length - 1)];
+        RenderPipeline pipeline = PIPELINES[runningStyle];
         if (mc.level == null || mc.player == null || pipeline == null) return;
 
         float strength = Mth.clamp(AlpakaConfig.instance.teleportWarpStrength, 0.25f, 2.0f);
-        float amount = envelope(elapsed, duration) * strength;
+        // Dissolve runs on its progress alone; the strength sets how brightly its edge sparkles.
+        float amount = runningStyle == DISSOLVE ? strength : envelope(elapsed, duration) * strength;
         if (amount <= 0.001f) return;
         try {
             draw(mc.gameRenderer.mainRenderTarget(), pipeline, amount, elapsed / duration);
@@ -218,16 +245,47 @@ public final class TeleportWarpFeature {
         }
     }
 
+    /**
+     * For Dissolve: copies the finished world frame while a teleport may follow - the player
+     * right-clicked with a teleport item within the last second - so the frame just before it is
+     * at hand when it comes.
+     */
+    private static void keepFrameForDissolve(long now) {
+        AlpakaConfig settings = AlpakaConfig.instance;
+        if (!settings.teleportWarpEnabled || !settings.teleportWarpScreenEffect || style() != DISSOLVE) return;
+        if (!LocalAttackTracker.usedItemWithin(USE_WINDOW_MS)) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null || !teleports(mc.player.getMainHandItem())) return;
+        RenderTarget main = mc.gameRenderer.mainRenderTarget();
+        GpuTexture source = main.getColorTexture();
+        if (source == null || main.width <= 0 || main.height <= 0) return;
+        try {
+            before = fit(before, "Alpaka teleport dissolve", main, source);
+            RenderSystem.getDevice().createCommandEncoder().copyTextureToTexture(
+                    source, before.getColorTexture(), 0, 0, 0, 0, 0, main.width, main.height);
+            beforeNanos = now;
+        } catch (RuntimeException e) {
+            if (!warned) {
+                warned = true;
+                LOGGER.warn("Could not keep the frame for the teleport dissolve", e);
+            }
+        }
+    }
+
+    /**
+     * The target, made or replaced to match the frame's size. A replaced one may still be read by
+     * this frame's commands so far, so it is closed next frame.
+     */
+    private static TextureTarget fit(TextureTarget target, String label, RenderTarget main, GpuTexture source) {
+        if (target != null && target.width == main.width && target.height == main.height) return target;
+        if (target != null) RETIRED.add(target);
+        return new TextureTarget(label, main.width, main.height, false, source.getFormat());
+    }
+
     private static void draw(RenderTarget main, RenderPipeline pipeline, float amount, float progress) {
         GpuTexture source = main.getColorTexture();
         if (source == null || main.width <= 0 || main.height <= 0) return;
-        if (snapshot == null) {
-            snapshot = new TextureTarget("Alpaka teleport warp", main.width, main.height, false, source.getFormat());
-        } else if (snapshot.width != main.width || snapshot.height != main.height) {
-            // The old one may still be read by this frame's commands so far; closed next frame.
-            retired = snapshot;
-            snapshot = new TextureTarget("Alpaka teleport warp", main.width, main.height, false, source.getFormat());
-        }
+        snapshot = fit(snapshot, "Alpaka teleport warp", main, source);
 
         CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
         if (config == null) {
@@ -250,6 +308,14 @@ public final class TeleportWarpFeature {
             pass.setUniform("WarpConfig", config);
             pass.bindTexture("InSampler", snapshot.getColorTextureView(),
                     RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
+            if (pipeline == PIPELINES[DISSOLVE]) {
+                // Without a fresh frame from before the teleport, the edge sparkles over the new
+                // place alone rather than bringing back a stale picture.
+                boolean fresh = before != null && before.width == main.width && before.height == main.height
+                        && startNanos - beforeNanos < BEFORE_MAX_AGE_NANOS;
+                pass.bindTexture("OldSampler", (fresh ? before : snapshot).getColorTextureView(),
+                        RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
+            }
             pass.draw(3, 1, 0, 0);
         }
     }

@@ -1,7 +1,6 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
-import net.alpaka.addons.features.viewmodel.EmptyHandViewmodel;
 import net.alpaka.addons.features.viewmodel.EquipAnimation;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
@@ -139,7 +138,9 @@ public class ItemInHandRendererMixin {
 
             // Mirrored by the physical arm, like the rotation below, so a left-handed player's
             // items move outward too. This one translate covers the bare arm as well: both places
-            // that draw it run inside this method after this point.
+            // that draw it run inside this method after this point. The bare arm takes only this
+            // move, not the scale and rotation: those are tuned for items, which may float, while
+            // a shrunk or turned arm no longer reaches in from the edge of the screen.
             matrices.translate(alpaka$sideOf(player, hand) == HumanoidArm.RIGHT ? xOffset : -xOffset, yOffset, zOffset);
         }
     }
@@ -242,25 +243,6 @@ public class ItemInHandRendererMixin {
                 .translate(-middle.x, -middle.y, -middle.z);
         matrix.mulLocal(around);
         last.normal().set(new org.joml.Matrix3f().set(turn).mul(last.normal()));
-    }
-
-    @Inject(
-            method = "renderPlayerArm",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/EntityRenderDispatcher;getPlayerRenderer(Lnet/minecraft/client/player/AbstractClientPlayer;)Lnet/minecraft/client/renderer/entity/player/AvatarRenderer;")
-    )
-    private void onRenderHand(
-            PoseStack matrices, SubmitNodeCollector queue, int light, float equipProgress,
-            float swingProgress, HumanoidArm arm, CallbackInfo ci) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled) {
-            if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled) {
-                return;
-            }
-            // About the fist, not the model's origin below the screen, so the hand stays in view.
-            PoseStack.Pose last = matrices.last();
-            EmptyHandViewmodel.apply(last.pose(), last.normal(), arm == HumanoidArm.LEFT ? -1.0f : 1.0f,
-                    AlpakaConfig.instance.itemRotationX, AlpakaConfig.instance.itemRotationY,
-                    AlpakaConfig.instance.itemRotationZ, AlpakaConfig.instance.itemScale);
-        }
     }
 
     @ModifyVariable(method = "submitArmWithItem", at = @At("HEAD"), ordinal = 2, argsOnly = true)

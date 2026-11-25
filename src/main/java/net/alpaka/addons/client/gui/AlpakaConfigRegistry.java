@@ -1439,7 +1439,7 @@ public class AlpakaConfigRegistry {
                 "no equip reequip animation slot switch instant"));
 
         OPTIONS.add(new ConfigOption("item_ignore_empty_hand", "Ignore Empty Hand",
-                "Applies the viewmodel changes only while you hold an item.",
+                "Applies the viewmodel changes only while you hold an item. Off, your empty hand moves with the position and swing settings but keeps its normal size and angle.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemIgnoreEmptyHandEnabled,
                 v -> { AlpakaConfig.instance.itemIgnoreEmptyHandEnabled = v; AlpakaConfig.save(); },

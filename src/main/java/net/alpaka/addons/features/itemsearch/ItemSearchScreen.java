@@ -194,7 +194,8 @@ public class ItemSearchScreen extends Screen {
         int w = f.fieldW;
         int h = AlpakaStyle.BUTTON_H;
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.FIELD);
-        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, AlpakaStyle.accent());
+        AlpakaStyle.fieldEdge(graphics, x, y, w, h, false);
+        AlpakaStyle.fieldUnderline(graphics, x, y, w, h, true);
         int textY = y + (h - 8) / 2;
         String text = input.getText();
         if (text.isEmpty()) {

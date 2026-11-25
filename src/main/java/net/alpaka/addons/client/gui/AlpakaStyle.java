@@ -389,8 +389,8 @@ public final class AlpakaStyle {
     public static void textField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                  String text, String placeholder, boolean focused, boolean hover, long caretFrom) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover && !focused ? ROW_HOVER : FIELD);
-        fieldEdge(graphics, x, y, w, h);
-        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, focused ? ModernGuiUtils.getAccentColor() : LINE);
+        fieldEdge(graphics, x, y, w, h, hover && !focused);
+        fieldUnderline(graphics, x, y, w, h, focused);
         int ty = y + (h - 8) / 2;
         boolean empty = text.isEmpty();
         String shown = empty && !focused ? placeholder : text;
@@ -419,8 +419,8 @@ public final class AlpakaStyle {
             return;
         }
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, FIELD);
-        fieldEdge(graphics, x, y, w, h);
-        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, ModernGuiUtils.getAccentColor());
+        fieldEdge(graphics, x, y, w, h, false);
+        fieldUnderline(graphics, x, y, w, h, true);
         int ty = y + (h - 8) / 2;
         int tx = x + 5;
         int room = w - 10;
@@ -480,10 +480,21 @@ public final class AlpakaStyle {
 
     /**
      * The hairline round a field in a framed theme, whose fields sit only a shade off the page: it
-     * keeps their shape without making them brighter than the rows they sit in.
+     * keeps their shape without making them brighter than the rows they sit in. A hovered field's
+     * edge lights up, as the search field's outline does.
      */
-    public static void fieldEdge(GuiGraphicsExtractor graphics, int x, int y, int w, int h) {
-        if (HEADER != PANEL) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, FIELD_RADIUS, LINE);
+    public static void fieldEdge(GuiGraphicsExtractor graphics, int x, int y, int w, int h, boolean hover) {
+        if (HEADER != PANEL) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, FIELD_RADIUS, hover ? DIVIDER : LINE);
+    }
+
+    /**
+     * The line along a field's bottom: the accent while it has the focus (or listens for a key),
+     * a hairline at rest. A framed theme's edge already draws that hairline, so there it is left
+     * out at rest rather than doubled.
+     */
+    public static void fieldUnderline(GuiGraphicsExtractor graphics, int x, int y, int w, int h, boolean active) {
+        if (!active && HEADER != PANEL) return;
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, active ? ModernGuiUtils.getAccentColor() : LINE);
     }
 
     /**
@@ -493,7 +504,7 @@ public final class AlpakaStyle {
     public static void selectField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                    String value, boolean open) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, FIELD);
-        fieldEdge(graphics, x, y, w, h);
+        fieldEdge(graphics, x, y, w, h, false);
         graphics.text(font, GuiFont.text(ellipsize(font, value, w - 16)), x + 4, y + (h - 8) / 2, TEXT, false);
         chevron(graphics, x + w - 6, y + h / 2, open, TEXT_SOFT);
     }

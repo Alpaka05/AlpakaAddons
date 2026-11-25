@@ -1087,9 +1087,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 boolean fieldHover = hover && inside(mouseX, mouseY, fieldX, fieldY, fieldW, fieldH);
                 ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, fieldW, fieldH, AlpakaStyle.FIELD_RADIUS,
                         fieldHover && !listening ? AlpakaStyle.ROW_HOVER : AlpakaStyle.FIELD);
-                AlpakaStyle.fieldEdge(graphics, fieldX, fieldY, fieldW, fieldH);
-                ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + fieldH - 1, fieldW - 6, 1,
-                        listening ? ModernGuiUtils.getAccentColor() : AlpakaStyle.LINE);
+                AlpakaStyle.fieldEdge(graphics, fieldX, fieldY, fieldW, fieldH, fieldHover && !listening);
+                AlpakaStyle.fieldUnderline(graphics, fieldX, fieldY, fieldW, fieldH, listening);
                 String value;
                 int color;
                 if (listening) {

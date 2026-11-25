@@ -203,6 +203,8 @@ class OutboundBytecodeScanTest {
         assertTrue(mod.isSend(call("net/alpaka/addons/mixin/SomeMixin", "sendCommand", "(Ljava/lang/String;)V")));
         assertTrue(mod.isSend(call(GAME_MODE, "handleContainerInput", "(IIILnet/minecraft/world/inventory/ContainerInput;Lnet/minecraft/world/entity/player/Player;)V")));
         assertTrue(mod.isSend(call("net/minecraft/client/player/LocalPlayer", "swing", "(Lnet/minecraft/world/InteractionHand;)V")));
+        assertTrue(mod.isSend(call("net/minecraft/client/player/LocalPlayer", "sendChanges", "()V")));
+        assertTrue(mod.isSend(call(GAME_MODE, "dropItem", "(Lnet/minecraft/client/player/LocalPlayer;Z)V")));
         assertTrue(mod.isSend(new TypeInsnNode(Opcodes.NEW, "net/minecraft/network/protocol/game/ServerboundSwingPacket")));
         // Fabric's own networking.
         assertTrue(mod.isSend(new MethodInsnNode(Opcodes.INVOKESTATIC, "net/fabricmc/fabric/api/client/networking/v1/ClientPlayNetworking",
@@ -233,6 +235,7 @@ class OutboundBytecodeScanTest {
         assertTrue(mod.isSend(call("java/lang/reflect/Field", "setBoolean", "(Ljava/lang/Object;Z)V")));
 
         assertFalse(mod.isSend(call(GAME_MODE, "canHurtPlayer", "()Z")));
+        assertFalse(mod.isSend(call("net/minecraft/client/player/LocalPlayer", "sendSystemMessage", "(Lnet/minecraft/network/chat/Component;)V")));
         // The two-argument swing only animates; it is the one-argument one that tells the server.
         assertFalse(mod.isSend(call("net/minecraft/client/player/LocalPlayer", "swing", "(Lnet/minecraft/world/InteractionHand;Z)V")));
         assertFalse(mod.isSend(call("java/net/http/HttpClient", "send", "(Ljava/net/http/HttpRequest;Ljava/net/http/HttpResponse$BodyHandler;)Ljava/net/http/HttpResponse;")));
@@ -413,8 +416,12 @@ class OutboundBytecodeScanTest {
                     && name.startsWith("send")) return true;
             if (owner.equals(GAME_MODE)) return !GAME_MODE_READS.contains(name) && !name.equals("<init>");
             if (owner.equals("net/minecraft/client/player/LocalPlayer")) {
+                // 26.3 moved the swing and the drop that told the server into the game mode (every
+                // call there counts, above) and made sendChanges public, which sends the player's
+                // movement. sendSystemMessage only shows a line in the player's own chat.
                 return (name.equals("swing") && desc.equals("(Lnet/minecraft/world/InteractionHand;)V"))
-                        || name.equals("drop") || name.equals("closeContainer");
+                        || name.equals("drop") || name.equals("closeContainer")
+                        || name.equals("sendChanges") || name.equals("sendOpenInventory");
             }
             if (owner.equals("net/minecraft/client/Minecraft")) {
                 return name.equals("startAttack") || name.equals("continueAttack") || name.equals("startUseItem")

@@ -923,10 +923,10 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null));
         tiles.add(new Tile(Metrics.SLAYER_TOTAL, "Slayer XP", Coins.compact(d.slayerXp), null));
         tiles.add(new Tile(Metrics.MAGICAL_POWER, "Magical Power", Coins.full(d.magicalPower), null));
-        tiles.add(new Tile(Metrics.PETS_MAXED, "Max Level Pets", d.petsMaxed + " / " + d.pets.size(), null));
+        tiles.add(coinsTile(d));
         tiles.add(d.farmingWeight > 0
                 ? new Tile(Metrics.FARMING_WEIGHT, "Farming Weight", Coins.full(Math.round(d.farmingWeight * 10) / 10.0), null)
-                : new Tile(Metrics.BANK, "Bank", Coins.compact(d.bank + d.personalBank), null));
+                : new Tile(Metrics.PETS_MAXED, "Max Level Pets", d.petsMaxed + " / " + d.pets.size(), null));
         String metric = metricFor(Page.OVERVIEW);
         // The player beside the numbers and the graph, as profile viewers show them; with too little
         // room for the tiles four in a row, beside the graph alone, and on the narrowest not at all.
@@ -953,6 +953,18 @@ public class ProfileDashboardScreen extends Screen {
         int leftEnd = nextUp(graphics, d, x, y + 6, w >= 420 ? colW : w);
         int rightEnd = w >= 420 ? milestones(graphics, d, x + colW + 6, y + 6, colW, now) : milestones(graphics, d, x, leftEnd + 6, w, now);
         return Math.max(leftEnd, rightEnd);
+    }
+
+    /**
+     * The coins on hand: the purse and the bank side by side, and on hover the exact amounts, the
+     * bank split into the co-op's and the player's own when there are both.
+     */
+    private static Tile coinsTile(ProfileData d) {
+        double bank = d.bank + d.personalBank;
+        boolean split = d.bank > 0 && d.personalBank > 0;
+        String tip = "Purse: " + Coins.full(Math.floor(d.purse)) + " coins\nBank: " + Coins.full(Math.floor(bank)) + " coins"
+                + (split ? "\n  Co-op: " + Coins.full(Math.floor(d.bank)) + "\n  Personal: " + Coins.full(Math.floor(d.personalBank)) : "");
+        return pair("Purse", Coins.compact(d.purse), "Bank", Coins.compact(bank), null, tip);
     }
 
     /**
@@ -1275,7 +1287,19 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Tiles and graphs -----------------------------------------------------------------------
 
     /** A number on a card: its metric (for the sparkline and the graph; null for none), name and value. */
-    private record Tile(String metric, String label, String value, String note) {}
+    private record Tile(String metric, String label, String value, String note, Tile beside, String tip) {
+        Tile(String metric, String label, String value, String note) {
+            this(metric, label, value, note, null, null);
+        }
+    }
+
+    /**
+     * Two numbers in one card, side by side, each with its name; the note goes below both and the
+     * tip shows on hover. Without a graph: neither number has one of its own here.
+     */
+    private static Tile pair(String label, String value, String label2, String value2, String note, String tip) {
+        return new Tile(null, label, value, note, new Tile(null, label2, value2, null), tip);
+    }
 
     private int tiles(GuiGraphicsExtractor graphics, List<Tile> tiles, int x, int y, int w, int columns) {
         int cols = w < 380 ? Math.min(2, columns) : columns;
@@ -1293,8 +1317,35 @@ public class ProfileDashboardScreen extends Screen {
             boolean isSelected = clickable && t.metric().equals(selected != null ? selected : defaultMetric(page));
             ModernGuiUtils.drawRoundedRect(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
             if (isSelected) ModernGuiUtils.drawRoundedOutline(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
-            text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
-            value(graphics, t.value(), tx + 7, ty + 18, tw - 14);
+            if (t.beside() != null) {
+                // Two numbers, each with its name, side by side in the large cut when they fit:
+                // the second halfway, or just after the first when that is wider. Where they don't,
+                // the first stays large like every other card's number and the second goes on the
+                // small line below it, where the others show their change.
+                int inner = tw - 14;
+                int w1 = bigWidth(t.value());
+                int w2 = bigWidth(t.beside().value());
+                if (w1 + 10 + w2 <= inner) {
+                    int x2 = tx + 7 + Math.max(inner / 2, w1 + 10);
+                    int w2max = tx + tw - 7 - x2;
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), x2 - tx - 7 - 4), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.beside().label(), w2max), x2, ty + 6, AlpakaStyle.TEXT_MUTED);
+                    value(graphics, t.value(), tx + 7, ty + 18, w1);
+                    value(graphics, t.beside().value(), x2, ty + 18, w2max);
+                } else {
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
+                    value(graphics, t.value(), tx + 7, ty + 18, inner);
+                    String name = t.beside().label() + " ";
+                    text(graphics, name, tx + 7, ty + th - 13, AlpakaStyle.TEXT_MUTED);
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.beside().value(), inner - textW(name)), tx + 7 + textW(name),
+                            ty + th - 13, AlpakaStyle.TEXT_SOFT);
+                }
+            } else {
+                text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
+                value(graphics, t.value(), tx + 7, ty + 18, tw - 14);
+            }
+            // Keyed by the label: the tile is made anew every frame, the label stays the same string.
+            if (!clickable && t.tip() != null && hover(tx, ty, tw, th)) tip(t.label().intern(), t.tip());
             if (clickable && session.historyProblem() != null) {
                 // No history to show, so neither a change nor a line; the card still picks the graph,
                 // which then says what it needs.
@@ -1314,7 +1365,7 @@ public class ProfileDashboardScreen extends Screen {
                 String metric = t.metric();
                 hit(tx, ty, tw, th, () -> chosen.put(page, metric));
                 if (hover) {
-                    tip(t, (t.note() != null ? t.note() + " " : "") + (Double.isNaN(change) ? "No history in this range yet."
+                    tip(t.label().intern(), (t.note() != null ? t.note() + " " : "") + (Double.isNaN(change) ? "No history in this range yet."
                             : Metrics.delta(metric, change) + " over the last " + rangeWords() + ".") + " Click for its graph.");
                 }
             } else if (t.note() != null) {
@@ -4967,6 +5018,12 @@ public class ProfileDashboardScreen extends Screen {
      * ({@link GuiFont#title}): the normal text under a scaled pose was resampled, and blurry. The
      * pixel font has no such cut and is scaled as before.
      */
+    /** How wide a number is in the large cut, or in the normal size where there is none. */
+    private int bigWidth(String value) {
+        Component big = GuiFont.title(value);
+        return big != null ? this.font.width(big) : (int) Math.ceil(textW(value) * 1.35f);
+    }
+
     private void value(GuiGraphicsExtractor graphics, String value, int x, int y, int maxW) {
         Component big = GuiFont.title(value);
         if (big != null && this.font.width(big) <= maxW) {

@@ -185,6 +185,8 @@ public class ProfileDashboardScreen extends Screen {
     private long tipSince;
     private int mx;
     private int my;
+    /** Where the mouse really is this frame, even while an open list hides it from what's under it. */
+    private int mouseRealX, mouseRealY;
     /** The content area, which clips and scrolls; hover and clicks outside it don't count. */
     private int clipX, clipY, clipW, clipH;
     private boolean clipping;
@@ -394,6 +396,8 @@ public class ProfileDashboardScreen extends Screen {
         // With the profile list open, nothing under it lights up.
         mx = mouseX;
         my = mouseY;
+        mouseRealX = mouseX;
+        mouseRealY = mouseY;
 
         boolean pushed = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height);
         AlpakaStyle.panel(graphics, x, y, w, h);
@@ -1055,9 +1059,10 @@ public class ProfileDashboardScreen extends Screen {
         int scale = (int) Math.max(8, Math.min(bh / 2.5f, bw / 1.1f));
         String uuid = session.uuid != null ? session.uuid : d.uuid;
         // Looks at the mouse wherever it is on the screen, the sidebar and header too, as the
-        // inventory's player does; only stopping at the content's edge read as a glitch.
-        float lookX = mx;
-        float lookY = my;
+        // inventory's player does; only stopping at the content's edge read as a glitch. The real
+        // mouse, not the hover one: over the recent players that one is moved far off to the top left.
+        float lookX = mouseRealX;
+        float lookY = mouseRealY;
         // Right mouse held on the card takes the armor off, to show the skin under it.
         boolean bare = rightHeld && hover(x, y, w, h);
         boolean drawn = uuid != null && figure.draw(graphics, uuid, bare ? null : session.inventory("armor"), bx, by, bx + bw, by + bh,

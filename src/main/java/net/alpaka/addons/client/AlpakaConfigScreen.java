@@ -641,7 +641,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         boolean hover = inside(mouseX, mouseY, sx, sy, sw, sh);
         ModernGuiUtils.drawRoundedRect(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.FIELD);
         if (searchFocused) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.accentDim());
-        else if (hover) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.LINE);
+        // On a dark header frame a LINE outline would hardly show, so hover there takes the divider.
+        else if (hover) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2,
+                AlpakaStyle.HEADER != AlpakaStyle.PANEL ? AlpakaStyle.DIVIDER : AlpakaStyle.LINE);
 
         int tx = sx + 9;
         int ty = sy + (sh - 8) / 2;
@@ -1085,6 +1087,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 boolean fieldHover = hover && inside(mouseX, mouseY, fieldX, fieldY, fieldW, fieldH);
                 ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, fieldW, fieldH, AlpakaStyle.FIELD_RADIUS,
                         fieldHover && !listening ? AlpakaStyle.ROW_HOVER : AlpakaStyle.FIELD);
+                AlpakaStyle.fieldEdge(graphics, fieldX, fieldY, fieldW, fieldH);
                 ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + fieldH - 1, fieldW - 6, 1,
                         listening ? ModernGuiUtils.getAccentColor() : AlpakaStyle.LINE);
                 String value;

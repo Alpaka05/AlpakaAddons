@@ -389,6 +389,7 @@ public final class AlpakaStyle {
     public static void textField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                  String text, String placeholder, boolean focused, boolean hover, long caretFrom) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover && !focused ? ROW_HOVER : FIELD);
+        fieldEdge(graphics, x, y, w, h);
         ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, focused ? ModernGuiUtils.getAccentColor() : LINE);
         int ty = y + (h - 8) / 2;
         boolean empty = text.isEmpty();
@@ -418,6 +419,7 @@ public final class AlpakaStyle {
             return;
         }
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, FIELD);
+        fieldEdge(graphics, x, y, w, h);
         ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, ModernGuiUtils.getAccentColor());
         int ty = y + (h - 8) / 2;
         int tx = x + 5;
@@ -477,12 +479,21 @@ public final class AlpakaStyle {
     }
 
     /**
+     * The hairline round a field in a framed theme, whose fields sit only a shade off the page: it
+     * keeps their shape without making them brighter than the rows they sit in.
+     */
+    public static void fieldEdge(GuiGraphicsExtractor graphics, int x, int y, int w, int h) {
+        if (HEADER != PANEL) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, FIELD_RADIUS, LINE);
+    }
+
+    /**
      * A select field: the current value in a field, with a chevron that points down while its list
      * is open. Its list is drawn with {@link #choiceEntry}.
      */
     public static void selectField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                    String value, boolean open) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, FIELD);
+        fieldEdge(graphics, x, y, w, h);
         graphics.text(font, GuiFont.text(ellipsize(font, value, w - 16)), x + 4, y + (h - 8) / 2, TEXT, false);
         chevron(graphics, x + w - 6, y + h / 2, open, TEXT_SOFT);
     }

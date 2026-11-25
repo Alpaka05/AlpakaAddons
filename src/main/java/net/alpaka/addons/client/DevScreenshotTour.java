@@ -272,6 +272,9 @@ public final class DevScreenshotTour {
             screen("theme-alpaka-config", () -> AlpakaConfigScreen.openOn("Design", "Menu Theme").withChoiceOpen()),
             screen("theme-alpaka-config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
             screen("theme-alpaka-color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
+            screen("theme-alpaka-config-main", () -> AlpakaConfigScreen.openOn("Main", "Network Features")),
+            screen("theme-alpaka-confirm-config", () -> AlpakaConfigScreen.openOn("Main", "Reset All Settings")),
+            new Stop("theme-alpaka-confirm-dialog", () -> trigger("reset_all_settings"), () -> true, 30),
             new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
                     net.alpaka.addons.client.gui.AlpakaStyle.Theme.DARK), () -> true, 1),
             // The page list with more pages than fit above its field: it scrolls, its edges fading.

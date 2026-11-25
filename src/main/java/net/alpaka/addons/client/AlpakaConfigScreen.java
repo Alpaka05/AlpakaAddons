@@ -486,7 +486,14 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         hoveredTipTextThisFrame = null;
 
         drawHeader(graphics, mouseX, mouseY, x, y, w, sideW, featX, featW, detailX, detailW);
-        AlpakaStyle.headerLine(graphics, x, y, w);
+        if (AlpakaStyle.SIDEBAR != AlpakaStyle.PANEL && sideW > 0) {
+            // The sidebar is a column of its own color, top to bottom: the line only closes off
+            // the header over the other two columns, in line with their cards.
+            int lineX = featX + 4 - AlpakaStyle.PAD;
+            AlpakaStyle.headerLine(graphics, lineX, y, x + w - lineX);
+        } else {
+            AlpakaStyle.headerLine(graphics, x, y, w);
+        }
         // Folding away in setup mode: clipped to their shrinking widths, and gone once folded.
         if (setupProgress < 0.999f) {
             graphics.enableScissor(x, bodyY, detailX, y + h);
@@ -605,12 +612,18 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         int bx = x + this.font.width(version);
         int width = this.font.width(build);
         float scale = Math.min(1f, Math.max(0.5f, (right - bx) / (float) width));
+        // On a sidebar of its own tone a long build would run out over the next column's color,
+        // so there it is cut at the sidebar's edge instead.
+        int edge = right - 2;
+        boolean clip = AlpakaStyle.SIDEBAR != AlpakaStyle.PANEL && bx + width * scale > edge;
+        if (clip) graphics.enableScissor(bx, y - 1, edge, y + 10);
         graphics.pose().pushMatrix();
         // Bottom-aligned with the version, so the smaller text sits on the same line.
         graphics.pose().translate(bx, y + 8 * (1 - scale));
         graphics.pose().scale(scale, scale);
         graphics.text(this.font, build, 0, 0, AlpakaStyle.TEXT_MUTED, false);
         graphics.pose().popMatrix();
+        if (clip) graphics.disableScissor();
     }
 
     private void drawLogoAndSearch(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int featX, int featW) {

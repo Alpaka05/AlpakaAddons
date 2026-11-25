@@ -8,6 +8,40 @@ This file is for every coding agent (Claude Code, Codex, or any agent run throug
 `CLAUDE.md` only imports it. More rules live in `.agents/rules/`. The maintainer's words in a
 session always win over this file.
 
+## This branch: the Minecraft 26.3 line (`mc-26.3`)
+
+`main` stays on Minecraft 26.2. This branch is the same mod for Minecraft 26.3, so a release can
+offer both. Wherever this file says 26.2 below, read 26.3 on this branch (the jar for `javap` is
+`~/.gradle/caches/fabric-loom/26.3/minecraft-merged.jar`).
+
+- New work still goes to `main` first and comes here by merging `main` into `mc-26.3`, never the
+  other way round. A PR against `mc-26.3` is only for what concerns 26.3 alone.
+- Test builds of this line go into the OneClient cluster "26.3 Fabric", never into "26.2 Fabric";
+  `alpaka-test-build main` leaves this branch out.
+- After a merge, port what main added. That it compiles does not mean it works: 26.3 swapped GLFW
+  for SDL3 and moved the render API to `com.mojang.renderpearl`, and several things changed
+  without a compile error.
+  - **Keys and mouse:** `KeyEvent.key()` is an SDL scancode (`InputConstants.KEY_*`; 1 to 9 run in
+    a row and 0 comes after 9), `keycode()` is the character on the player's layout, mouse buttons
+    count from 1 (`MouseButtons`; a container click is still left 0, right 1) and the modifier bits
+    are per side (`InputConstants.MOD_*`).
+  - **Typed characters** only arrive while text input is switched on. A screen with a `charTyped`
+    of its own implements `TakesTypedText` (see `TypedTextInput`); `TypedTextInputTest` fails for
+    one that does not.
+  - **Mixins:** a hook whose target moved or changed its signature still compiles. Apply them all
+    offline after a merge (`mixcheck`, see the maintainer's memory) and compare vanilla's hooked
+    methods with 26.2.
+  - **Rendering:** a pipeline draws to no target unless it calls `withColorTargetState`. Shaders
+    need `#extension GL_ARB_separate_shader_objects`, a `layout(location = ...)` on every `in` and
+    `out`, `#include` instead of `#moj_import`, and 26.3's member order in `DynamicTransforms` and
+    `Globals`. Every blended render type drawn in the level needs `setOitPipelines`. `pipecheck`
+    (maintainer's memory) compiles all pipelines without the game.
+  - **First-person hands** are two classes: `FirstPersonHandsAndItems` holds the items and hand
+    heights and ticks, `FirstPersonHandsAndItemsRenderer` draws.
+  - **Tooltips** only keep the gap under their first line when asked to: pass `true` as the last
+    argument of `setTooltipForNextFrame(font, lines, image, x, y, style, true)` for a title over
+    its details.
+
 ## Build and test
 
 - JDK 25: `export JAVA_HOME=$(ls -d ~/.jdks/*25* | head -1)`.

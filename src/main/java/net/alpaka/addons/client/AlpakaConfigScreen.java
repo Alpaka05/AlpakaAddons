@@ -493,7 +493,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             drawSidebar(graphics, mouseX, mouseY, x, bodyY, sideW, bodyH, deltaSec);
             drawFeatures(graphics, mouseX, mouseY, featX, bodyY, featW, bodyH, deltaSec);
             graphics.disableScissor();
-            ModernGuiUtils.drawRect(graphics, detailX, bodyY + 4, 1, bodyH - 8, AlpakaStyle.DIVIDER);
+            // Inside a framed page the columns part with a plain hairline; a brighter divider would
+            // cut the page in two.
+            int divider = AlpakaStyle.HEADER != AlpakaStyle.PANEL ? AlpakaStyle.LINE : AlpakaStyle.DIVIDER;
+            ModernGuiUtils.drawRect(graphics, detailX, bodyY + 4, 1, bodyH - 8, divider);
         }
         drawDetails(graphics, mouseX, mouseY, detailX + 1, bodyY, detailW - 1, bodyH, deltaSec);
 
@@ -739,7 +742,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 rowY += SECTION_ROW_H;
             }
             if (i < groups.size() - 1) {
-                ModernGuiUtils.drawRect(graphics, x + PAD, rowY + 4, w - PAD * 2, 1, AlpakaStyle.LINE);
+                ModernGuiUtils.drawRect(graphics, x + PAD, rowY + 4, w - PAD * 2, 1, AlpakaStyle.SIDEBAR_LINE);
                 rowY += 9;
             }
         }
@@ -751,7 +754,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private void drawHudEditorButton(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
         int bx = x + PAD;
         int bw = w - PAD * 2;
-        ModernGuiUtils.drawRect(graphics, bx, y - 9, bw, 1, AlpakaStyle.LINE);
+        ModernGuiUtils.drawRect(graphics, bx, y - 9, bw, 1, AlpakaStyle.SIDEBAR_LINE);
         boolean hover = inside(mouseX, mouseY, bx, y, bw, AlpakaStyle.BUTTON_H);
         AlpakaStyle.button(graphics, this.font, bx, y, bw, AlpakaStyle.BUTTON_H,
                 ellipsize("HUD Editor", bw - 8), hover, AlpakaStyle.ButtonKind.PLAIN);

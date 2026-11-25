@@ -34,6 +34,8 @@ public final class AlpakaStyle {
      */
     public static int SIDEBAR = 0xFF131313;
     public static int HEADER = 0xFF131313;
+    /** The hairlines on the sidebar: softer than {@link #LINE} where the sidebar is darker than the panel. */
+    public static int SIDEBAR_LINE = 0xFF262626;
     public static int LINE = 0xFF262626;
     public static int DIVIDER = 0xFF3A3A3A;
     public static int ROW = 0xFF1E1E1E;
@@ -76,22 +78,22 @@ public final class AlpakaStyle {
     public enum Theme {
         //     backdrop     panel        line         divider      row          row hover    row selected field
         //     text         text soft    text muted   track        toggle off   knob off     tooltip      knob ring
-        //     preview      danger       danger soft  sidebar      header
+        //     preview      danger       danger soft  sidebar      header       sidebar line
         DARK(0x80000000, 0xFF131313, 0xFF262626, 0xFF3A3A3A, 0xFF1E1E1E, 0xFF242424, 0xFF2A2A2A, 0xFF1F1F1F,
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF3A3A3A, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF1A1A1A, 0xFFEDEDED,
-                0xFF0D0D0D, 0xFFE5534B, 0xFFC9726C, 0xFF131313, 0xFF131313),
+                0xFF0D0D0D, 0xFFE5534B, 0xFFC9726C, 0xFF131313, 0xFF131313, 0xFF262626),
         LIGHT(0x66000000, 0xFFF3F3F5, 0xFFDEDEE2, 0xFFC6C6CC, 0xFFE7E7EA, 0xFFE0E0E4, 0xFFD6D6DB, 0xFFE9E9EC,
                 0xFF1C1C21, 0xFF46464D, 0xFF85858D, 0xFFC6C6CC, 0xFF9C9CA3, 0xFF8A8A91, 0xFFFFFFFF, 0xFFFFFFFF,
-                0xFF2B2B2B, 0xFFD23B32, 0xFFC0564F, 0xFFF3F3F5, 0xFFF3F3F5),
+                0xFF2B2B2B, 0xFFD23B32, 0xFFC0564F, 0xFFF3F3F5, 0xFFF3F3F5, 0xFFDEDEE2),
         OLED(0xB0000000, 0xFF000000, 0xFF1A1A1A, 0xFF2C2C2C, 0xFF0D0D0D, 0xFF141414, 0xFF1B1B1B, 0xFF0F0F0F,
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF2E2E2E, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF0A0A0A, 0xFFEDEDED,
-                0xFF000000, 0xFFE5534B, 0xFFC9726C, 0xFF000000, 0xFF000000),
+                0xFF000000, 0xFFE5534B, 0xFFC9726C, 0xFF000000, 0xFF000000, 0xFF1A1A1A),
         // Espresso browns with cream text, like the coffee themes of code editors: a dark, slightly
         // redder roast frames the windows (sidebar and header), the page inside is a milder mocha,
         // and the cards on it are caramel.
-        ALPAKA(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF4A3B32, 0xFF392B23, 0xFF42322A, 0xFF4B3A2F, 0xFF3A2C24,
-                0xFFF3E6D8, 0xFFD2BFAB, 0xFFA99482, 0xFF54443A, 0xFF8A7464, 0xFFA48D7C, 0xFF32271F, 0xFFF3E6D8,
-                0xFF1A1411, 0xFFE5674F, 0xFFC98370, 0xFF1E1411, 0xFF1E1411);
+        ALPAKA(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF392B23, 0xFF42322A, 0xFF4B3A2F, 0xFF33261F,
+                0xFFF3E6D8, 0xFFD2BFAB, 0xFFA99482, 0xFF54443A, 0xFF9B8270, 0xFFB39B87, 0xFF32271F, 0xFFF3E6D8,
+                0xFF1A1411, 0xFFE5674F, 0xFFC98370, 0xFF1E1411, 0xFF1E1411, 0xFF32251F);
 
         private final int[] c;
 
@@ -133,6 +135,7 @@ public final class AlpakaStyle {
         DANGER_SOFT = c[18];
         SIDEBAR = c[19];
         HEADER = c[20];
+        SIDEBAR_LINE = c[21];
     }
 
     // ---- Metrics, in GUI pixels -----------------------------------------------------------------

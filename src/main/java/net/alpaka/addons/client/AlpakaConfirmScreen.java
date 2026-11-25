@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind;
 import net.alpaka.addons.client.gui.GuiFont;
+import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -130,6 +131,11 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
         Layout l = layout;
         AlpakaStyle.panel(graphics, l.x(), l.y(), l.w(), l.h());
         AlpakaStyle.header(graphics, this.font, titleText, l.x(), l.y(), l.w());
+        // A dark header would melt into the dimmed menu behind the dialog; a hairline rim, as a
+        // popover has, keeps its edge.
+        if (AlpakaStyle.HEADER != AlpakaStyle.PANEL) {
+            ModernGuiUtils.drawRoundedOutline(graphics, l.x(), l.y(), l.w(), l.h(), AlpakaStyle.PANEL_RADIUS, AlpakaStyle.LINE);
+        }
         int ty = l.y() + AlpakaStyle.HEADER_H + GAP;
         for (FormattedCharSequence line : l.lines()) {
             graphics.text(this.font, line, l.x() + AlpakaStyle.PAD + 2, ty, AlpakaStyle.TEXT_SOFT, false);

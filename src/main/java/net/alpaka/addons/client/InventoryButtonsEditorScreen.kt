@@ -38,7 +38,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     private val parent: Screen?,
     /** A button to open with picked, by its place in the list; -1 for none. */
     private val openOn: Int = -1,
-) : Screen(GuiFont.text("Inventory Buttons")), ScrollableTooltipsFeature.KeepsWheel {
+) : Screen(GuiFont.text("Inventory Buttons")), ScrollableTooltipsFeature.KeepsWheel, net.alpaka.addons.client.gui.TakesTypedText {
 
     private enum class Preview(val label: String, val imageHeight: Int, val rows: Int) {
         INVENTORY("Inventory", 166, 0),

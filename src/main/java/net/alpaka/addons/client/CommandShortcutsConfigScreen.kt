@@ -29,7 +29,7 @@ import kotlin.math.min
  * one counts. Drawn with [AlpakaStyle], like the command wheel editor next to it.
  */
 class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.text("Command Shortcuts")),
-    net.alpaka.addons.client.gui.NoticeHost {
+    net.alpaka.addons.client.gui.NoticeHost, net.alpaka.addons.client.gui.TakesTypedText {
 
     private enum class Kind { SECTION, HINT, ALIAS, KEY, ADD_ALIAS, ADD_KEY }
 

@@ -40,7 +40,7 @@ import java.util.List;
  * no answer. The chips only fill the field; the player still confirms. The paste button, the
  * Lowest BIN prices and the recent prices confirm at once, as the player's click.
  */
-public class MarketInputScreen extends SignEditScreen {
+public class MarketInputScreen extends SignEditScreen implements net.alpaka.addons.client.gui.TakesTypedText {
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
     private static final int PAD = AlpakaStyle.PAD;
     private static final int FIELD_H = 24;

@@ -34,7 +34,7 @@ import java.util.Map;
  * grid. Hovering an item shows its own tooltip with where it lies; clicking it opens the place with
  * the most of it and outlines it there.
  */
-public class ItemSearchScreen extends Screen {
+public class ItemSearchScreen extends Screen implements net.alpaka.addons.client.gui.TakesTypedText {
 
     private static final int MARGIN = 8;
     private static final int WIN_W = 560;

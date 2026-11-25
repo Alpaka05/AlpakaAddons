@@ -63,7 +63,7 @@ import java.util.Locale;
  * "Classic View" in the footer switches back to the vanilla chest for that market until the game
  * restarts, in case Hypixel shows something this screen does not lay out well.
  */
-public class MarketScreen extends ContainerScreen {
+public class MarketScreen extends ContainerScreen implements net.alpaka.addons.client.gui.TakesTypedText {
 
     // ---- Layout, in GUI pixels ------------------------------------------------------------------
 

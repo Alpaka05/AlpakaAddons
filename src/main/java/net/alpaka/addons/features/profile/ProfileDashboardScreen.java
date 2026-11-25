@@ -55,7 +55,7 @@ import java.util.Map;
  * Nothing here talks to the game server: it is a window of the mod's own, drawn in the config
  * menu's design.
  */
-public class ProfileDashboardScreen extends Screen {
+public class ProfileDashboardScreen extends Screen implements net.alpaka.addons.client.gui.TakesTypedText {
     /** Compiled once: these run per row, every frame the page is on. */
     private static final java.util.regex.Pattern CAMEL_HUMP = java.util.regex.Pattern.compile("([a-z])([A-Z])");
     private static final java.util.regex.Pattern BACKPACK_KEY = java.util.regex.Pattern.compile("backpack_\\d+");
@@ -5320,7 +5320,7 @@ public class ProfileDashboardScreen extends Screen {
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         scrollDragging = false;
-        if (event.button() == 1) rightHeld = false;
+        if (event.button() == MouseButtons.RIGHT) rightHeld = false;
         return super.mouseReleased(event);
     }
 

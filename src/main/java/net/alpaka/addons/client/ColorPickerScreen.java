@@ -50,7 +50,7 @@ import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
  * for a rainbow along text, its size. Each mode has presets of its own: a gradient preset sets
  * both colors, a Chroma preset the whole rainbow.
  */
-public class ColorPickerScreen extends Screen implements net.alpaka.addons.client.gui.NoticeHost {
+public class ColorPickerScreen extends Screen implements net.alpaka.addons.client.gui.NoticeHost, net.alpaka.addons.client.gui.TakesTypedText {
     private final Screen parent;
     private final Consumer<Integer> onSave;
     /** The option's default, which Reset in the header goes back to; null hides it. */

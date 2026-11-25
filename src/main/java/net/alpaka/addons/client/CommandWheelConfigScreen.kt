@@ -33,7 +33,8 @@ import kotlin.math.min
  * Drawn with [AlpakaStyle], the config menu's look: slim rows that light up on hover, their move
  * and remove buttons only shown then, the accent for whatever is being dropped on.
  */
-class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text("Command Wheel")), net.alpaka.addons.client.gui.NoticeHost {
+class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text("Command Wheel")), net.alpaka.addons.client.gui.NoticeHost,
+    net.alpaka.addons.client.gui.TakesTypedText {
 
     /** The wheel being edited, as a [CommandWheelPages] key; starts on the one the key opens now. */
     private var wheel: String? = CommandWheelPages.activeWheel()

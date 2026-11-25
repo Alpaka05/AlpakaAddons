@@ -28,7 +28,7 @@ import kotlin.math.min
  * Drawn with [AlpakaStyle], the config menu's look, like the command wheel editor.
  */
 class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Custom Message Filters")),
-    net.alpaka.addons.client.gui.NoticeHost {
+    net.alpaka.addons.client.gui.NoticeHost, net.alpaka.addons.client.gui.TakesTypedText {
 
     private val input = EditableText(MAX_TEXT)
     private var inputFocused = true

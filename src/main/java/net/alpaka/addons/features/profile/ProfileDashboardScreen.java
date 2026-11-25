@@ -989,7 +989,13 @@ public class ProfileDashboardScreen extends Screen {
         boolean bare = rightHeld && hover(x, y, w, h);
         boolean drawn = uuid != null && figure.draw(graphics, uuid, bare ? null : session.inventory("armor"), bx, by, bx + bw, by + bh,
                 scale, lookX, lookY);
-        if (drawn && !bare && hover(bx, by, bw, bh)) tip("figure", "Hold right-click to see the skin without the armor.");
+        if (drawn && !bare && hover(bx, by, bw, bh)) {
+            // The piece under the mouse shows its tooltip, as in an inventory.
+            String slot = ProfileFigure.pieceAt(mx - (bx + bw / 2f), my - (by + bh / 2f), scale);
+            JsonElement armor = session.inventory("armor");
+            JsonElement item = slot == null || armor == null ? null : Json.obj(armor, "items").get(slot);
+            if (InventoryItems.present(item)) hoveredItem = item;
+        }
         if (!drawn) {
             ResolvableProfile profile = face();
             int size = Math.min(48, Math.min(bw, bh) - 8);
@@ -1042,7 +1048,7 @@ public class ProfileDashboardScreen extends Screen {
         text(graphics, label, lx + 8, ty, status.online() ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
         if (hover(x, y + 4, w, h)) {
             tip("onlineStatus", status.online()
-                    ? "Online on Hypixel: " + status.fullWhere() + ". Which server, Hypixel doesn't say."
+                    ? "Online on Hypixel: " + status.fullWhere() + "."
                     : "Offline, or hiding it: players can turn their online status off in Hypixel's API settings.");
         }
         return h;

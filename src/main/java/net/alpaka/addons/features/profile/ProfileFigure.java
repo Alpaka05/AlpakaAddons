@@ -30,6 +30,8 @@ final class ProfileFigure {
     private static final float LOOK_DIVISOR = 40.0f;
     private static final float LOOK_STRENGTH = 20.0f;
     private static final float Y_OFFSET = 0.0625f;
+    /** How tall the figure counts as, in blocks: a standing player's box. */
+    private static final float FIGURE_HEIGHT = 1.8f;
     /** Armor pieces by the armor inventory's slots, as Hypixel numbers them: boots first. */
     private static final EquipmentSlot[] ARMOR = {EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD};
 
@@ -106,6 +108,27 @@ final class ProfileFigure {
         }
         graphics.entity(state, scale, new Vector3f(0.0f, state.boundingBoxHeight / 2.0f + Y_OFFSET, 0.0f), rotation, pitchRot,
                 x0, y0, x1, y1);
+    }
+
+    /**
+     * The armor piece drawn at this point, as its slot in the armor inventory ("3" the helmet down
+     * to "0" the boots), or null for none; {@code dx}/{@code dy} from the middle of the figure's
+     * box, at {@code scale} pixels to a block. The figure stands with its middle there, its feet
+     * half its height and the offset below, and its parts where the player model has them - the
+     * legs the lowest twelve of its 32 pixels, the body and arms the next twelve, the head the
+     * top eight - at the 15/16 a player is drawn at. It turns towards the mouse, so the widths
+     * are a little generous rather than exact.
+     */
+    static String pieceAt(float dx, float dy, int scale) {
+        if (scale <= 0) return null;
+        float feet = (FIGURE_HEIGHT / 2 + Y_OFFSET) * scale;
+        float up = (feet - dy) / scale;
+        float side = Math.abs(dx) / scale;
+        if (up >= 1.38f && up <= 2.0f && side <= 0.34f) return "3";
+        if (up >= 0.68f && up < 1.38f && side <= 0.5f) return "2";
+        if (up >= 0.24f && up < 0.68f && side <= 0.28f) return "1";
+        if (up >= -0.03f && up < 0.24f && side <= 0.28f) return "0";
+        return null;
     }
 
     /** A UUID with or without its dashes; null for anything else. */

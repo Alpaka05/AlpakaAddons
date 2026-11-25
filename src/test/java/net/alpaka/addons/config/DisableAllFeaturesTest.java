@@ -63,7 +63,7 @@ class DisableAllFeaturesTest {
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             "rareDropAnimationEnabled", "teleportWarpEnabled",
             // Utility and sounds
-            "alwaysSprintEnabled", "keepCursorPositionEnabled", "commandShortcutsEnabled", "inventoryButtonsEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
+            "alwaysSprintEnabled", "commandShortcutsEnabled", "inventoryButtonsEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
             "customSoundButtonClick", "customSoundHotbarScroll", "customSoundInventoryOpenClose",
             "customSoundInventoryClick", "customSoundRareDrop", "customSoundNotification",
             "customSoundPlayerHurt", "customSoundBlazeDeath", "customSoundZombieRemedy",

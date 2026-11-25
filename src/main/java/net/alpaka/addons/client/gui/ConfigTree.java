@@ -124,7 +124,7 @@ public final class ConfigTree {
             // Cosmetics
             "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags", "rare_drop_animation", "teleport_warp",
             // Sound & utility
-            "command_wheel_custom_commands", "command_shortcuts", "inventory_buttons", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
+            "command_wheel_custom_commands", "command_shortcuts", "inventory_buttons", "always_sprint", "quick_join", "custom_sounds",
             "custom_sound_button_click", "custom_sound_hotbar_scroll", "custom_sound_inventory_open_close",
             "custom_sound_inventory_click", "custom_sound_rare_drop", "custom_sound_notification",
             "custom_sound_player_hurt", "custom_sound_blaze_death", "custom_sound_zombie_remedy",
@@ -184,7 +184,7 @@ public final class ConfigTree {
     private static final String[][][] LAYOUT = {
             {{"General"},
                     {"Main", "allow_api_calls", "update_notifications", "#Notification Customization",
-                            "always_sprint", "keep_cursor_position", "quick_join", "disable_all_features", "reset_all_settings"},
+                            "always_sprint", "hide_inventory_effects", "quick_join", "disable_all_features", "reset_all_settings"},
                     {"Design", "menu_font", "menu_theme", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
                     {"Sounds", "custom_sounds", "custom_sound_button_click", "custom_sound_hotbar_scroll",
                             "custom_sound_inventory_open_close", "custom_sound_inventory_click", "custom_sound_rare_drop",
@@ -194,7 +194,6 @@ public final class ConfigTree {
                     {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_visual_clutter",
                             "#Hide Fire Overlay", "disable_front_perspective", "zoom"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
-                            "hide_inventory_effects",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar", "#Scoreboard"},
                     {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_copy", "chat_peek", "compact_chat",
                             "message_filter", "expand_chat_history", "mention_notification"},

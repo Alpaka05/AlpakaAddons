@@ -281,6 +281,26 @@ public final class ProfileHistory {
         return out;
     }
 
+    /**
+     * The players offered under the dashboard's player search, from {@link #players()}: those whose
+     * name starts with what is typed come before those that only contain it, each kept in the order
+     * they were last looked at. The player on show is left out, since looking them up again changes
+     * nothing.
+     */
+    static java.util.List<String> recent(java.util.List<String> players, String typed, String shown, int max) {
+        String query = typed == null ? "" : typed.trim().toLowerCase(java.util.Locale.ROOT);
+        java.util.List<String> starting = new ArrayList<>();
+        java.util.List<String> containing = new ArrayList<>();
+        for (String player : players) {
+            if (shown != null && player.equalsIgnoreCase(shown)) continue;
+            String name = player.toLowerCase(java.util.Locale.ROOT);
+            if (name.startsWith(query)) starting.add(player);
+            else if (name.contains(query)) containing.add(player);
+        }
+        starting.addAll(containing);
+        return starting.size() > max ? java.util.List.copyOf(starting.subList(0, max)) : starting;
+    }
+
     /** Notes that a look found this the player's selected profile, for {@link #lastProfile}. */
     public static synchronized void selected(String uuid, String profileId) {
         if (uuid == null || profileId == null) return;

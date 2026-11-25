@@ -96,4 +96,16 @@ class ProfileHistoryTest {
         // Nothing more to do the second time.
         assertTrue(!ProfileHistory.prune(entries, now));
     }
+
+    @Test
+    void recentSearchesStartWithTheTypedNameAndLeaveOutTheShownPlayer() {
+        List<String> players = List.of("Alpakaa", "its_Eleminator", "Technoblade", "Galpo", "Alpine_Dev");
+        // Nothing typed: everyone, last looked at first, but not the player on show.
+        assertEquals(List.of("Alpakaa", "Technoblade", "Galpo", "Alpine_Dev"),
+                ProfileHistory.recent(players, "", "ITS_ELEMINATOR", 8));
+        // Names starting with it first, then those only containing it, case ignored.
+        assertEquals(List.of("Alpakaa", "Alpine_Dev", "Galpo"), ProfileHistory.recent(players, " alp", null, 8));
+        assertEquals(List.of("Alpakaa", "Alpine_Dev"), ProfileHistory.recent(players, "alp", null, 2));
+        assertEquals(List.of(), ProfileHistory.recent(players, "zzz", null, 8));
+    }
 }

@@ -26,6 +26,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ResolvableProfile;
+import org.lwjgl.glfw.GLFW;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -139,6 +140,16 @@ public class ProfileDashboardScreen extends Screen {
     private EditableText clickFrom = null;
     private boolean searchFocused = false;
     private long caretFrom = 0L;
+    /**
+     * The players looked up before, listed under the player search while it has the focus; the one
+     * picked with the arrow keys (null for none), and where the list is drawn.
+     */
+    private List<String> recent = List.of();
+    private String recentPicked;
+    private int recentX, recentY, recentW;
+    private static final int RECENT_MAX = 8;
+    private static final int RECENT_ROW_H = 16;
+    private static final int RECENT_LABEL_H = 14;
     /** A popover is open: the profile list, or the sites from the footer when {@link #sourceMenu}. */
     private boolean menuOpen = false;
     private boolean sourceMenu = false;
@@ -376,6 +387,8 @@ public class ProfileDashboardScreen extends Screen {
 
         drawHeader(graphics, x, y, w);
         AlpakaStyle.headerLine(graphics, x, y, w);
+        // Nothing under the list of recent players lights up while the mouse is on it.
+        if (overRecent(mouseX, mouseY)) mx = my = -10_000;
         float foldTarget = AlpakaConfig.instance.profileSidebarCollapsed ? 1.0f : 0.0f;
         sideFold = PloppAnimation.interpolate(sideFold, foldTarget, deltaSec, 16.0f);
         if (Math.abs(sideFold - foldTarget) < 0.002f) sideFold = foldTarget;
@@ -426,6 +439,9 @@ public class ProfileDashboardScreen extends Screen {
         menuHitsFrom = hits.size();
         if (menuOpen && sourceMenu) drawSourceMenu(graphics);
         else if (menuOpen) drawProfileMenu(graphics, x, y, w);
+        mx = mouseX;
+        my = mouseY;
+        if (!recent.isEmpty()) drawRecent(graphics);
 
         if (hoveredTipKey != lastTipKey) {
             lastTipKey = hoveredTipKey;
@@ -516,6 +532,7 @@ public class ProfileDashboardScreen extends Screen {
 
         int sw = Math.min(120, Math.max(70, w / 6));
         int sx = rx - 8 - sw;
+        recent = List.of();
         if (sx > tx + 90) {
             boolean hoverSearch = AlpakaStyle.inside(mx, my, sx, by - 1, sw, AlpakaStyle.BUTTON_H);
             AlpakaStyle.textField(graphics, this.font, sx, by - 1, sw, AlpakaStyle.BUTTON_H, search, null, "Look up a player",
@@ -525,7 +542,46 @@ public class ProfileDashboardScreen extends Screen {
                 searchFocused = true;
                 caretFrom = System.currentTimeMillis();
             });
-            if (hoverSearch && !searchFocused) tip("search", "Type a player's name and press Enter to see their profile.");
+            if (hoverSearch && !searchFocused) tip("search", "Type a player's name and press Enter to see their profile. Click in to pick one you looked up before.");
+            if (searchFocused) {
+                recent = ProfileHistory.recent(ProfileHistory.players(), search.getText(), name, RECENT_MAX);
+                if (recentPicked != null && !recent.contains(recentPicked)) recentPicked = null;
+                int widest = 0;
+                for (String player : recent) widest = Math.max(widest, textW(player));
+                recentW = Math.max(sw, widest + 20);
+                // Under the field, from its left edge, unless that would run past the window.
+                recentX = Math.min(sx, x + w - PAD - recentW);
+                recentY = by - 1 + AlpakaStyle.BUTTON_H + 3;
+            }
+        }
+    }
+
+    private int recentH() {
+        return RECENT_LABEL_H + recent.size() * RECENT_ROW_H + 6;
+    }
+
+    private boolean overRecent(double mouseX, double mouseY) {
+        return !recent.isEmpty() && AlpakaStyle.inside(mouseX, mouseY, recentX, recentY, recentW, recentH());
+    }
+
+    /** The players looked up before, under the focused player search: a click looks one up again. */
+    private void drawRecent(GuiGraphicsExtractor graphics) {
+        int px = recentX;
+        int py = recentY;
+        int mw = recentW;
+        graphics.nextStratum();
+        AlpakaStyle.popover(graphics, px, py, mw, recentH());
+        // A click on the list between its rows keeps the field, rather than reaching what is under it.
+        hits.add(new Hit(px, py, mw, recentH(), () -> searchFocused = true));
+        text(graphics, "Recent", px + 10, py + 6, AlpakaStyle.TEXT_MUTED);
+        int ry = py + RECENT_LABEL_H + 2;
+        for (String player : recent) {
+            boolean hover = AlpakaStyle.inside(mx, my, px + 4, ry, mw - 8, RECENT_ROW_H);
+            boolean lit = hover || player.equals(recentPicked);
+            if (lit) ModernGuiUtils.drawRoundedRect(graphics, px + 4, ry, mw - 8, RECENT_ROW_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+            text(graphics, player, px + 10, ry + 4, lit ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            hits.add(new Hit(px + 4, ry, mw - 8, RECENT_ROW_H, () -> lookUp(player)));
+            ry += RECENT_ROW_H;
         }
     }
 
@@ -5126,12 +5182,13 @@ public class ProfileDashboardScreen extends Screen {
                 () -> net.minecraft.util.Util.getPlatform().openUri(url)));
     }
 
-    private void lookUp() {
-        String name = search.getText().trim();
+    private void lookUp(String name) {
         if (!name.matches("[A-Za-z0-9_]{1,16}")) return;
         session = session(name);
         search.setText("");
         searchFocused = false;
+        recent = List.of();
+        recentPicked = null;
         itemSearch.setText("");
         itemSearchOpen = false;
         searchIndex = List.of();
@@ -5234,7 +5291,7 @@ public class ProfileDashboardScreen extends Screen {
             menuOpen = false;
             return true;
         }
-        if (pressScrollbar(event.x(), event.y())) return true;
+        if (!overRecent(event.x(), event.y()) && pressScrollbar(event.x(), event.y())) return true;
         for (int i = hits.size() - 1; i >= 0; i--) {
             Hit hit = hits.get(i);
             if (AlpakaStyle.inside(event.x(), event.y(), hit.x(), hit.y(), hit.w(), hit.h())) {
@@ -5264,7 +5321,7 @@ public class ProfileDashboardScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (scrollY != 0 && !menuOpen && AlpakaStyle.inside(mouseX, mouseY, clipX, clipY, clipW, clipH)) scroll.by(-scrollY * 24);
+        if (scrollY != 0 && !menuOpen && !overRecent(mouseX, mouseY) && AlpakaStyle.inside(mouseX, mouseY, clipX, clipY, clipW, clipH)) scroll.by(-scrollY * 24);
         return true;
     }
 
@@ -5296,10 +5353,29 @@ public class ProfileDashboardScreen extends Screen {
                 return true;
             }
             if (event.isConfirmation()) {
-                lookUp();
+                lookUp(recentPicked != null ? recentPicked : search.getText().trim());
                 return true;
             }
+            int key = event.key();
+            if (!recent.isEmpty() && (key == GLFW.GLFW_KEY_DOWN || key == GLFW.GLFW_KEY_UP)) {
+                // The arrows walk the recent players, and past either end back to what is typed.
+                int at = recentPicked == null ? -1 : recent.indexOf(recentPicked);
+                int next = key == GLFW.GLFW_KEY_DOWN ? at + 1 : (at < 0 ? recent.size() : at) - 1;
+                recentPicked = next >= 0 && next < recent.size() ? recent.get(next) : null;
+                return true;
+            }
+            if (!recent.isEmpty() && key == GLFW.GLFW_KEY_TAB) {
+                // Fills the field with the picked player, or the first; the pick stays, so a second
+                // Tab fills the same name again.
+                String player = recentPicked != null ? recentPicked : recent.get(0);
+                search.setText(player);
+                recentPicked = player;
+                caretFrom = System.currentTimeMillis();
+                return true;
+            }
+            String before = search.getText();
             search.keyPressed(event);
+            if (!before.equals(search.getText())) recentPicked = null;
             caretFrom = System.currentTimeMillis();
             return true;
         }
@@ -5332,6 +5408,7 @@ public class ProfileDashboardScreen extends Screen {
         for (char c : Character.toChars(event.codepoint())) {
             if (Character.isLetterOrDigit(c) && c < 128 || c == '_') search.insert(c);
         }
+        recentPicked = null;
         caretFrom = System.currentTimeMillis();
         return true;
     }

@@ -926,7 +926,8 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(coinsTile(d));
         tiles.add(d.farmingWeight > 0
                 ? new Tile(Metrics.FARMING_WEIGHT, "Farming Weight", Coins.full(Math.round(d.farmingWeight * 10) / 10.0), null)
-                : new Tile(Metrics.PETS_MAXED, "Max Level Pets", d.petsMaxed + " / " + d.pets.size(), null));
+                : new Tile(Metrics.RUNS, "Dungeon Runs", Coins.full(d.totalRuns), null));
+        Tile pets = new Tile(Metrics.PETS_MAXED, "Max Level Pets", d.petsMaxed + " / " + d.pets.size(), null);
         String metric = metricFor(Page.OVERVIEW);
         // The player beside the numbers and the graph, as profile viewers show them; with too little
         // room for the tiles four in a row, beside the graph alone, and on the narrowest not at all.
@@ -937,7 +938,10 @@ public class ProfileDashboardScreen extends Screen {
             int rw = w - figureW - 6;
             y = tiles(graphics, tiles, rx, y, rw, 4);
             y = chartCard(graphics, metric, metricMaxLevel(d, metric), rx, y + 6, rw, 130);
-            figureCard(graphics, d, x, top, figureW, y - top, now);
+            // One more card above the figure, in line with the first row, so the figure's card is
+            // no taller than the graph beside it plus a row.
+            int figureTop = tiles(graphics, List.of(pets), x, top, figureW, 1) + 6;
+            figureCard(graphics, d, x, figureTop, figureW, y - figureTop, now);
         } else {
             y = tiles(graphics, tiles, x, y, w, 4);
             figureW = 100;

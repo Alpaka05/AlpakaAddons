@@ -153,6 +153,38 @@ class ProfileSourcesTest {
     }
 
     @Test
+    void aFarOffFirstPointIsDropped() {
+        // SkyKings' real first look at one profile.
+        List<ProfileHistory.Point> points = List.of(new ProfileHistory.Point(1, 117.9), new ProfileHistory.Point(2, 47.34),
+                new ProfileHistory.Point(3, 46.67), new ProfileHistory.Point(4, 49.07));
+        assertEquals(List.of(47.34, 46.67, 49.07), ProfileSession.withoutDips(points).stream().map(ProfileHistory.Point::value).toList());
+    }
+
+    @Test
+    void dailyWobbleIsEvenedOut() {
+        List<ProfileHistory.Point> points = List.of(new ProfileHistory.Point(1, 100), new ProfileHistory.Point(2, 108),
+                new ProfileHistory.Point(3, 101), new ProfileHistory.Point(4, 103), new ProfileHistory.Point(5, 110));
+        // Ends stay, so the scaling against today's networth still uses the newest reading.
+        assertEquals(List.of(100.0, 101.0, 103.0, 103.0, 110.0), ProfileSession.median3(points).stream().map(ProfileHistory.Point::value).toList());
+    }
+
+    @Test
+    void aGapIsOnlyMetWhereTheSourceHasReadingsNearby() {
+        long day = ProfileHistory.DAY;
+        // The line: 90 until day 0, 93 from day 200. The source starts only on day 25, at 50, and
+        // reaches 80 on day 200: the two disagree about the gap, and guessing the source's value on
+        // day 0 from its first reading would draw a cliff down after day 0.
+        List<ProfileHistory.Point> line = List.of(new ProfileHistory.Point(-day, 90), new ProfileHistory.Point(0, 90),
+                new ProfileHistory.Point(200 * day, 93));
+        List<ProfileHistory.Point> source = List.of(new ProfileHistory.Point(25 * day, 50),
+                new ProfileHistory.Point(100 * day, 65), new ProfileHistory.Point(200 * day, 80));
+        List<ProfileHistory.Point> out = ProfileSession.stitch(List.of(line, source), 4 * day);
+        // Scaled by the end it has a reading at, day 200: 93 / 80.
+        assertEquals(50 * 93.0 / 80, out.get(2).value(), 1e-9);
+        assertEquals(65 * 93.0 / 80, out.get(3).value(), 1e-9);
+    }
+
+    @Test
     void aStretchWithoutDataIsAGap() {
         long day = ProfileHistory.DAY;
         List<ProfileHistory.Point> points = List.of(new ProfileHistory.Point(0, 1), new ProfileHistory.Point(day, 2),

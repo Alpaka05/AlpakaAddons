@@ -263,6 +263,7 @@ public class MarketInputScreen extends SignEditScreen {
         int mouseY = overList ? -10000 : realMouseY;
 
         AlpakaStyle.panel(graphics, x, y, w, h);
+        AlpakaStyle.headerBand(graphics, x, y, w);
 
         // Header: what is asked, and a close button.
         AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, speedCap ? "Rancher's Boots Speed Cap" : prompt.heading(context, menuTitle), w - 50), x + PAD + 2, y);

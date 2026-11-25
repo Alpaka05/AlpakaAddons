@@ -103,8 +103,8 @@ dependencies {
 
     // Mod Menu: compiled against, and present in the dev client so its Mods screens can be tested.
     // localRuntime keeps it out of the published POM. Players get it from their own mod list.
-    compileOnly "com.terraformersmc:modmenu:20.0.1"
-    localRuntime "com.terraformersmc:modmenu:20.0.1"
+    compileOnly "com.terraformersmc:modmenu:21.0.1"
+    localRuntime "com.terraformersmc:modmenu:21.0.1"
 
     // OneConfig, the config menu of OneClient: compiled against, never shipped. The mod's settings
     // are put into its menu through the oneconfig:config entrypoint (compat/oneconfig), which only

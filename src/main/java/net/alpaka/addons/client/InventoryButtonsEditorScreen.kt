@@ -242,7 +242,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             val lines = ArrayList<net.minecraft.network.chat.Component>()
             if (!hovered.label.isNullOrBlank()) lines.add(GuiFont.text(hovered.label))
             lines.add(GuiFont.text(InventoryButtonsFeature.displayCommand(hovered.command)))
-            graphics.setTooltipForNextFrame(font, lines, java.util.Optional.empty(), mouseX, mouseY)
+            graphics.setTooltipForNextFrame(font, lines, java.util.Optional.empty(), mouseX, mouseY, null, true)
         }
     }
 

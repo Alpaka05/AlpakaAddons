@@ -133,7 +133,7 @@ object InventoryButtonsFeature {
             val p = InventoryButtonLayout.place(button, box, screen.width, screen.height)
             drawButton(graphics, button, p[0], p[1], button === hovered)
         }
-        if (hovered != null) graphics.setTooltipForNextFrame(Minecraft.getInstance().font, tooltip(hovered), java.util.Optional.empty(), mouseX, mouseY)
+        if (hovered != null) graphics.setTooltipForNextFrame(Minecraft.getInstance().font, tooltip(hovered), java.util.Optional.empty(), mouseX, mouseY, null, true)
     }
 
     /**

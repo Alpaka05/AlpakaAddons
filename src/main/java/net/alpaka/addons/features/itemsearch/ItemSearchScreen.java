@@ -183,7 +183,7 @@ public class ItemSearchScreen extends Screen {
         drawFooter(graphics, f, hovered);
 
         AlpakaStyle.endOpen(graphics, pushed);
-        if (hovered != null) graphics.setComponentTooltipForNextFrame(this.font, tooltip(hovered), mouseX, mouseY);
+        if (hovered != null) graphics.setTooltipForNextFrame(this.font, tooltip(hovered), java.util.Optional.empty(), mouseX, mouseY, null, true);
         else if (hoverSort) AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY,
                 sort == ItemSearchResults.Sort.VALUE && !AlpakaConfig.instance.allowApiCalls
                         ? "Value needs Network Features, which are off." : "Click to change the order.");

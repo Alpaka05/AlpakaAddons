@@ -470,10 +470,10 @@ public class ProfileDashboardScreen extends Screen {
             AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, hoveredTip);
         }
         if (hoveredItem != null) {
-            graphics.setComponentTooltipForNextFrame(this.font, InventoryItems.tooltip(hoveredItem), mouseX, mouseY);
+            graphics.setTooltipForNextFrame(this.font, InventoryItems.tooltip(hoveredItem), java.util.Optional.empty(), mouseX, mouseY, null, true);
             hoveredItem = null;
         } else if (hoveredLines != null) {
-            graphics.setComponentTooltipForNextFrame(this.font, hoveredLines, mouseX, mouseY);
+            graphics.setTooltipForNextFrame(this.font, hoveredLines, java.util.Optional.empty(), mouseX, mouseY, null, true);
         }
         hoveredLines = null;
         AlpakaStyle.endOpen(graphics, pushed);

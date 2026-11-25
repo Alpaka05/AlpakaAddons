@@ -358,7 +358,7 @@ public final class ChatBlurFeature {
 
     /**
      * A panel wants the blur behind it without saying where, so the whole frame is blurred this
-     * frame. For a panel that does not hand over its bounds (the Custom Tab, #166, until it does);
+     * frame. For a panel that does not hand over its bounds;
      * {@link #request(ScreenRectangle)} costs less.
      */
     public static void request() {

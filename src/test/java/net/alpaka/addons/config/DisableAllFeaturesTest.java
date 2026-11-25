@@ -40,20 +40,19 @@ class DisableAllFeaturesTest {
             // Visuals
             "fullbrightEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
             "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideVisualClutter", "hideEntityFire", "firstPersonFireStatic",
-            "nameTagTextShadow", "showOwnNameTag", "renderHandInThirdPerson", "smoothPerspectiveEnabled",
+            "renderHandInThirdPerson",
             "disableFrontPerspective", "zoomEnabled", "containerBgFadeInEnabled", "inventorySnowEnabled",
             "scrollableTooltipsEnabled", "persistentItemNameEnabled", "oldMasterStarsEnabled",
             "wideHealthBarEnabled", "betterChatEnabled", "chatSearchEnabled", "chatCopyEnabled", "expandChatHistory",
             "compactChatEnabled", "mentionNotificationEnabled", "chatPeekEnabled", "chatTabsEnabled",
             "playerModelEnabled", "performanceHudEnabled",
             "inventoryHudEnabled", "scoreboardBlurEnabled", "scoreboardAlpakaFooter",
-            "itemSizeFeatureEnabled", "itemStarlightEnabled", "itemMotionBlurEnabled", "blockOverlayEnabled",
+            "itemSizeFeatureEnabled", "itemStarlightEnabled", "itemSwingTrailEnabled", "itemEquipAnimationEnabled", "blockOverlayEnabled",
             "etherwarpOverlayEnabled", "etherwarpSoundEnabled",
             // SkyBlock
-            "visitorBazaarEnabled",
-            "slayerDropTrackerEnabled", "hideHypixelDropMessage", "slayerRngDropGuildChatEnabled",
+            "slayerDropTrackerEnabled", "slayerRngDropGuildChatEnabled",
             "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
-            "slayerHudEnabled", "farmingHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
+            "slayerHudEnabled", "worldAgeJoinMessageEnabled", "playerRequestsEnabled", "npcPromptsEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "ignoreFillerPanesEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
@@ -62,10 +61,9 @@ class DisableAllFeaturesTest {
             "dungeonDoorHighlight",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
-            "rareDropAnimationEnabled",
+            "rareDropAnimationEnabled", "teleportWarpEnabled",
             // Utility and sounds
-            "exactSkillXpEnabled",
-            "alwaysSprintEnabled", "keepCursorPositionEnabled", "commandShortcutsEnabled", "inventoryButtonsEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
+            "alwaysSprintEnabled", "commandShortcutsEnabled", "inventoryButtonsEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
             "customSoundButtonClick", "customSoundHotbarScroll", "customSoundInventoryOpenClose",
             "customSoundInventoryClick", "customSoundRareDrop", "customSoundNotification",
             "customSoundPlayerHurt", "customSoundBlazeDeath", "customSoundZombieRemedy",
@@ -89,7 +87,8 @@ class DisableAllFeaturesTest {
             // Better Chat, Chat Peek, Chat Tabs
             "smoothChatEnabled", "chatOpenAnimationEnabled", "chatSmoothScrollEnabled", "chatBlurEnabled",
             "chatScrollbarEnabled", "chatMovable", "chatPeekInMenus", "chatTabsSendToChannel",
-            // Slayer timer and session HUD
+            // Slayer Drop Tracker, slayer timer and session HUD
+            "hideHypixelDropMessage",
             "slayerTimerChatEnabled", "slayerTimerHudEnabled", "slayerHudOnlyInSlayerAreas",
             "slayerHudPauseOutsideArea",
             // Player Model, Clean Blaze, Etherwarp Overlay, Own Name Tag, Player Scale
@@ -101,7 +100,9 @@ class DisableAllFeaturesTest {
             "itemSwingTranslationDisabled", "itemSwingAlwaysFinishEnabled",
             // Wide Health Bar, Always Sprint, Price History
             "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
-            "marketPriceHistoryRange", "exactSkillXpRounded",
+            "marketPriceHistoryRange",
+            // Teleport Effects
+            "teleportWarpEtherwarp", "teleportWarpStyle", "teleportWarpScreenEffect", "teleportWarpSmooth",
             // Chest Value: whether it shows, and how
             "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
             "chestValueX", "chestValueY",
@@ -113,12 +114,16 @@ class DisableAllFeaturesTest {
             "solveStartsWithTerminal", "solveSelectAllTerminal", "solveMelodyTerminal", "terminalHideOtherItems",
             "terminalPredictClicks", "terminalBlockWrongClicks", "terminalFirstClickGuard", "terminalRateGuard",
             "solveSimonSays", "solveArrowAlign", "solveLightsDevice", "solveSharpshooter",
+            // Player Requests and NPC Prompts: which kinds are raised
+            "playerRequestsParty", "playerRequestsTrade", "playerRequestsFriend", "playerRequestsGuild",
+            "playerRequestsDuel",
+            "npcPromptsDialogs", "npcPromptsAbiphone", "npcPromptsRequeue", "npcPromptsGg",
             // HUD style: how things look, like the fonts and colors
-            "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "farmingHudBlur", "farmingHudSmoothFont", "slayerTimerHudBlur",
+            "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "slayerTimerHudBlur",
             "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",
             "notificationBlur", "notificationSmoothFont", "menuFontInChat", "menuFontInScoreboard",
             // Values
-            "menuFont", "menuAccentColor", "nameTagBackgroundColor", "firstPersonFireOpacity",
+            "menuFont", "menuAccentColor", "firstPersonFireOpacity",
             "firstPersonFireHeight", "containerBgOpacity"
     );
 

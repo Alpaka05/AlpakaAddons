@@ -25,7 +25,11 @@ import java.util.concurrent.CompletableFuture;
  *
  * Kept in {@code config/alpaka-profile-history.json}, one entry per player and profile. Recent
  * snapshots are kept close together, older ones thinned to one a day, so a year of play stays a
- * few hundred kilobytes.
+ * few hundred kilobytes. Profiles nobody looked at for a year are dropped when the file is read.
+ *
+ * The file is read and written on a thread of its own: one load of the dashboard changes it several
+ * times in a few seconds (the profile, the museum, the networth, the visit), and those are written
+ * once, a moment after the last of them.
  */
 public final class ProfileHistory {
     private ProfileHistory() {}
@@ -41,6 +45,8 @@ public final class ProfileHistory {
         String profile;
         /** When a look last found this the player's selected profile; 0 for never. */
         long selectedAt;
+        /** When the player was last looked up by name, in the search or with /ap; 0 for never. */
+        long searchedAt;
         List<Snapshot> points = new ArrayList<>();
         /** When the dashboard was last opened on this profile, and the numbers then. */
         long lastViewed;
@@ -56,8 +62,21 @@ public final class ProfileHistory {
     static final long HOUR = 3_600_000L;
     static final long DAY = 24 * HOUR;
 
+    /** A profile not looked at for this long is dropped from the file. */
+    static final long FORGET_AFTER_MS = 365 * DAY;
+    /** How long a change waits for others before the file is written. */
+    private static final long SAVE_DELAY_MS = 3_000L;
+
     private static Map<String, Entry> entries;
     private static boolean dirty;
+    /** Whether a write is waiting for {@link #SAVE_DELAY_MS}. */
+    private static final java.util.concurrent.atomic.AtomicBoolean saveQueued = new java.util.concurrent.atomic.AtomicBoolean();
+    /** Reads and writes the file, one after the other, so an older write can never land last. */
+    private static final java.util.concurrent.ExecutorService FILES = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "Alpaka profile history");
+        t.setDaemon(true);
+        return t;
+    });
 
     static File file() {
         return FabricLoader.getInstance().getConfigDir().resolve("alpaka-profile-history.json").toFile();
@@ -74,6 +93,12 @@ public final class ProfileHistory {
                     if (loaded != null) {
                         loaded.values().removeIf(e -> e == null || e.points == null);
                         entries.putAll(loaded);
+                        // Profiles of other players looked at once stay forever otherwise, and only
+                        // a profile looked at again was ever thinned.
+                        if (prune(entries, System.currentTimeMillis())) {
+                            dirty = true;
+                            saveAsync();
+                        }
                     }
                 }
             } catch (IOException | JsonParseException e) {
@@ -82,6 +107,40 @@ public final class ProfileHistory {
             }
         }
         return entries;
+    }
+
+    /**
+     * Reads the file in the background, so neither the dashboard nor the name completion has to
+     * wait for it on the render thread later.
+     */
+    public static void preload() {
+        FILES.execute(ProfileHistory::entries);
+    }
+
+    /** Whether the file has been read. */
+    private static synchronized boolean loaded() {
+        return entries != null;
+    }
+
+    /**
+     * Thins every profile's history and drops the profiles not looked at for {@link #FORGET_AFTER_MS};
+     * returns whether anything changed.
+     */
+    static boolean prune(Map<String, Entry> entries, long now) {
+        boolean changed = entries.values().removeIf(e -> lastSeen(e) < now - FORGET_AFTER_MS);
+        for (Entry entry : entries.values()) {
+            int before = entry.points.size();
+            thin(entry.points, now);
+            changed |= entry.points.size() != before;
+        }
+        return changed;
+    }
+
+    /** When the profile was last looked at, by any of the ways that is noted. */
+    private static long lastSeen(Entry entry) {
+        long last = Math.max(entry.lastViewed, entry.selectedAt);
+        if (!entry.points.isEmpty()) last = Math.max(last, entry.points.get(entry.points.size() - 1).t());
+        return last;
     }
 
     static String key(String uuid, String profileId) {
@@ -160,6 +219,12 @@ public final class ProfileHistory {
         return lastProfile(entries(), player);
     }
 
+    /** {@link #lastProfile(String)}, read off the calling thread when the file isn't in yet. */
+    public static CompletableFuture<String> lastProfileAsync(String player) {
+        if (loaded()) return CompletableFuture.completedFuture(lastProfile(player));
+        return CompletableFuture.supplyAsync(() -> lastProfile(player), FILES);
+    }
+
     static String lastProfile(Map<String, Entry> entries, String player) {
         if (player == null) return null;
         String best = null;
@@ -188,27 +253,81 @@ public final class ProfileHistory {
         return selected != null ? selected : best;
     }
 
-    /** The players looked up before, by name, the last looked at first; for completing names. */
+    /**
+     * The players looked up before, by name, for completing names and the dashboard's recent list:
+     * the last searched for first, then those only ever opened some other way (the own profile from
+     * its key), newest data first. Asked on the render thread: until the file is read, none, and
+     * reading it starts.
+     */
     public static synchronized java.util.List<String> players() {
-        return players(entries());
+        if (entries == null) {
+            preload();
+            return java.util.List.of();
+        }
+        return players(entries);
     }
 
     static java.util.List<String> players(Map<String, Entry> entries) {
         Map<String, Long> newest = new HashMap<>();
+        Map<String, Long> searched = new HashMap<>();
         Map<String, String> names = new HashMap<>();
         for (Entry entry : entries.values()) {
             if (entry.player == null || entry.points.isEmpty()) continue;
             String key = entry.player.toLowerCase(java.util.Locale.ROOT);
+            // A snapshot's time is when Hypixel last saved the profile, not when it was looked at,
+            // so it only orders the players never searched for.
             long t = entry.points.get(entry.points.size() - 1).t();
             if (t >= newest.getOrDefault(key, Long.MIN_VALUE)) {
                 newest.put(key, t);
                 names.put(key, entry.player);
             }
+            searched.merge(key, entry.searchedAt, Math::max);
         }
         java.util.List<String> out = new ArrayList<>(names.keySet());
-        out.sort((a, b) -> Long.compare(newest.get(b), newest.get(a)));
+        out.sort((a, b) -> {
+            int bySearch = Long.compare(searched.get(b), searched.get(a));
+            return bySearch != 0 ? bySearch : Long.compare(newest.get(b), newest.get(a));
+        });
         out.replaceAll(names::get);
         return out;
+    }
+
+    /** Notes that the player was just looked up by name, for the order of {@link #players()}. */
+    public static synchronized void searched(String uuid) {
+        if (uuid == null) return;
+        long now = System.currentTimeMillis();
+        String prefix = uuid + ":";
+        boolean any = false;
+        for (Map.Entry<String, Entry> e : entries().entrySet()) {
+            if (e.getKey().startsWith(prefix)) {
+                e.getValue().searchedAt = now;
+                any = true;
+            }
+        }
+        if (any) {
+            dirty = true;
+            saveAsync();
+        }
+    }
+
+    /**
+     * The players offered under the dashboard's player search, from {@link #players()}: those whose
+     * name starts with what is typed come before those that only contain it, each kept in the order
+     * they were last looked at. The player on show is left out, since looking them up again changes
+     * nothing.
+     */
+    static java.util.List<String> recent(java.util.List<String> players, String typed, String shown, int max) {
+        String query = typed == null ? "" : typed.trim().toLowerCase(java.util.Locale.ROOT);
+        java.util.List<String> starting = new ArrayList<>();
+        java.util.List<String> containing = new ArrayList<>();
+        for (String player : players) {
+            if (shown != null && player.equalsIgnoreCase(shown)) continue;
+            String name = player.toLowerCase(java.util.Locale.ROOT);
+            if (name.startsWith(query)) starting.add(player);
+            else if (name.contains(query)) containing.add(player);
+        }
+        starting.addAll(containing);
+        return starting.size() > max ? java.util.List.copyOf(starting.subList(0, max)) : starting;
     }
 
     /** Notes that a look found this the player's selected profile, for {@link #lastProfile}. */
@@ -247,17 +366,54 @@ public final class ProfileHistory {
         return entry.previousViewedMetrics == null ? null : new Snapshot(entry.previousViewed, entry.previousViewedMetrics);
     }
 
+    /** Writes the file a moment from now, together with whatever else changes until then. */
     private static void saveAsync() {
-        CompletableFuture.runAsync(ProfileHistory::save);
+        if (!saveQueued.compareAndSet(false, true)) return;
+        java.util.concurrent.Executor later = CompletableFuture.delayedExecutor(SAVE_DELAY_MS, java.util.concurrent.TimeUnit.MILLISECONDS, FILES);
+        later.execute(() -> {
+            saveQueued.set(false);
+            save();
+        });
     }
 
-    static synchronized void save() {
-        if (!dirty || entries == null) return;
-        dirty = false;
-        try {
-            AtomicJsonFile.write(file(), GSON.toJson(entries));
-        } catch (IOException e) {
-            AlpakaAddons.LOGGER.warn("Couldn't save the profile history", e);
+    /** Writes what is waiting now, on exit; nothing if nothing changed. */
+    public static void flush() {
+        save();
+    }
+
+    /**
+     * Writes the file. Only a copy is taken under the lock: turning a year of snapshots into JSON
+     * and writing it to disk would keep the dashboard's graphs waiting meanwhile.
+     */
+    static void save() {
+        Map<String, Entry> copy;
+        synchronized (ProfileHistory.class) {
+            if (!dirty || entries == null) return;
+            dirty = false;
+            copy = new HashMap<>(entries.size());
+            for (Map.Entry<String, Entry> e : entries.entrySet()) copy.put(e.getKey(), copyOf(e.getValue()));
         }
+        // One writer at a time: a write queued later always carries what an earlier one did too.
+        synchronized (FILES) {
+            try {
+                AtomicJsonFile.write(file(), GSON.toJson(copy));
+            } catch (IOException e) {
+                AlpakaAddons.LOGGER.warn("Couldn't save the profile history", e);
+            }
+        }
+    }
+
+    /** A copy to write out; snapshots and their numbers are never changed once made, so they are shared. */
+    private static Entry copyOf(Entry entry) {
+        Entry out = new Entry();
+        out.player = entry.player;
+        out.profile = entry.profile;
+        out.selectedAt = entry.selectedAt;
+        out.points = new ArrayList<>(entry.points);
+        out.lastViewed = entry.lastViewed;
+        out.lastViewedMetrics = entry.lastViewedMetrics;
+        out.previousViewed = entry.previousViewed;
+        out.previousViewedMetrics = entry.previousViewedMetrics;
+        return out;
     }
 }

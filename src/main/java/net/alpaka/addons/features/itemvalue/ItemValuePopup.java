@@ -240,13 +240,28 @@ public final class ItemValuePopup {
         return null;
     }
 
-    /** The item's id found by its name, for one that carries no data; null while unknown. */
+    /**
+     * The item's id found by its name, for one that carries no data; null while unknown. Asked several
+     * times a frame: once SkyCofl's names have answered for this popup's item, the answer is kept.
+     */
     private static String idByName() {
+        if (idByNameStack == stack && idByNameScreen == screen) return idByName;
         MarketKind kind = Markets.context(screen);
         String name = SkyblockUtils.cleanColor(stack.getHoverName().getString());
         ItemTags.Tag tag = ItemTags.of(stack, name, kind == null ? MarketKind.BAZAAR : kind);
+        // A name not found is only final once the names are in; a failed load is tried again.
+        if (tag.lookup() == ItemTags.Lookup.FOUND || tag.lookup() == ItemTags.Lookup.UNKNOWN && ItemTags.namesLoaded()) {
+            idByNameStack = stack;
+            idByNameScreen = screen;
+            idByName = tag.tag();
+        }
         return tag.tag();
     }
+
+    /** What {@link #idByName} answered, and for which item and menu. */
+    private static ItemStack idByNameStack;
+    private static Screen idByNameScreen;
+    private static String idByName;
 
     // ---- The breakdown --------------------------------------------------------------------------
 

@@ -1,9 +1,13 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.viewmodel.EmptyHandViewmodel;
+import net.alpaka.addons.features.viewmodel.EquipAnimation;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
-import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
+import net.alpaka.addons.features.viewmodel.InspectAnimation;
+import net.alpaka.addons.features.viewmodel.ItemInspectFeature;
+import net.alpaka.addons.features.viewmodel.SwingTrailFeature;
 import net.alpaka.addons.utils.AlpakaPerf;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -135,6 +139,36 @@ public class FirstPersonHandsAndItemsRendererMixin {
         }
     }
 
+    /**
+     * Inspect Animation for the empty hand: turns the bare arm about the hand, before vanilla places
+     * it. A held item is turned in {@link #alpaka$inspectItem} instead.
+     */
+    @Inject(
+            method = "submitArmWithItem",
+            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", shift = At.Shift.AFTER)
+    )
+    private void alpaka$inspect(
+            PlayerRenderState player, FirstPersonHandsAndItemsRenderState hands, float tickProgress, float pitch,
+            InteractionHand hand, float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            SubmitNodeCollector queue, int light, CallbackInfo ci) {
+        if (hand != InteractionHand.MAIN_HAND) return;
+        InspectAnimation.Pose pose = ItemInspectFeature.currentPose();
+        InspectAnimation.Kind kind = ItemInspectFeature.currentKind();
+        if (pose == null || kind != InspectAnimation.Kind.HAND) return;
+        float side = alpaka$sideOf(player, hand) == HumanoidArm.RIGHT ? 1.0f : -1.0f;
+        float pivotX = side * (0.56f + kind.pivotX);
+        float pivotY = -0.52f + kind.pivotY;
+        float pivotZ = -0.72f + kind.pivotZ;
+        matrices.translate(side * pose.x() + pivotX, pose.y() + pivotY, pose.z() + pivotZ);
+        matrices.rotateDegrees(Axis.YP, side * pose.yaw());
+        matrices.rotateDegrees(Axis.XP, pose.pitch());
+        matrices.rotateDegrees(Axis.ZP, side * pose.roll());
+        // Mirroring the arm flips the axis's x and the turn's direction.
+        matrices.rotate(new org.joml.Quaternionf().rotationAxis(
+                side * pose.spin() * Mth.DEG_TO_RAD, side * kind.axisX, kind.axisY, kind.axisZ));
+        matrices.translate(-pivotX, -pivotY, -pivotZ);
+    }
+
     /** Which physical arm holds this hand's item, as vanilla works it out. */
     @org.spongepowered.asm.mixin.Unique
     private static HumanoidArm alpaka$sideOf(PlayerRenderState player, InteractionHand hand) {
@@ -165,6 +199,47 @@ public class FirstPersonHandsAndItemsRendererMixin {
         }
     }
 
+    /**
+     * Inspect Animation for a held item: turns it about its own middle as the inspect playing now
+     * says. Hooked just before the item is drawn, after the viewmodel's scale and rotation (above),
+     * so the middle and the item's length are found where the item really is: they are taken from
+     * the item's own first-person transform (see InspectAnimation.Kind) through the pose as it
+     * stands, and the turn is then put in front of everything, in the camera's frame. Found before
+     * the viewmodel changes instead, a smaller or turned item spun about a point off its middle.
+     */
+    @Inject(
+            method = "submitArmWithItem",
+            at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT)
+    )
+    private void alpaka$inspectItem(
+            PlayerRenderState player, FirstPersonHandsAndItemsRenderState hands, float tickProgress, float pitch,
+            InteractionHand hand, float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            SubmitNodeCollector queue, int light, CallbackInfo ci) {
+        if (hand != InteractionHand.MAIN_HAND) return;
+        InspectAnimation.Pose pose = ItemInspectFeature.currentPose();
+        InspectAnimation.Kind kind = ItemInspectFeature.currentKind();
+        if (pose == null || kind == null || kind == InspectAnimation.Kind.HAND) return;
+        float side = alpaka$sideOf(player, hand) == HumanoidArm.RIGHT ? 1.0f : -1.0f;
+        PoseStack.Pose last = matrices.last();
+        org.joml.Matrix4f matrix = last.pose();
+        // The left hand's item transform is the right one's mirrored in x.
+        org.joml.Vector3f middle = matrix.transformPosition(
+                side * kind.pivotX, kind.pivotY, kind.pivotZ, new org.joml.Vector3f());
+        org.joml.Vector3f length = matrix.transformDirection(
+                side * kind.axisX, kind.axisY, kind.axisZ, new org.joml.Vector3f()).normalize();
+        org.joml.Quaternionf turn = new org.joml.Quaternionf()
+                .rotateY(side * pose.yaw() * Mth.DEG_TO_RAD)
+                .rotateX(pose.pitch() * Mth.DEG_TO_RAD)
+                .rotateZ(side * pose.roll() * Mth.DEG_TO_RAD)
+                .mul(new org.joml.Quaternionf().rotationAxis(side * pose.spin() * Mth.DEG_TO_RAD, length));
+        org.joml.Matrix4f around = new org.joml.Matrix4f()
+                .translation(middle.x + side * pose.x(), middle.y + pose.y(), middle.z + pose.z())
+                .rotate(turn)
+                .translate(-middle.x, -middle.y, -middle.z);
+        matrix.mulLocal(around);
+        last.normal().set(new org.joml.Matrix3f().set(turn).mul(last.normal()));
+    }
+
     @Inject(
             method = "renderPlayerArm",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/FirstPersonHandsAndItemsRenderer;renderPlayerHand(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;ILnet/minecraft/world/entity/HumanoidArm;Lnet/minecraft/client/renderer/state/level/PlayerRenderState;)V")
@@ -176,12 +251,10 @@ public class FirstPersonHandsAndItemsRendererMixin {
             if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled) {
                 return;
             }
-            float scale = AlpakaConfig.instance.itemScale;
-            matrices.rotate(Axis.XP.rotationDegrees(AlpakaConfig.instance.itemRotationX));
-            boolean isLeftHand = (arm == HumanoidArm.LEFT);
-            matrices.rotate(Axis.YP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationY : AlpakaConfig.instance.itemRotationY));
-            matrices.rotate(Axis.ZP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationZ : AlpakaConfig.instance.itemRotationZ));
-            matrices.scale(scale, scale, scale);
+            // Scaled about the fist, not the model's origin below the screen, so the hand stays in
+            // view. Not turned: the item rotation points the arm off to the side.
+            EmptyHandViewmodel.apply(matrices.last().pose(), arm == HumanoidArm.LEFT ? -1.0f : 1.0f,
+                    AlpakaConfig.instance.itemScale);
         }
     }
 
@@ -228,13 +301,31 @@ public class FirstPersonHandsAndItemsRendererMixin {
         return active;
     }
 
+    /** Draws a hand in a slot switch along the chosen equip animation's path instead of vanilla's straight drop. */
+    @Inject(method = "applyItemArmTransform", at = @At("HEAD"), cancellable = true)
+    private void alpaka$equipAnimation(PoseStack poseStack, HumanoidArm arm, float equipProgress, CallbackInfo ci) {
+        if (EquipAnimation.apply(poseStack, arm, equipProgress)) ci.cancel();
+    }
+
     @Unique
     private static final String ALPAKA$ITEM_STATE_SUBMIT =
             "Lnet/minecraft/client/renderer/item/ItemStackRenderState;submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;III)V";
 
     /**
-     * Tells the motion blur which hand is about to be drawn and how far into its swing it is. Hooked
-     * at the renderItem call rather than at HEAD so the swing progress seen here is the one the
+     * Gives the swing trail the pose the arm is placed in, before anything of the arm or the item
+     * is added to it: the view with its bobbing and the sway of the hand.
+     */
+    @Inject(method = "submitArmWithItem", at = @At("HEAD"))
+    private void alpaka$noteArmPose(
+            PlayerRenderState player, FirstPersonHandsAndItemsRenderState hands, float tickProgress, float pitch,
+            InteractionHand hand, float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            SubmitNodeCollector queue, int light, CallbackInfo ci) {
+        SwingTrailFeature.noteArmPose(matrices.last().pose());
+    }
+
+    /**
+     * Tells the swing trail which hand is about to be drawn and how far into its swing it is.
+     * Hooked at the item's submit rather than at HEAD so the swing progress seen here is the one the
      * ModifyVariable above has already adjusted.
      */
     @Inject(
@@ -245,7 +336,7 @@ public class FirstPersonHandsAndItemsRendererMixin {
             PlayerRenderState player, FirstPersonHandsAndItemsRenderState hands, float tickProgress, float pitch,
             InteractionHand hand, float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
             SubmitNodeCollector queue, int light, CallbackInfo ci) {
-        ItemMotionBlurFeature.noteArmItem(hand, swingProgress);
+        SwingTrailFeature.noteArmItem(hand, swingProgress);
     }
 
     /**
@@ -264,15 +355,14 @@ public class FirstPersonHandsAndItemsRendererMixin {
     }
 
     // Everything the item state submits between these two points is one first-person hand item,
-    // which is how the hand item lighting and motion blur features tell those submits apart from
-    // every other item in the world.
+    // which is how the hand item lighting, starlight and swing trail features tell those submits
+    // apart from every other item in the world.
     @Inject(method = "submitHandsWithItems", at = @At("HEAD"))
     private void alpaka$forgetLastFrameHandItems(CallbackInfo ci) {
         // 26.2 builds the item groups per render phase, so there is no single "all items drawn"
         // point to clean up at; the start of the next hand render is the frame boundary instead.
         HandItemLightingFeature.endFrame();
         HandItemStarlightFeature.endFrame();
-        ItemMotionBlurFeature.endFrame();
     }
 
     @Inject(method = "submitArmWithItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT))
@@ -285,7 +375,7 @@ public class FirstPersonHandsAndItemsRendererMixin {
                 ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND : ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
         HandItemLightingFeature.beginHandItem(entity, context);
         HandItemStarlightFeature.beginHandItem(entity, context);
-        ItemMotionBlurFeature.beginHandItem(entity, context);
+        SwingTrailFeature.beginHandItem(entity, context);
     }
 
     @Inject(method = "submitArmWithItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT, shift = At.Shift.AFTER))
@@ -293,10 +383,8 @@ public class FirstPersonHandsAndItemsRendererMixin {
             PlayerRenderState player, FirstPersonHandsAndItemsRenderState hands, float tickProgress, float pitch,
             InteractionHand hand, float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
             SubmitNodeCollector collector, int light, CallbackInfo ci) {
-        // The ghosts are submitted while the lighting feature is still capturing, so they lose their
-        // shading along with the item they trail; starlight stops first, so they trail plain.
         HandItemStarlightFeature.endHandItem();
-        ItemMotionBlurFeature.endHandItem(collector);
+        SwingTrailFeature.endHandItem(collector);
         HandItemLightingFeature.endHandItem();
     }
 

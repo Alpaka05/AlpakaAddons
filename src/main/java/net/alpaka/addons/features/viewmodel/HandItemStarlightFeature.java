@@ -47,7 +47,7 @@ import java.util.Set;
  *
  * The hand item's submits are told apart the way {@link HandItemLightingFeature} does it: the
  * hand renderer flags its submit call, and every item submit created meanwhile is remembered by
- * identity. Motion blur ghosts are submitted after the flag is cleared, so they trail plain.
+ * identity.
  */
 public final class HandItemStarlightFeature {
 
@@ -97,7 +97,7 @@ public final class HandItemStarlightFeature {
         capturing = isEnabled() && context.firstPerson() && entity == Minecraft.getInstance().player;
     }
 
-    /** Called right after that submit call returns, before any motion blur ghost is submitted. */
+    /** Called right after that submit call returns. */
     public static void endHandItem() {
         capturing = false;
     }

@@ -207,6 +207,7 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
                 // Set off from the row like the fields beside it, since it sits on the same row color.
                 ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, leftW, FIELD_H, AlpakaStyle.FIELD_RADIUS,
                     if (hoverLeft) AlpakaStyle.ROW_SELECTED else AlpakaStyle.FIELD)
+                AlpakaStyle.fieldEdge(graphics, fieldX, fieldY, leftW, FIELD_H, hoverLeft)
                 ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(shown), fieldX + leftW / 2, fieldY + (FIELD_H - 8) / 2,
                     if (shortcut.key.isNullOrEmpty()) AlpakaStyle.TEXT_MUTED else AlpakaStyle.TEXT)
             }

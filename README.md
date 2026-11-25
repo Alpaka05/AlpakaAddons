@@ -67,7 +67,8 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Performance HUD:** the server's day, FPS, ping and TPS on one line, each part optional.
 - **World Age on Join:** a chat message with the server's age and when you last visited.
 - **Notifications** for mentions, boss spawns and party invites, in any corner or at the top centre.
-- **Party Invite Prompt:** accept with Y or dismiss with N.
+- **Player Requests:** accept a party invite or a trade, friend, guild or duel request with Y, or dismiss it with N.
+- **NPC Prompts:** answer NPC dialogs and Abiphone calls with a key instead of clicking the chat line.
 - **Scrollable Tooltips**, **Keep Item Name Visible** and adjustable container background opacity.
 - **Custom Main Menu** with a live Hypixel player count, and a **Custom Pause Menu**.
 
@@ -76,11 +77,11 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 <details>
 <summary><b>Visuals</b></summary>
 
-- **Item Viewmodel:** position, size, rotation and swing of the held item, with swing motion blur and three presets.
+- **Item Viewmodel:** position, size, rotation and swing of the held item, with three presets.
 - **Block Overlay:** custom outline and fill for the targeted block, with chroma and fade-in.
 - **Etherwarp Overlay:** shows where you will land, with a line to the target and optional custom warp sounds.
 - **Hide Mob Deaths**, **Hide Damage Flash**, **Clean Blaze** and **Only Show Crit Damage**.
-- **Fullbright**, **Zoom**, **Smooth Perspective** and an option to skip the front view.
+- **Fullbright**, **Zoom** and an option to skip the front view.
 
 </details>
 
@@ -149,7 +150,6 @@ Player heads load their skins from Mojang, as everywhere in Minecraft. With "All
 
 **Guardrails.**
 
-- Smooth perspective only eases between the vanilla camera views. There is no free look, and every transition ends exactly where vanilla's camera is.
 - Commands that delete or move your data (`/alpakaslayer reset`, `/alpakastats folder`, `/alpakapreset save`) work only when you type them. A clickable chat message cannot run them.
 - An update installs only after you confirm it on a screen. The chat button and `/alpakaupdate install` just open that screen, and the command works only when you type it.
 

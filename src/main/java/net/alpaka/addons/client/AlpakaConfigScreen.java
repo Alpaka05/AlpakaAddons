@@ -132,6 +132,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private ConfigOption openChoice = null;
     /** The keybind waiting for its new key or mouse button, if any. */
     private ConfigOption listeningKey = null;
+    /**
+     * Set when a key press bound a keybind. GLFW sends that key's character right after it, which
+     * must not start a search; cleared on the next frame, so a key without a character (F5) can't
+     * swallow a later one.
+     */
+    private boolean swallowBoundKeyChar = false;
 
     private final Scroll sidebarScroll = new Scroll();
     private final Scroll featureScroll = new Scroll();
@@ -443,6 +449,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         long now = System.currentTimeMillis();
         float deltaSec = Math.min(0.1f, (now - lastFrameMs) / 1000.0f);
         lastFrameMs = now;
+        swallowBoundKeyChar = false;
         hits.clear();
 
         if (setupMode && !isViewmodelSection()) setupMode = false;
@@ -474,6 +481,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         int bodyY = y + HEADER_H;
         int bodyH = h - HEADER_H;
 
+        drawZones(graphics, x, y, w, h, sideW, featX);
+
         hoveredTipThisFrame = null;
         hoveredTipTextThisFrame = null;
 
@@ -485,7 +494,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             drawSidebar(graphics, mouseX, mouseY, x, bodyY, sideW, bodyH, deltaSec);
             drawFeatures(graphics, mouseX, mouseY, featX, bodyY, featW, bodyH, deltaSec);
             graphics.disableScissor();
-            ModernGuiUtils.drawRect(graphics, detailX, bodyY + 4, 1, bodyH - 8, AlpakaStyle.DIVIDER);
+            // Inside a framed page the columns part with a plain hairline; a brighter divider would
+            // cut the page in two.
+            int divider = AlpakaStyle.HEADER != AlpakaStyle.PANEL ? AlpakaStyle.LINE : AlpakaStyle.DIVIDER;
+            ModernGuiUtils.drawRect(graphics, detailX, bodyY + 4, 1, bodyH - 8, divider);
         }
         drawDetails(graphics, mouseX, mouseY, detailX + 1, bodyY, detailW - 1, bodyH, deltaSec);
 
@@ -502,6 +514,28 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
         // Notices over the menu, where the HUD would hide them behind it.
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
+    }
+
+    /**
+     * The sidebar column and the header strip in their own tones, where the theme has them: each is
+     * the panel's rounded shape clipped to its part, so it keeps the window's outer corners. Where
+     * the two meet, the page inside gets a rounded corner of its own, so it reads as a sheet set
+     * into the frame rather than a notch cut out of it.
+     */
+    private void drawZones(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int sideW, int featX) {
+        int radius = AlpakaStyle.PANEL_RADIUS;
+        AlpakaStyle.headerBand(graphics, x, y, w);
+        boolean sidebar = AlpakaStyle.SIDEBAR != AlpakaStyle.PANEL && sideW > 0;
+        if (sidebar) {
+            graphics.enableScissor(x, y, x + sideW, y + h);
+            ModernGuiUtils.drawRoundedRect(graphics, x, y, sideW + radius * 2, h, radius, AlpakaStyle.SIDEBAR);
+            graphics.disableScissor();
+        }
+        if (sidebar && AlpakaStyle.HEADER != AlpakaStyle.PANEL && featX + radius * 2 <= x + w) {
+            int bodyY = y + HEADER_H;
+            ModernGuiUtils.drawRect(graphics, featX, bodyY, radius, radius, AlpakaStyle.HEADER);
+            ModernGuiUtils.drawRoundedRect(graphics, featX, bodyY, radius * 2, radius * 2, radius, AlpakaStyle.PANEL);
+        }
     }
 
     private Object hoveredTipThisFrame = null;
@@ -578,12 +612,18 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         int bx = x + this.font.width(version);
         int width = this.font.width(build);
         float scale = Math.min(1f, Math.max(0.5f, (right - bx) / (float) width));
+        // On a sidebar of its own tone a long build would run out over the next column's color,
+        // so there it is cut at the sidebar's edge instead.
+        int edge = right - 2;
+        boolean clip = AlpakaStyle.SIDEBAR != AlpakaStyle.PANEL && bx + width * scale > edge;
+        if (clip) graphics.enableScissor(bx, y - 1, edge, y + 10);
         graphics.pose().pushMatrix();
         // Bottom-aligned with the version, so the smaller text sits on the same line.
         graphics.pose().translate(bx, y + 8 * (1 - scale));
         graphics.pose().scale(scale, scale);
         graphics.text(this.font, build, 0, 0, AlpakaStyle.TEXT_MUTED, false);
         graphics.pose().popMatrix();
+        if (clip) graphics.disableScissor();
     }
 
     private void drawLogoAndSearch(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int featX, int featW) {
@@ -602,7 +642,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         boolean hover = inside(mouseX, mouseY, sx, sy, sw, sh);
         ModernGuiUtils.drawRoundedRect(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.FIELD);
         if (searchFocused) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.accentDim());
-        else if (hover) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.LINE);
+        // On a dark header frame a LINE outline would hardly show, so hover there takes the divider.
+        else if (hover) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2,
+                AlpakaStyle.HEADER != AlpakaStyle.PANEL ? AlpakaStyle.DIVIDER : AlpakaStyle.LINE);
 
         int tx = sx + 9;
         int ty = sy + (sh - 8) / 2;
@@ -703,18 +745,19 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 rowY += SECTION_ROW_H;
             }
             if (i < groups.size() - 1) {
-                ModernGuiUtils.drawRect(graphics, x + PAD, rowY + 4, w - PAD * 2, 1, AlpakaStyle.LINE);
+                ModernGuiUtils.drawRect(graphics, x + PAD, rowY + 4, w - PAD * 2, 1, AlpakaStyle.SIDEBAR_LINE);
                 rowY += 9;
             }
         }
-        AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, sidebarScroll.offset() > 0, sidebarScroll.offset() + 1 < sidebarScroll.max);
+        AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, sidebarScroll.offset() > 0, sidebarScroll.offset() + 1 < sidebarScroll.max,
+                AlpakaStyle.SIDEBAR);
         graphics.disableScissor();
     }
 
     private void drawHudEditorButton(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
         int bx = x + PAD;
         int bw = w - PAD * 2;
-        ModernGuiUtils.drawRect(graphics, bx, y - 9, bw, 1, AlpakaStyle.LINE);
+        ModernGuiUtils.drawRect(graphics, bx, y - 9, bw, 1, AlpakaStyle.SIDEBAR_LINE);
         boolean hover = inside(mouseX, mouseY, bx, y, bw, AlpakaStyle.BUTTON_H);
         AlpakaStyle.button(graphics, this.font, bx, y, bw, AlpakaStyle.BUTTON_H,
                 ellipsize("HUD Editor", bw - 8), hover, AlpakaStyle.ButtonKind.PLAIN);
@@ -1045,8 +1088,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 boolean fieldHover = hover && inside(mouseX, mouseY, fieldX, fieldY, fieldW, fieldH);
                 ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, fieldW, fieldH, AlpakaStyle.FIELD_RADIUS,
                         fieldHover && !listening ? AlpakaStyle.ROW_HOVER : AlpakaStyle.FIELD);
-                ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + fieldH - 1, fieldW - 6, 1,
-                        listening ? ModernGuiUtils.getAccentColor() : AlpakaStyle.LINE);
+                AlpakaStyle.fieldEdge(graphics, fieldX, fieldY, fieldW, fieldH, fieldHover && !listening);
+                AlpakaStyle.fieldUnderline(graphics, fieldX, fieldY, fieldW, fieldH, listening);
                 String value;
                 int color;
                 if (listening) {
@@ -1429,6 +1472,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        if (swallowBoundKeyChar) {
+            swallowBoundKeyChar = false;
+            return true;
+        }
         if (focusedText != null) {
             if (textEdit.insert(event.codepoint())) focusedText.setText(textEdit.getText());
             caretBlinkFrom = System.currentTimeMillis();
@@ -1436,6 +1483,17 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         }
         if (searchFocused) {
             if (search.insert((char) event.codepoint())) onSearchChanged();
+            caretBlinkFrom = System.currentTimeMillis();
+            return true;
+        }
+        // Typing with no field focused starts a search, so the menu can be searched right after it
+        // opens. The box isn't focused on open itself: then the first Escape would only leave it
+        // instead of closing the menu. A leading space types nothing, and in setup mode the search
+        // is folded away.
+        if (!setupMode && !Character.isWhitespace(event.codepoint())) {
+            searchFocused = true;
+            search.setCaret(search.getText().length());
+            if (search.insert(event.codepoint())) onSearchChanged();
             caretBlinkFrom = System.currentTimeMillis();
             return true;
         }
@@ -1449,6 +1507,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             // Escape unbinds, as in vanilla's Controls.
             ConfigOption option = listeningKey;
             listeningKey = null;
+            swallowBoundKeyChar = true;
             if (option.getKeyMapping() != null) {
                 AlpakaKeyBinds.set(option.getKeyMapping(), key == InputConstants.KEY_ESCAPE
                         ? InputConstants.UNKNOWN : InputConstants.getKey(event));

@@ -75,4 +75,56 @@ class ProfileHistoryTest {
         peach.selectedAt = 3_000;
         assertEquals("b135", ProfileHistory.lastProfile(entries, "alpakaa"));
     }
+
+    @Test
+    void pruningDropsProfilesNotLookedAtForAYearAndThinsTheRest() {
+        long now = 1_000 * ProfileHistory.DAY;
+        ProfileHistory.Entry stale = new ProfileHistory.Entry();
+        stale.points.add(at(now - 400 * ProfileHistory.DAY, 1));
+        ProfileHistory.Entry viewed = new ProfileHistory.Entry();
+        viewed.points.add(at(now - 400 * ProfileHistory.DAY, 1));
+        viewed.lastViewed = now - 10 * ProfileHistory.DAY;
+        ProfileHistory.Entry busy = new ProfileHistory.Entry();
+        // Hourly for 100 days, never thinned since nobody looked at it again.
+        for (long t = now - 100 * ProfileHistory.DAY; t <= now - 50 * ProfileHistory.DAY; t += ProfileHistory.HOUR) busy.points.add(at(t, t));
+        int before = busy.points.size();
+        java.util.Map<String, ProfileHistory.Entry> entries = new java.util.HashMap<>(java.util.Map.of(
+                "a:stale", stale, "a:viewed", viewed, "b:busy", busy));
+        assertTrue(ProfileHistory.prune(entries, now));
+        assertEquals(java.util.Set.of("a:viewed", "b:busy"), entries.keySet());
+        assertTrue(busy.points.size() < before / 4, "thinned to " + busy.points.size());
+        // Nothing more to do the second time.
+        assertTrue(!ProfileHistory.prune(entries, now));
+    }
+
+    @Test
+    void recentSearchesStartWithTheTypedNameAndLeaveOutTheShownPlayer() {
+        List<String> players = List.of("Alpakaa", "its_Eleminator", "Technoblade", "Galpo", "Alpine_Dev");
+        // Nothing typed: everyone, last looked at first, but not the player on show.
+        assertEquals(List.of("Alpakaa", "Technoblade", "Galpo", "Alpine_Dev"),
+                ProfileHistory.recent(players, "", "ITS_ELEMINATOR", 8));
+        // Names starting with it first, then those only containing it, case ignored.
+        assertEquals(List.of("Alpakaa", "Alpine_Dev", "Galpo"), ProfileHistory.recent(players, " alp", null, 8));
+        assertEquals(List.of("Alpakaa", "Alpine_Dev"), ProfileHistory.recent(players, "alp", null, 2));
+        assertEquals(List.of(), ProfileHistory.recent(players, "zzz", null, 8));
+    }
+
+    @Test
+    void playersSearchedForComeFirstByWhenTheyWereSearched() {
+        ProfileHistory.Entry own = entry("Alpakaa", 9_000, 0);
+        ProfileHistory.Entry first = entry("Marfy_", 5_000, 100);
+        ProfileHistory.Entry later = entry("by_Niklas", 1_000, 200);
+        ProfileHistory.Entry laterOtherProfile = entry("by_Niklas", 2_000, 0);
+        // Fresher data doesn't put a player ahead of one searched for later.
+        assertEquals(List.of("by_Niklas", "Marfy_", "Alpakaa"), ProfileHistory.players(Map.of(
+                "a:1", own, "m:1", first, "n:1", later, "n:2", laterOtherProfile)));
+    }
+
+    private static ProfileHistory.Entry entry(String player, long t, long searchedAt) {
+        ProfileHistory.Entry e = new ProfileHistory.Entry();
+        e.player = player;
+        e.searchedAt = searchedAt;
+        e.points.add(at(t, 1));
+        return e;
+    }
 }

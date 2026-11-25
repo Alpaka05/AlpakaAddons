@@ -1,5 +1,6 @@
 package net.alpaka.addons.client.gui;
 
+import net.alpaka.addons.compat.OptionalHooksPlugin;
 import org.lwjgl.util.freetype.FT_Face;
 
 import java.util.Set;
@@ -13,6 +14,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * font at one size; at menu sizes it is what made Nunito's curves lumpy and its letter spacing
  * uneven. Unhinted, the outline keeps its true shape and the anti-aliasing carries the edges -
  * the way macOS draws text. Vanilla's fonts and resource packs' keep the hinting they had.
+ *
+ * A glyph is measured in TrueTypeGlyphProvider and its bitmap rendered in NativeImage, and vanilla
+ * refuses a bitmap whose size differs from the measured one, with an exception. Both hooks are
+ * optional, so the faces stay hinted unless both of them applied.
  */
 public final class SmoothFontFaces {
     /** FreeType's FT_LOAD_NO_HINTING. */
@@ -21,6 +26,8 @@ public final class SmoothFontFaces {
     private static final Set<Long> FACES = ConcurrentHashMap.newKeySet();
     /** Set while one of the mod's font definitions is opening its face. */
     private static final ThreadLocal<Boolean> LOADING_OURS = ThreadLocal.withInitial(() -> false);
+    /** Whether both glyph hooks applied; asked once, at the first glyph of one of our faces. */
+    private static volatile Boolean hooksInPlace;
 
     private SmoothFontFaces() {}
 
@@ -43,6 +50,20 @@ public final class SmoothFontFaces {
 
     /** The load flags to use for a glyph of this face. */
     public static int loadFlags(FT_Face face, int flags) {
-        return face != null && FACES.contains(face.address()) ? flags | FT_LOAD_NO_HINTING : flags;
+        return face != null && FACES.contains(face.address()) && hooksInPlace() ? flags | FT_LOAD_NO_HINTING : flags;
+    }
+
+    /**
+     * Asked at a glyph load, by when both classes are loaded: TrueTypeGlyphProvider is loading the
+     * glyph, and NativeImage was in use long before the first font.
+     */
+    private static boolean hooksInPlace() {
+        Boolean known = hooksInPlace;
+        if (known == null) {
+            known = OptionalHooksPlugin.hooked("net.alpaka.addons.mixin.TrueTypeGlyphProviderMixin", "alpaka$loadUnhinted")
+                    && OptionalHooksPlugin.hooked("net.alpaka.addons.mixin.NativeImageFontMixin", "alpaka$renderUnhinted");
+            hooksInPlace = known;
+        }
+        return known;
     }
 }

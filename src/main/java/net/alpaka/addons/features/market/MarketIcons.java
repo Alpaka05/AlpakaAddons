@@ -92,8 +92,10 @@ public final class MarketIcons {
     }
 
     private static void magnifier(Pen p, int color) {
-        p.ring(6.8f, 6.8f, 3.6f, 5.0f, color);
-        p.line(10.4f, 10.4f, 14.2f, 14.2f, 2.0f, color);
+        p.ring(6.8f, 6.8f, 3.5f, 5.0f, color);
+        // The handle with round ends: cut square, it made the small glass look blocky.
+        p.line(10.6f, 10.6f, 13.9f, 13.9f, 2.2f, color);
+        p.disc(13.9f, 13.9f, 1.1f, color);
     }
 
     private static void sortBars(Pen p, int color) {

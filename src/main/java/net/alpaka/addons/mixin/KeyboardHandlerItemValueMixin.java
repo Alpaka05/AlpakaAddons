@@ -20,7 +20,8 @@ public class KeyboardHandlerItemValueMixin {
 
     @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
     private void alpaka$itemValueKeyOncePerPress(long window, int action, KeyEvent event, CallbackInfo ci) {
-        if (action == InputConstants.REPEAT && (ItemValueFeature.swallowsRepeat(event) || ChestValueFeature.swallowsRepeat(event))) {
+        if (action == InputConstants.REPEAT && (ItemValueFeature.swallowsRepeat(event) || ChestValueFeature.swallowsRepeat(event)
+                || net.alpaka.addons.features.storagepreview.StoragePreviewFreeze.swallowsRepeat(event))) {
             ci.cancel();
         }
     }

@@ -218,17 +218,27 @@ public final class ItemIcons {
 
     /**
      * Every SkyBlock item by id with its name, plain Minecraft items left out, for the inventory
-     * buttons' icon picker; null while the list loads or Network Features is off.
+     * buttons' icon picker and the rare drop animation; null while the list loads or Network Features
+     * is off. Built once per list: the rare drop animation asks every frame until it knows its item.
      */
     public static Map<String, String> skyblockItems() {
         Catalog loaded = catalog();
         if (loaded == null) return null;
+        SkyblockItems built = skyblockItems;
+        if (built != null && built.from() == loaded) return built.items();
         Map<String, String> out = new HashMap<>();
         for (String id : loaded.ids()) {
             if (!loaded.vanillaIds().contains(id)) out.put(id, loaded.names().getOrDefault(id, id));
         }
-        return out;
+        Map<String, String> items = java.util.Collections.unmodifiableMap(out);
+        skyblockItems = new SkyblockItems(loaded, items);
+        return items;
     }
+
+    /** {@link #skyblockItems()} and the list it was built from. */
+    private record SkyblockItems(Catalog from, Map<String, String> items) {}
+
+    private static volatile SkyblockItems skyblockItems;
 
     /** Whether Hypixel's list is there to answer {@link #name} and {@link #upgrades}; asking starts loading it. */
     public static boolean ready() {

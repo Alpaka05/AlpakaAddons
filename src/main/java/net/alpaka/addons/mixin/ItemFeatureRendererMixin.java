@@ -6,7 +6,6 @@ import com.mojang.blaze3d.vertex.QuadInstance;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
-import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.minecraft.client.renderer.feature.ItemFeatureRenderer;
 import net.minecraft.client.renderer.feature.RenderTypeFeatureRenderer;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
@@ -28,30 +27,17 @@ public abstract class ItemFeatureRendererMixin extends RenderTypeFeatureRenderer
     @Inject(method = "prepareSubmit", at = @At("HEAD"))
     private void alpaka$beginItem(ItemFeatureRenderer.Submit submit, CallbackInfo ci) {
         HandItemLightingFeature.beginDrawing(submit);
-        ItemMotionBlurFeature.beginDrawing(submit);
     }
 
     // Every quad goes through getVertexBuilder, a glinted one with a render type that draws the
     // glint along with the item. All of them get the swapped type. The outline pass is left alone:
-    // it draws the glow color, not the item texture. The motion blur picks first: a ghost gets its
-    // own translucent type, which the lighting swap then leaves alone; a real item passes through
-    // to the lighting swap unchanged.
+    // it draws the glow color, not the item texture.
     @ModifyArg(
             method = "prepareMainSubmit",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/feature/ItemFeatureRenderer;getVertexBuilder(Lnet/minecraft/client/renderer/rendertype/RenderType;)Lcom/mojang/blaze3d/vertex/VertexConsumer;")
     )
     private RenderType alpaka$pickPlainBuffer(RenderType renderType) {
-        return HandItemLightingFeature.pickRenderType(ItemMotionBlurFeature.pickRenderType(renderType));
-    }
-
-    // The quad color is set once per quad from the tint layers; a motion blur ghost gets its
-    // fade folded into the alpha here, which its translucent render type then blends with.
-    @ModifyArg(
-            method = "prepareMainSubmit",
-            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/QuadInstance;setColor(I)V")
-    )
-    private int alpaka$ghostQuadColor(int color) {
-        return ItemMotionBlurFeature.applyGhostAlpha(color);
+        return HandItemLightingFeature.pickRenderType(renderType);
     }
 
     // With "Replace Enchant Glint" the starlight stands in for vanilla's glint on the hand item: the

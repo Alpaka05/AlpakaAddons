@@ -146,6 +146,33 @@ class HypixelItemsTest {
     }
 
     @Test
+    void dyedLeatherKeepsItsOwnColor() throws IOException {
+        Nbt n = new Nbt();
+        n.begin(10, "");
+        n.begin(9, "i");
+        n.out.writeByte(10);
+        n.out.writeInt(2);
+        n.begin(2, "id").out.writeShort(299);
+        n.begin(1, "Count").out.writeByte(1);
+        n.begin(10, "tag");
+        n.begin(10, "display");
+        n.string("Name", "§6Superior Dragon Chestplate");
+        n.begin(3, "color").out.writeInt(0x4AA8FF);
+        n.end();
+        n.end();
+        n.end();
+        // Undyed: no color at all, so the item list's own color stays.
+        n.begin(2, "id").out.writeShort(299);
+        n.begin(1, "Count").out.writeByte(1);
+        n.end();
+        n.end();
+        n.end();
+        JsonObject items = Json.obj(HypixelItems.inventory(n.base64()), "items");
+        assertEquals(0x4AA8FF, Json.num(items.get("0"), "color", -1));
+        assertEquals(-1, Json.num(items.get("1"), "color", -1));
+    }
+
+    @Test
     void aSingleItemComesWithOrWithoutTheItemAroundIt() throws IOException {
         JsonElement piece = HypixelItems.single(oneItem("WISE_DRAGON_HELMET", "§6Wise Dragon Helmet"));
         assertEquals("WISE_DRAGON_HELMET", Json.str(piece, "skyblockId"));

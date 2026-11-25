@@ -27,6 +27,15 @@ public final class AlpakaStyle {
 
     public static int BACKDROP = 0x80000000;
     public static int PANEL = 0xFF131313;
+    /**
+     * The config menu's sidebar column and every window's header strip. Most themes keep them in
+     * the panel's own color; the Alpaka theme paints them in a darker roast, a frame around the
+     * lighter page, so its menus read in layers rather than as one flat brown.
+     */
+    public static int SIDEBAR = 0xFF131313;
+    public static int HEADER = 0xFF131313;
+    /** The hairlines on the sidebar: softer than {@link #LINE} where the sidebar is darker than the panel. */
+    public static int SIDEBAR_LINE = 0xFF262626;
     public static int LINE = 0xFF262626;
     public static int DIVIDER = 0xFF3A3A3A;
     public static int ROW = 0xFF1E1E1E;
@@ -69,20 +78,22 @@ public final class AlpakaStyle {
     public enum Theme {
         //     backdrop     panel        line         divider      row          row hover    row selected field
         //     text         text soft    text muted   track        toggle off   knob off     tooltip      knob ring
-        //     preview      danger       danger soft
+        //     preview      danger       danger soft  sidebar      header       sidebar line
         DARK(0x80000000, 0xFF131313, 0xFF262626, 0xFF3A3A3A, 0xFF1E1E1E, 0xFF242424, 0xFF2A2A2A, 0xFF1F1F1F,
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF3A3A3A, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF1A1A1A, 0xFFEDEDED,
-                0xFF0D0D0D, 0xFFE5534B, 0xFFC9726C),
+                0xFF0D0D0D, 0xFFE5534B, 0xFFC9726C, 0xFF131313, 0xFF131313, 0xFF262626),
         LIGHT(0x66000000, 0xFFF3F3F5, 0xFFDEDEE2, 0xFFC6C6CC, 0xFFE7E7EA, 0xFFE0E0E4, 0xFFD6D6DB, 0xFFE9E9EC,
                 0xFF1C1C21, 0xFF46464D, 0xFF85858D, 0xFFC6C6CC, 0xFF9C9CA3, 0xFF8A8A91, 0xFFFFFFFF, 0xFFFFFFFF,
-                0xFF2B2B2B, 0xFFD23B32, 0xFFC0564F),
+                0xFF2B2B2B, 0xFFD23B32, 0xFFC0564F, 0xFFF3F3F5, 0xFFF3F3F5, 0xFFDEDEE2),
         OLED(0xB0000000, 0xFF000000, 0xFF1A1A1A, 0xFF2C2C2C, 0xFF0D0D0D, 0xFF141414, 0xFF1B1B1B, 0xFF0F0F0F,
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF2E2E2E, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF0A0A0A, 0xFFEDEDED,
-                0xFF000000, 0xFFE5534B, 0xFFC9726C),
-        // Espresso browns with cream text, like the coffee themes of code editors.
-        ALPAKA(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF382C25,
-                0xFFF3E6D8, 0xFFD2BFAB, 0xFF9C8676, 0xFF54443A, 0xFF8A7464, 0xFFA48D7C, 0xFF32271F, 0xFFF3E6D8,
-                0xFF1A1411, 0xFFE5674F, 0xFFC98370);
+                0xFF000000, 0xFFE5534B, 0xFFC9726C, 0xFF000000, 0xFF000000, 0xFF1A1A1A),
+        // Espresso browns with cream text, like the coffee themes of code editors: a dark, slightly
+        // redder roast frames the windows (sidebar and header), the page inside is a milder mocha,
+        // and the cards on it are caramel.
+        ALPAKA(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF392B23, 0xFF42322A, 0xFF4B3A2F, 0xFF33261F,
+                0xFFF3E6D8, 0xFFD2BFAB, 0xFFA99482, 0xFF54443A, 0xFF9B8270, 0xFFB39B87, 0xFF32271F, 0xFFF3E6D8,
+                0xFF1A1411, 0xFFE5674F, 0xFFC98370, 0xFF1E1411, 0xFF1E1411, 0xFF32251F);
 
         private final int[] c;
 
@@ -122,6 +133,9 @@ public final class AlpakaStyle {
         PREVIEW = c[16];
         DANGER = c[17];
         DANGER_SOFT = c[18];
+        SIDEBAR = c[19];
+        HEADER = c[20];
+        SIDEBAR_LINE = c[21];
     }
 
     // ---- Metrics, in GUI pixels -----------------------------------------------------------------
@@ -215,8 +229,21 @@ public final class AlpakaStyle {
 
     /** The header: a title on the left, and the hairline that closes it off below. */
     public static void header(GuiGraphicsExtractor graphics, Font font, String title, int x, int y, int w) {
+        headerBand(graphics, x, y, w);
         title(graphics, font, title, x + PAD + 2, y);
         headerLine(graphics, x, y, w);
+    }
+
+    /**
+     * The header's own tone, for a theme that has one: the panel's rounded top in {@link #HEADER},
+     * cut off at the header's bottom. Drawn straight after {@link #panel}, before anything in the
+     * header.
+     */
+    public static void headerBand(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        if (HEADER == PANEL || w <= 0) return;
+        graphics.enableScissor(x, y, x + w, y + HEADER_H);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, HEADER_H + PANEL_RADIUS * 2, PANEL_RADIUS, HEADER);
+        graphics.disableScissor();
     }
 
     /** A window's title, centred in the height of the header whose top is {@code headerY}. */
@@ -224,8 +251,12 @@ public final class AlpakaStyle {
         graphics.text(font, GuiFont.text(title), x, headerY + (HEADER_H - 8) / 2, TEXT, false);
     }
 
-    /** The hairline that closes a header off, along the bottom of the header whose top is {@code y}. */
+    /**
+     * The hairline that closes a header off, along the bottom of the header whose top is {@code y}.
+     * A header in a tone of its own needs none: the change of color is the edge.
+     */
     public static void headerLine(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        if (HEADER != PANEL) return;
         ModernGuiUtils.drawRect(graphics, x + PAD, y + HEADER_H - 1, w - PAD * 2, 1, LINE);
     }
 
@@ -358,7 +389,8 @@ public final class AlpakaStyle {
     public static void textField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                  String text, String placeholder, boolean focused, boolean hover, long caretFrom) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover && !focused ? ROW_HOVER : FIELD);
-        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, focused ? ModernGuiUtils.getAccentColor() : LINE);
+        fieldEdge(graphics, x, y, w, h, hover && !focused);
+        fieldUnderline(graphics, x, y, w, h, focused);
         int ty = y + (h - 8) / 2;
         boolean empty = text.isEmpty();
         String shown = empty && !focused ? placeholder : text;
@@ -387,7 +419,8 @@ public final class AlpakaStyle {
             return;
         }
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, FIELD);
-        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, ModernGuiUtils.getAccentColor());
+        fieldEdge(graphics, x, y, w, h, false);
+        fieldUnderline(graphics, x, y, w, h, true);
         int ty = y + (h - 8) / 2;
         int tx = x + 5;
         int room = w - 10;
@@ -446,12 +479,32 @@ public final class AlpakaStyle {
     }
 
     /**
+     * The hairline round a field in a framed theme, whose fields sit only a shade off the page: it
+     * keeps their shape without making them brighter than the rows they sit in. A hovered field's
+     * edge lights up, as the search field's outline does.
+     */
+    public static void fieldEdge(GuiGraphicsExtractor graphics, int x, int y, int w, int h, boolean hover) {
+        if (HEADER != PANEL) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, FIELD_RADIUS, hover ? DIVIDER : LINE);
+    }
+
+    /**
+     * The line along a field's bottom: the accent while it has the focus (or listens for a key),
+     * a hairline at rest. A framed theme's edge already draws that hairline, so there it is left
+     * out at rest rather than doubled.
+     */
+    public static void fieldUnderline(GuiGraphicsExtractor graphics, int x, int y, int w, int h, boolean active) {
+        if (!active && HEADER != PANEL) return;
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, active ? ModernGuiUtils.getAccentColor() : LINE);
+    }
+
+    /**
      * A select field: the current value in a field, with a chevron that points down while its list
      * is open. Its list is drawn with {@link #choiceEntry}.
      */
     public static void selectField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                    String value, boolean open) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, FIELD);
+        fieldEdge(graphics, x, y, w, h, false);
         graphics.text(font, GuiFont.text(ellipsize(font, value, w - 16)), x + 4, y + (h - 8) / 2, TEXT, false);
         chevron(graphics, x + w - 6, y + h / 2, open, TEXT_SOFT);
     }
@@ -672,10 +725,16 @@ public final class AlpakaStyle {
      */
     public static void scrollFades(GuiGraphicsExtractor graphics, int x, int y, int w, int h,
                                    boolean above, boolean below) {
+        scrollFades(graphics, x, y, w, h, above, below, PANEL);
+    }
+
+    /** The scroll fades over a part of a window that has a background of its own, like the sidebar. */
+    public static void scrollFades(GuiGraphicsExtractor graphics, int x, int y, int w, int h,
+                                   boolean above, boolean below, int background) {
         int fade = 6;
-        int clear = PANEL & 0x00FFFFFF;
-        if (above) graphics.fillGradient(x, y, x + w, y + fade, PANEL, clear);
-        if (below) graphics.fillGradient(x, y + h - fade, x + w, y + h, clear, PANEL);
+        int clear = background & 0x00FFFFFF;
+        if (above) graphics.fillGradient(x, y, x + w, y + fade, background, clear);
+        if (below) graphics.fillGradient(x, y + h - fade, x + w, y + h, clear, background);
     }
 
     /** The text cut to fit the width, with an ellipsis where it was cut. */

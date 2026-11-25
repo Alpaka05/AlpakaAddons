@@ -12,12 +12,13 @@
   "key.alpaka.bz_back": "Bazaar: Back",
   "key.alpaka.bz_search": "Bazaar: Search",
   "key.alpaka.zoom": "Zoom",
+  "key.alpaka.inspect_item": "Inspect Item",
   "key.alpaka.chat_peek": "Chat Peek",
   "key.alpaka.command_wheel": "Command Wheel",
   "key.alpaka.inventory_hud": "Inventory HUD",
   "key.alpaka.item_value": "Item Value",
   "key.alpaka.chest_value": "Chest Value",
+  "key.alpaka.storage_preview_freeze": "Freeze Storage Preview",
   "key.alpaka.price_tooltip": "Price Tooltip",
-  "key.alpaka.item_search": "Item Search",
-  "key.alpaka.pest_finder_teleport": "Pest Finder: Teleport to Plot"
+  "key.alpaka.item_search": "Item Search"
 }

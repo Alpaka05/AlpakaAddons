@@ -111,6 +111,80 @@ class ProfileSourcesTest {
     }
 
     @Test
+    void aSinglePointAFifthOffIsDropped() {
+        // Soopy's real reading of one profile within three days.
+        List<ProfileHistory.Point> spike = List.of(new ProfileHistory.Point(1, 53.07), new ProfileHistory.Point(2, 68.65),
+                new ProfileHistory.Point(3, 53.10), new ProfileHistory.Point(4, 53.04));
+        assertEquals(List.of(53.07, 53.10, 53.04), ProfileSession.withoutDips(spike).stream().map(ProfileHistory.Point::value).toList());
+        // A step that stays is kept, even when it is a single look so far.
+        List<ProfileHistory.Point> step = List.of(new ProfileHistory.Point(1, 50), new ProfileHistory.Point(2, 65),
+                new ProfileHistory.Point(3, 66));
+        assertEquals(3, ProfileSession.withoutDips(step).size());
+    }
+
+    @Test
+    void networthSourcesAreStitchedNotInterleaved() {
+        long day = ProfileHistory.DAY;
+        // The best source every other day at 100, a worse one daily at 80 and a third at 120.
+        List<ProfileHistory.Point> best = new java.util.ArrayList<>();
+        List<ProfileHistory.Point> second = new java.util.ArrayList<>();
+        List<ProfileHistory.Point> third = new java.util.ArrayList<>();
+        for (int d = 10; d <= 20; d += 2) best.add(new ProfileHistory.Point(d * day, 100));
+        for (int d = 0; d <= 20; d++) second.add(new ProfileHistory.Point(d * day + day / 3, 80));
+        for (int d = 0; d <= 30; d++) third.add(new ProfileHistory.Point(d * day + day / 2, 120));
+        List<ProfileHistory.Point> line = ProfileSession.stitch(List.of(best, second, third), 4 * day);
+        // No zigzag: everything lands on the best source's level.
+        for (ProfileHistory.Point p : line) assertEquals(100.0, p.value(), 1e-9);
+        // Between the best one's points nothing else; before them the second source, after both the third.
+        assertEquals(6, line.stream().filter(p -> p.timeMs() >= 10 * day && p.timeMs() <= 20 * day).count());
+        assertEquals(10, line.stream().filter(p -> p.timeMs() < 10 * day).count());
+        assertEquals(10, line.stream().filter(p -> p.timeMs() > 21 * day).count());
+    }
+
+    @Test
+    void aStitchedGapMeetsTheLineAtBothEnds() {
+        long day = ProfileHistory.DAY;
+        List<ProfileHistory.Point> best = List.of(new ProfileHistory.Point(0, 100), new ProfileHistory.Point(10 * day, 200));
+        // The worse source reads half, and grows the same way in the gap.
+        List<ProfileHistory.Point> worse = List.of(new ProfileHistory.Point(0, 50), new ProfileHistory.Point(5 * day, 75),
+                new ProfileHistory.Point(10 * day, 100));
+        List<ProfileHistory.Point> line = ProfileSession.stitch(List.of(best, worse), 4 * day);
+        assertEquals(List.of(100.0, 150.0, 200.0), line.stream().map(ProfileHistory.Point::value).toList());
+    }
+
+    @Test
+    void aFarOffFirstPointIsDropped() {
+        // SkyKings' real first look at one profile.
+        List<ProfileHistory.Point> points = List.of(new ProfileHistory.Point(1, 117.9), new ProfileHistory.Point(2, 47.34),
+                new ProfileHistory.Point(3, 46.67), new ProfileHistory.Point(4, 49.07));
+        assertEquals(List.of(47.34, 46.67, 49.07), ProfileSession.withoutDips(points).stream().map(ProfileHistory.Point::value).toList());
+    }
+
+    @Test
+    void dailyWobbleIsEvenedOut() {
+        List<ProfileHistory.Point> points = List.of(new ProfileHistory.Point(1, 100), new ProfileHistory.Point(2, 108),
+                new ProfileHistory.Point(3, 101), new ProfileHistory.Point(4, 103), new ProfileHistory.Point(5, 110));
+        // Ends stay, so the scaling against today's networth still uses the newest reading.
+        assertEquals(List.of(100.0, 101.0, 103.0, 103.0, 110.0), ProfileSession.median3(points).stream().map(ProfileHistory.Point::value).toList());
+    }
+
+    @Test
+    void aGapIsOnlyMetWhereTheSourceHasReadingsNearby() {
+        long day = ProfileHistory.DAY;
+        // The line: 90 until day 0, 93 from day 200. The source starts only on day 25, at 50, and
+        // reaches 80 on day 200: the two disagree about the gap, and guessing the source's value on
+        // day 0 from its first reading would draw a cliff down after day 0.
+        List<ProfileHistory.Point> line = List.of(new ProfileHistory.Point(-day, 90), new ProfileHistory.Point(0, 90),
+                new ProfileHistory.Point(200 * day, 93));
+        List<ProfileHistory.Point> source = List.of(new ProfileHistory.Point(25 * day, 50),
+                new ProfileHistory.Point(100 * day, 65), new ProfileHistory.Point(200 * day, 80));
+        List<ProfileHistory.Point> out = ProfileSession.stitch(List.of(line, source), 4 * day);
+        // Scaled by the end it has a reading at, day 200: 93 / 80.
+        assertEquals(50 * 93.0 / 80, out.get(2).value(), 1e-9);
+        assertEquals(65 * 93.0 / 80, out.get(3).value(), 1e-9);
+    }
+
+    @Test
     void aStretchWithoutDataIsAGap() {
         long day = ProfileHistory.DAY;
         List<ProfileHistory.Point> points = List.of(new ProfileHistory.Point(0, 1), new ProfileHistory.Point(day, 2),

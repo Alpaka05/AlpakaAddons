@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.profile;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.utils.MouseButtons;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -9,6 +10,7 @@ import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.PloppAnimation;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.itemvalue.ItemValue;
 import net.alpaka.addons.features.market.Coins;
 import net.alpaka.addons.features.market.ItemIcons;
 import net.alpaka.addons.features.market.MarketIcons;
@@ -139,6 +141,21 @@ public class ProfileDashboardScreen extends Screen {
     private EditableText clickFrom = null;
     private boolean searchFocused = false;
     private long caretFrom = 0L;
+    /**
+     * The players looked up before, listed under the player search while it has the focus; the one
+     * picked with the arrow keys (null for none), and where the list is drawn.
+     */
+    private List<String> recent = List.of();
+    /**
+     * The query of a player looked up by name, noted as searched for once their profile is there;
+     * by query rather than session, so Try Again, which makes a new session, still counts.
+     */
+    private String searchedPending;
+    private String recentPicked;
+    private int recentX, recentY, recentW;
+    private static final int RECENT_MAX = 8;
+    private static final int RECENT_ROW_H = 16;
+    private static final int RECENT_LABEL_H = 14;
     /** A popover is open: the profile list, or the sites from the footer when {@link #sourceMenu}. */
     private boolean menuOpen = false;
     private boolean sourceMenu = false;
@@ -169,11 +186,17 @@ public class ProfileDashboardScreen extends Screen {
     private long tipSince;
     private int mx;
     private int my;
+    /** Where the mouse really is this frame, even while an open list hides it from what's under it. */
+    private int mouseRealX, mouseRealY;
     /** The content area, which clips and scrolls; hover and clicks outside it don't count. */
     private int clipX, clipY, clipW, clipH;
     private boolean clipping;
     private ResolvableProfile face;
     private String faceFor;
+    /** The player as a figure on the overview, made once per dashboard. */
+    private final ProfileFigure figure = new ProfileFigure();
+    /** Whether the right mouse button is down, which shows the figure without its armor. */
+    private boolean rightHeld;
 
     private record Hit(int x, int y, int w, int h, Runnable action) {}
 
@@ -197,6 +220,67 @@ public class ProfileDashboardScreen extends Screen {
         }
     }
 
+    // ---- Scrollbar ------------------------------------------------------------------------------
+
+    /** The thumb never gets shorter than this, so a page of hundreds of rows still has one to grab. */
+    private static final int SCROLL_MIN_THUMB = 16;
+    /** Where the track is, in the margin right of the content; {@code scrollbarShown} false while the page fits. */
+    private boolean scrollbarShown;
+    private int barX, barTop, barH, thumbH;
+    /** Dragged by the thumb, and where on it it was grabbed, from its top. */
+    private boolean scrollDragging;
+    private double scrollGrab;
+    /** 0 thin, 1 wide: the bar widens under the mouse and while it is dragged. */
+    private float barWide;
+
+    /**
+     * The scrollbar along the content's right edge, for pages that run long - a networth list
+     * folded out to hundreds of items, a wide search. Thin, and wider under the mouse; the thumb
+     * can be dragged, and a press on the track jumps there.
+     */
+    private void drawScrollbar(GuiGraphicsExtractor graphics, float deltaSec) {
+        scrollbarShown = scroll.max > 0;
+        if (!scrollbarShown) {
+            scrollDragging = false;
+            return;
+        }
+        barX = clipX + clipW - 8;
+        barTop = clipY + 4;
+        barH = clipH - 8;
+        double content = clipH + scroll.max;
+        thumbH = Math.min(barH, Math.max(SCROLL_MIN_THUMB, (int) Math.round(barH * (clipH / content))));
+        int thumbY = barTop + (int) Math.round((barH - thumbH) * (scroll.current / scroll.max));
+        boolean near = !menuOpen && AlpakaStyle.inside(mx, my, barX - 2, barTop, 10, barH);
+        barWide = PloppAnimation.interpolate(barWide, near || scrollDragging ? 1.0f : 0.0f, deltaSec, 18.0f);
+        int w = Math.round(2 + 2 * barWide);
+        int x = barX + 6 - w;
+        if (barWide > 0.05f) ModernGuiUtils.drawRoundedRect(graphics, x, barTop, w, barH, w / 2, MarketIcons.fade(AlpakaStyle.TRACK, 0.6f * barWide));
+        boolean onThumb = near && my >= thumbY && my < thumbY + thumbH;
+        int color = scrollDragging ? AlpakaStyle.TEXT : onThumb ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED;
+        ModernGuiUtils.drawRoundedRect(graphics, x, thumbY, w, thumbH, w / 2, color);
+    }
+
+    /** A press on the bar: grabs the thumb, or on the track moves the thumb's middle there first. */
+    private boolean pressScrollbar(double mouseX, double mouseY) {
+        if (!scrollbarShown || !AlpakaStyle.inside(mouseX, mouseY, barX - 2, barTop, 10, barH)) return false;
+        int thumbY = barTop + (int) Math.round((barH - thumbH) * (scroll.current / scroll.max));
+        if (mouseY >= thumbY && mouseY < thumbY + thumbH) {
+            scrollGrab = mouseY - thumbY;
+        } else {
+            scrollGrab = thumbH / 2.0;
+            dragScrollbar(mouseY);
+        }
+        scrollDragging = true;
+        return true;
+    }
+
+    private void dragScrollbar(double mouseY) {
+        double travel = Math.max(1, barH - thumbH);
+        double frac = Math.max(0, Math.min(1, (mouseY - scrollGrab - barTop) / travel));
+        // Straight there, without the glide of the wheel: the thumb stays under the mouse.
+        scroll.current = scroll.target = frac * scroll.max;
+    }
+
     /** Where Escape goes back to: the config, when it was opened from there. */
     private final Screen parent;
 
@@ -214,7 +298,10 @@ public class ProfileDashboardScreen extends Screen {
     /** As above, going back to {@code parent} when closed. */
     public static void open(String player, Screen parent) {
         Minecraft mc = Minecraft.getInstance();
-        mc.gui.setScreen(new ProfileDashboardScreen(session(player), parent));
+        ProfileDashboardScreen screen = new ProfileDashboardScreen(session(player), parent);
+        // Opening the own profile from its key or the config is no search; /ap with a name is.
+        if (player != null && !player.isBlank()) screen.searchedPending = screen.session.query;
+        mc.gui.setScreen(screen);
     }
 
     @Override
@@ -298,6 +385,11 @@ public class ProfileDashboardScreen extends Screen {
         lastFrameMs = now;
 
         session.sync();
+        // The name typed may be in any case, or no player at all: what counts is the profile that came.
+        if (searchedPending != null && searchedPending.equals(session.query) && session.data != null) {
+            ProfileHistory.searched(session.data.uuid);
+            searchedPending = null;
+        }
         int x = panelX();
         int y = panelY();
         int w = panelW();
@@ -305,12 +397,17 @@ public class ProfileDashboardScreen extends Screen {
         // With the profile list open, nothing under it lights up.
         mx = mouseX;
         my = mouseY;
+        mouseRealX = mouseX;
+        mouseRealY = mouseY;
 
         boolean pushed = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height);
         AlpakaStyle.panel(graphics, x, y, w, h);
+        AlpakaStyle.headerBand(graphics, x, y, w);
 
         drawHeader(graphics, x, y, w);
         AlpakaStyle.headerLine(graphics, x, y, w);
+        // Nothing under the list of recent players lights up while the mouse is on it.
+        if (overRecent(mouseX, mouseY)) mx = my = -10_000;
         float foldTarget = AlpakaConfig.instance.profileSidebarCollapsed ? 1.0f : 0.0f;
         sideFold = PloppAnimation.interpolate(sideFold, foldTarget, deltaSec, 16.0f);
         if (Math.abs(sideFold - foldTarget) < 0.002f) sideFold = foldTarget;
@@ -322,6 +419,9 @@ public class ProfileDashboardScreen extends Screen {
         clipY = y + HEADER_H;
         clipW = w - sideW - 1;
         clipH = h - HEADER_H - 4;
+        // The mark of a search result goes once its page, tab or profile isn't shown any more.
+        if (focused() && (session.data != focusData || !viewKey().equals(focusView))) dropMark();
+        focusY = Integer.MIN_VALUE;
         // A search is a view of its own, and every new query starts at the top.
         String detail = searching() ? "\u0000search:" + itemSearch.getText() : skillDetail;
         if (scrolledPage != page || !java.util.Objects.equals(scrolledDetail, detail)) {
@@ -341,15 +441,26 @@ public class ProfileDashboardScreen extends Screen {
         }
         clipping = false;
         scroll.max = Math.max(0, bottom + scroll.offset() - clipY - clipH + PAD);
+        // A search result's item or pet scrolls into the middle of the view, as far as the page lets
+        // it, once the view has settled: a sub-page found while drawing starts at the top next frame.
+        if (focusScroll && focusY != Integer.MIN_VALUE && !searching() && scrolledPage == page
+                && java.util.Objects.equals(scrolledDetail, skillDetail)) {
+            scroll.target = Math.max(0, Math.min(scroll.max, scroll.offset() + focusY + focusH / 2.0 - (clipY + clipH / 2.0)));
+            focusScroll = false;
+        }
         if (devScrollToEnd) scroll.current = scroll.target = scroll.max;
         scroll.update(deltaSec);
         AlpakaStyle.scrollFades(graphics, clipX, clipY, clipW, clipH, scroll.offset() > 0, scroll.offset() + 1 < scroll.max);
+        drawScrollbar(graphics, deltaSec);
         graphics.disableScissor();
 
         for (Runnable overlay : overlays) overlay.run();
         menuHitsFrom = hits.size();
         if (menuOpen && sourceMenu) drawSourceMenu(graphics);
         else if (menuOpen) drawProfileMenu(graphics, x, y, w);
+        mx = mouseX;
+        my = mouseY;
+        if (!recent.isEmpty()) drawRecent(graphics);
 
         if (hoveredTipKey != lastTipKey) {
             lastTipKey = hoveredTipKey;
@@ -440,6 +551,7 @@ public class ProfileDashboardScreen extends Screen {
 
         int sw = Math.min(120, Math.max(70, w / 6));
         int sx = rx - 8 - sw;
+        recent = List.of();
         if (sx > tx + 90) {
             boolean hoverSearch = AlpakaStyle.inside(mx, my, sx, by - 1, sw, AlpakaStyle.BUTTON_H);
             AlpakaStyle.textField(graphics, this.font, sx, by - 1, sw, AlpakaStyle.BUTTON_H, search, null, "Look up a player",
@@ -449,7 +561,46 @@ public class ProfileDashboardScreen extends Screen {
                 searchFocused = true;
                 caretFrom = System.currentTimeMillis();
             });
-            if (hoverSearch && !searchFocused) tip("search", "Type a player's name and press Enter to see their profile.");
+            if (hoverSearch && !searchFocused) tip("search", "Type a player's name and press Enter to see their profile. Click in to pick one you looked up before.");
+            if (searchFocused) {
+                recent = ProfileHistory.recent(ProfileHistory.players(), search.getText(), name, RECENT_MAX);
+                if (recentPicked != null && !recent.contains(recentPicked)) recentPicked = null;
+                int widest = 0;
+                for (String player : recent) widest = Math.max(widest, textW(player));
+                recentW = Math.max(sw, widest + 20);
+                // Under the field, from its left edge, unless that would run past the window.
+                recentX = Math.min(sx, x + w - PAD - recentW);
+                recentY = by - 1 + AlpakaStyle.BUTTON_H + 3;
+            }
+        }
+    }
+
+    private int recentH() {
+        return RECENT_LABEL_H + recent.size() * RECENT_ROW_H + 6;
+    }
+
+    private boolean overRecent(double mouseX, double mouseY) {
+        return !recent.isEmpty() && AlpakaStyle.inside(mouseX, mouseY, recentX, recentY, recentW, recentH());
+    }
+
+    /** The players looked up before, under the focused player search: a click looks one up again. */
+    private void drawRecent(GuiGraphicsExtractor graphics) {
+        int px = recentX;
+        int py = recentY;
+        int mw = recentW;
+        graphics.nextStratum();
+        AlpakaStyle.popover(graphics, px, py, mw, recentH());
+        // A click on the list between its rows keeps the field, rather than reaching what is under it.
+        hits.add(new Hit(px, py, mw, recentH(), () -> searchFocused = true));
+        text(graphics, "Recent", px + 10, py + 6, AlpakaStyle.TEXT_MUTED);
+        int ry = py + RECENT_LABEL_H + 2;
+        for (String player : recent) {
+            boolean hover = AlpakaStyle.inside(mx, my, px + 4, ry, mw - 8, RECENT_ROW_H);
+            boolean lit = hover || player.equals(recentPicked);
+            if (lit) ModernGuiUtils.drawRoundedRect(graphics, px + 4, ry, mw - 8, RECENT_ROW_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+            text(graphics, player, px + 10, ry + 4, lit ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            hits.add(new Hit(px + 4, ry, mw - 8, RECENT_ROW_H, () -> lookUp(player)));
+            ry += RECENT_ROW_H;
         }
     }
 
@@ -635,12 +786,14 @@ public class ProfileDashboardScreen extends Screen {
         } else {
             text(graphics, "Profile", x + PAD, rowY, AlpakaStyle.fade(AlpakaStyle.TEXT_MUTED, wide));
             // The magnifier just after the label opens the item search in its place.
+            // Ten pixels, centered on the label's capitals rather than its full height with the
+            // descenders, which sat it a pixel low: at eight the glass was too small to read as round.
             int gx = x + PAD + textW("Profile") + 4;
             int gy = rowY - 2;
-            boolean hoverGlass = open && AlpakaStyle.inside(mx, my, gx - 2, gy - 1, 13, 12) && !menuOpen;
-            MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, gx, gy + 1, 8,
+            boolean hoverGlass = open && AlpakaStyle.inside(mx, my, gx - 2, gy - 2, 14, 14) && !menuOpen;
+            MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, gx, gy, 10,
                     AlpakaStyle.fade(hoverGlass ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED, wide));
-            if (open) hits.add(new Hit(gx - 2, gy - 1, 13, 12, () -> {
+            if (open) hits.add(new Hit(gx - 2, gy - 2, 14, 14, () -> {
                 itemSearchOpen = true;
                 itemSearchFocused = true;
                 itemCaretFrom = System.currentTimeMillis();
@@ -845,19 +998,136 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null));
         tiles.add(new Tile(Metrics.SLAYER_TOTAL, "Slayer XP", Coins.compact(d.slayerXp), null));
         tiles.add(new Tile(Metrics.MAGICAL_POWER, "Magical Power", Coins.full(d.magicalPower), null));
-        tiles.add(new Tile(Metrics.PETS_MAXED, "Max Level Pets", d.petsMaxed + " / " + d.pets.size(), null));
+        tiles.add(coinsTile(d));
         tiles.add(d.farmingWeight > 0
                 ? new Tile(Metrics.FARMING_WEIGHT, "Farming Weight", Coins.full(Math.round(d.farmingWeight * 10) / 10.0), null)
-                : new Tile(Metrics.BANK, "Bank", Coins.compact(d.bank + d.personalBank), null));
+                : new Tile(Metrics.RUNS, "Dungeon Runs", Coins.full(d.totalRuns), null));
         y = tiles(graphics, tiles, x, y, w, 4);
 
+        // The player beside the graph, as profile viewers show them, the two as tall as each
+        // other; on the narrowest the graph alone.
         String metric = metricFor(Page.OVERVIEW);
-        y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y + 6, w, 130);
+        int chartH = 150;
+        int figureW = Math.max(100, Math.min(160, w / 5));
+        if (w - figureW - 6 >= 180) {
+            figureCard(graphics, d, x, y + 6, figureW, chartH, now);
+            y = chartCard(graphics, metric, metricMaxLevel(d, metric), x + figureW + 6, y + 6, w - figureW - 6, chartH);
+        } else {
+            y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y + 6, w, 130);
+        }
 
         int colW = (w - 6) / 2;
         int leftEnd = nextUp(graphics, d, x, y + 6, w >= 420 ? colW : w);
         int rightEnd = w >= 420 ? milestones(graphics, d, x + colW + 6, y + 6, colW, now) : milestones(graphics, d, x, leftEnd + 6, w, now);
         return Math.max(leftEnd, rightEnd);
+    }
+
+    /**
+     * The coins on hand: the purse and the bank side by side, and on hover the exact amounts, the
+     * bank split into the co-op's and the player's own when there are both.
+     */
+    private static Tile coinsTile(ProfileData d) {
+        double bank = d.bank + d.personalBank;
+        boolean split = d.bank > 0 && d.personalBank > 0;
+        String tip = "Purse: " + Coins.full(Math.floor(d.purse)) + " coins\nBank: " + Coins.full(Math.floor(bank)) + " coins"
+                + (split ? "\n  Co-op: " + Coins.full(Math.floor(d.bank)) + "\n  Personal: " + Coins.full(Math.floor(d.personalBank)) : "");
+        return pair("Purse", Coins.compact(d.purse), "Bank", Coins.compact(bank), null, tip);
+    }
+
+    /**
+     * The player in the armor they wear, with the pet they have out floating beside them, named in
+     * its tooltip. Outside a world, where no figure can be made, the face instead.
+     */
+    private void figureCard(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w, int h, long now) {
+        card(graphics, x, y, w, h);
+        ProfileData.Pet pet = null;
+        for (ProfileData.Pet p : d.pets) {
+            if (p.active()) {
+                pet = p;
+                break;
+            }
+        }
+        int petSize = w >= 130 ? 32 : 24;
+        int petW = pet != null ? petSize + 2 : 0;
+        int statusH = onlineStatus(graphics, x, y, w);
+        // The figure's box: what is left beside the pet and below the status.
+        int bx = x + 6;
+        int by = y + 8 + statusH;
+        int bw = w - 12 - petW;
+        int bh = h - 14 - statusH;
+        // A player in armor is a little over two blocks tall, turned towards the mouse, and about
+        // one wide, arms included.
+        int scale = (int) Math.max(8, Math.min(bh / 2.5f, bw / 1.1f));
+        String uuid = session.uuid != null ? session.uuid : d.uuid;
+        // Looks at the mouse wherever it is on the screen, the sidebar and header too, as the
+        // inventory's player does; only stopping at the content's edge read as a glitch. The real
+        // mouse, not the hover one: over the recent players that one is moved far off to the top left.
+        float lookX = mouseRealX;
+        float lookY = mouseRealY;
+        // Right mouse held on the card takes the armor off, to show the skin under it.
+        boolean bare = rightHeld && hover(x, y, w, h);
+        boolean drawn = uuid != null && figure.draw(graphics, uuid, bare ? null : session.inventory("armor"), bx, by, bx + bw, by + bh,
+                scale, lookX, lookY);
+        if (drawn && !bare && hover(bx, by, bw, bh)) {
+            // The piece under the mouse shows its tooltip, as in an inventory.
+            String slot = ProfileFigure.pieceAt(mx - (bx + bw / 2f), my - (by + bh / 2f), scale);
+            JsonElement armor = session.inventory("armor");
+            JsonElement item = slot == null || armor == null ? null : Json.obj(armor, "items").get(slot);
+            if (InventoryItems.present(item)) hoveredItem = item;
+        }
+        if (!drawn) {
+            ResolvableProfile profile = face();
+            int size = Math.min(48, Math.min(bw, bh) - 8);
+            if (profile != null && size > 8) {
+                net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(graphics, profile,
+                        bx + (bw - size) / 2, by + (bh - size) / 2, size);
+            }
+        }
+        if (pet == null) return;
+        ItemStack head = PetIcons.icon(pet);
+        // Floating up and down, a little over a second each way. Moved by fractions of a pixel, not
+        // whole ones: stepping a pixel at a time read as lag.
+        float bob = (float) Math.sin(now * (2 * Math.PI / 2600.0)) * petSize * 0.2f;
+        int px = x + w - 6 - petSize;
+        int py = by + Math.max((int) Math.ceil(petSize * 0.2f), (int) (bh / 2 - scale * 0.85f));
+        if (head != null) {
+            graphics.pose().pushMatrix();
+            graphics.pose().translate(px, py + bob);
+            graphics.pose().scale(petSize / 16f, petSize / 16f);
+            graphics.item(head, 0, 0);
+            graphics.pose().popMatrix();
+        }
+        // Over the whole height it floats through, so the tooltip doesn't flicker as it moves.
+        int reach = (int) Math.ceil(petSize * 0.2f);
+        if (hover(px, py - reach, petSize, petSize + 2 * reach)) {
+            String held = pet.heldItem() == null ? "" : "\nHeld Item: " + heldItem(pet.heldItem());
+            tip("figurePet", pet.name() + " · Lvl " + pet.level() + held + "\n" + petTip(pet));
+        }
+    }
+
+    /**
+     * Whether the player is online and where, at the top of the figure's card: a green dot and the
+     * island, or a grey one and "Offline". Nothing while it is asked for, or when it couldn't be. Returns the
+     * height it takes, which is kept either way so the figure doesn't jump when it arrives.
+     */
+    private int onlineStatus(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        int h = 14;
+        PlayerStatus status = session.status;
+        if (status == null) return h;
+        int ty = y + 8;
+        // The green dot says online, so the words can be the place alone: the card is narrow.
+        String where = status.where();
+        String label = AlpakaStyle.ellipsize(this.font, where != null ? where : status.online() ? "Online" : "Offline", w - 16 - 8);
+        int lw = 8 + textW(label);
+        int lx = x + (w - lw) / 2;
+        ModernGuiUtils.drawRoundedRect(graphics, lx, ty + 2, 5, 5, 2, status.online() ? ink(ProfileChart.UP) : AlpakaStyle.TEXT_MUTED);
+        text(graphics, label, lx + 8, ty, status.online() ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+        if (hover(x, y + 4, w, h)) {
+            tip("onlineStatus", status.online()
+                    ? "Online on Hypixel: " + status.fullWhere() + "."
+                    : "Offline, or hiding it: players can turn their online status off in Hypixel's API settings.");
+        }
+        return h;
     }
 
     /** A strip saying what grew since the previous visit; nothing on the first one. */
@@ -1081,7 +1351,19 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Tiles and graphs -----------------------------------------------------------------------
 
     /** A number on a card: its metric (for the sparkline and the graph; null for none), name and value. */
-    private record Tile(String metric, String label, String value, String note) {}
+    private record Tile(String metric, String label, String value, String note, Tile beside, String tip) {
+        Tile(String metric, String label, String value, String note) {
+            this(metric, label, value, note, null, null);
+        }
+    }
+
+    /**
+     * Two numbers in one card, side by side, each with its name; the note goes below both and the
+     * tip shows on hover. Without a graph: neither number has one of its own here.
+     */
+    private static Tile pair(String label, String value, String label2, String value2, String note, String tip) {
+        return new Tile(null, label, value, note, new Tile(null, label2, value2, null), tip);
+    }
 
     private int tiles(GuiGraphicsExtractor graphics, List<Tile> tiles, int x, int y, int w, int columns) {
         int cols = w < 380 ? Math.min(2, columns) : columns;
@@ -1099,8 +1381,35 @@ public class ProfileDashboardScreen extends Screen {
             boolean isSelected = clickable && t.metric().equals(selected != null ? selected : defaultMetric(page));
             ModernGuiUtils.drawRoundedRect(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
             if (isSelected) ModernGuiUtils.drawRoundedOutline(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
-            text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
-            value(graphics, t.value(), tx + 7, ty + 18, tw - 14);
+            if (t.beside() != null) {
+                // Two numbers, each with its name, side by side in the large cut when they fit:
+                // the second halfway, or just after the first when that is wider. Where they don't,
+                // the first stays large like every other card's number and the second goes on the
+                // small line below it, where the others show their change.
+                int inner = tw - 14;
+                int w1 = bigWidth(t.value());
+                int w2 = bigWidth(t.beside().value());
+                if (w1 + 10 + w2 <= inner) {
+                    int x2 = tx + 7 + Math.max(inner / 2, w1 + 10);
+                    int w2max = tx + tw - 7 - x2;
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), x2 - tx - 7 - 4), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.beside().label(), w2max), x2, ty + 6, AlpakaStyle.TEXT_MUTED);
+                    value(graphics, t.value(), tx + 7, ty + 18, w1);
+                    value(graphics, t.beside().value(), x2, ty + 18, w2max);
+                } else {
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
+                    value(graphics, t.value(), tx + 7, ty + 18, inner);
+                    String name = t.beside().label() + " ";
+                    text(graphics, name, tx + 7, ty + th - 13, AlpakaStyle.TEXT_MUTED);
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.beside().value(), inner - textW(name)), tx + 7 + textW(name),
+                            ty + th - 13, AlpakaStyle.TEXT_SOFT);
+                }
+            } else {
+                text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
+                value(graphics, t.value(), tx + 7, ty + 18, tw - 14);
+            }
+            // Keyed by the label: the tile is made anew every frame, the label stays the same string.
+            if (!clickable && t.tip() != null && hover(tx, ty, tw, th)) tip(t.label().intern(), t.tip());
             if (clickable && session.historyProblem() != null) {
                 // No history to show, so neither a change nor a line; the card still picks the graph,
                 // which then says what it needs.
@@ -1120,7 +1429,7 @@ public class ProfileDashboardScreen extends Screen {
                 String metric = t.metric();
                 hit(tx, ty, tw, th, () -> chosen.put(page, metric));
                 if (hover) {
-                    tip(t, (t.note() != null ? t.note() + " " : "") + (Double.isNaN(change) ? "No history in this range yet."
+                    tip(t.label().intern(), (t.note() != null ? t.note() + " " : "") + (Double.isNaN(change) ? "No history in this range yet."
                             : Metrics.delta(metric, change) + " over the last " + rangeWords() + ".") + " Click for its graph.");
                 }
             } else if (t.note() != null) {
@@ -2183,13 +2492,60 @@ public class ProfileDashboardScreen extends Screen {
 
     // ---- Networth -------------------------------------------------------------------------------
 
+    /** One category of the breakdown: what it is called and what it holds in all. */
     private record Part(String label, double value) {}
 
-    private record Valuable(String name, int count, String where, double value) {}
+    /** One part of an item's worth as the networth priced it, its {@link ItemValue.Group} by name. */
+    private record Piece(String group, String label, double count, double value) {}
+
+    /**
+     * One thing the networth counts - a stack in a slot, a pet, what a sack holds, an essence -
+     * with the category it is listed under, where it is in the game and what its worth is made
+     * of. {@code item} is the inventory item and {@code pet} the pet, to draw it and to open it
+     * where it is; null when there is none.
+     */
+    private record Holding(String name, String id, int count, String category, String where, double value,
+                           List<Piece> pieces, JsonElement item, ProfileData.Pet pet, String inventory) {}
+
+    /** A row of the item list: one holding, or every holding of the same item when they are grouped. */
+    private record Line(String key, List<Holding> holdings, double value, long count) {
+        Holding first() {
+            return holdings.get(0);
+        }
+    }
+
+    /** The rows the item list starts with, and how many more each "Show More" adds. */
+    private static final int WORTH_FIRST = 15;
+    private static final int WORTH_MORE = 25;
+    private static final int WORTH_ROW_H = 18;
+    /** The most parts and places an opened row lists before it sums up the rest. */
+    private static final int WORTH_DETAIL_MAX = 8;
+    /** Where the Value Spread card splits the items, from the top down. */
+    private static final double[] SPREAD_AT = {1e9, 1e8, 1e7, 1e6, 1e5, 0};
+    private static final String[] SPREAD_LABELS = {"1B+", "100M – 1B", "10M – 100M", "1M – 10M", "100k – 1M", "Under 100k"};
 
     private JsonElement breakdownFor;
+    private String breakdownProfile;
+    private int holdingsVersion;
     private List<Part> parts = List.of();
-    private List<Valuable> valuables = List.of();
+    private List<Holding> holdings = List.of();
+    /** The categories with something in them to list; Coins has nothing. */
+    private java.util.Set<String> holdingCategories = java.util.Set.of();
+    /** The category the insights and the item list are narrowed to, by its label; null for all of them. */
+    private String worthFilter;
+    /** Whether the item list puts the same item from different places on one row. */
+    private boolean worthGrouped;
+    private int worthShown = WORTH_FIRST;
+    /** The row of the item list that is folded open, by its key; null for none. */
+    private String worthOpen;
+    /** What the filter lets through, worked out again only when the filter, grouping or networth changes. */
+    private String worthFor;
+    private List<Holding> worthIn = List.of();
+    private List<Line> worthLines = List.of();
+    private double worthTotal;
+    private final double[] worthSources = new double[ItemValue.Group.values().length];
+    private final int[] spreadCounts = new int[SPREAD_AT.length];
+    private final double[] spreadValues = new double[SPREAD_AT.length];
 
     /** The networth, or what it is waiting for: it is worked out after the profile arrived, once prices are there. */
     private String networthText(ProfileData d) {
@@ -2223,10 +2579,61 @@ public class ProfileDashboardScreen extends Screen {
         }
         if (answer != breakdownFor) {
             breakdownFor = answer;
-            readBreakdown(answer);
+            readBreakdown(answer, d);
         }
 
-        // Where the networth sits: one bar split by category, and the categories listed under it.
+        y = worthBreakdown(graphics, x, y, w) + 6;
+        if (holdings.isEmpty()) return y;
+        narrowWorth();
+        if (worthIn.isEmpty()) return y;
+        int sourcesH = sourcesHeight();
+        int spreadH = spreadHeight();
+        if (w >= 380) {
+            // Side by side, as tall as the taller of them.
+            int lw = (w - 6) / 2;
+            int h = Math.max(sourcesH, spreadH);
+            worthSourcesCard(graphics, x, y, lw, h);
+            worthSpreadCard(graphics, x + lw + 6, y, w - lw - 6, h);
+            y += h + 6;
+        } else {
+            worthSourcesCard(graphics, x, y, w, sourcesH);
+            y += sourcesH + 6;
+            worthSpreadCard(graphics, x, y, w, spreadH);
+            y += spreadH + 6;
+        }
+        return worthItems(graphics, x, y, w);
+    }
+
+    /** The color a category has in the breakdown, which its items' bars in the list share. */
+    private int categoryColor(String label) {
+        for (int i = 0; i < parts.size(); i++) if (parts.get(i).label().equals(label)) return ink(PALETTE[i % PALETTE.length]);
+        return AlpakaStyle.TEXT_MUTED;
+    }
+
+    private static int groupColor(ItemValue.Group group) {
+        return ink(PALETTE[group.ordinal() % PALETTE.length]);
+    }
+
+    private static ItemValue.Group group(String name) {
+        try {
+            return ItemValue.Group.valueOf(name);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return ItemValue.Group.BASE;
+        }
+    }
+
+    private void filterWorth(String label) {
+        worthFilter = label == null || label.equals(worthFilter) ? null : label;
+        worthShown = WORTH_FIRST;
+        worthOpen = null;
+    }
+
+    private boolean hasHoldings(String label) {
+        return holdingCategories.contains(label);
+    }
+
+    /** Where the networth sits: one bar split by category, and the categories listed under it; a click narrows the page to one. */
+    private int worthBreakdown(GuiGraphicsExtractor graphics, int x, int y, int w) {
         double total = 0;
         for (Part p : parts) total += p.value();
         int listCols = w >= 380 ? 2 : 1;
@@ -2234,6 +2641,13 @@ public class ProfileDashboardScreen extends Screen {
         int h = 24 + 12 + rows * 13 + 6;
         card(graphics, x, y, w, h);
         text(graphics, "Breakdown", x + 8, y + 7, AlpakaStyle.TEXT);
+        if (worthFilter != null) {
+            String all = "Show All";
+            chip(graphics, all, x + w - 8 - textW(all) - 14, y + 4, false, () -> filterWorth(null));
+        } else if (!holdings.isEmpty()) {
+            String hint = "Click a category to look closer";
+            if (textW("Breakdown") + 24 + textW(hint) < w) text(graphics, hint, x + w - 8 - textW(hint), y + 7, AlpakaStyle.TEXT_MUTED);
+        }
         int bx = x + 8;
         int bw = w - 16;
         int by = y + 22;
@@ -2244,70 +2658,533 @@ public class ProfileDashboardScreen extends Screen {
             int from = bx + (int) Math.round(acc / total * bw);
             acc += p.value();
             int to = bx + (int) Math.round(acc / total * bw);
-            if (to - from >= 1) ModernGuiUtils.drawRect(graphics, from, by, to - from, 7, ink(PALETTE[i % PALETTE.length]));
+            if (to - from < 1) continue;
+            boolean chosen = worthFilter == null || worthFilter.equals(p.label());
+            int color = ink(PALETTE[i % PALETTE.length]);
+            ModernGuiUtils.drawRect(graphics, from, by, to - from, 7, chosen ? color : MarketIcons.fade(color, 0.3f));
+            if (hasHoldings(p.label())) {
+                String label = p.label();
+                if (hover(from, by - 2, to - from, 11)) tip(p, label + ": " + Coins.compact(p.value()) + ". Click to look closer.");
+                hit(from, by - 2, to - from, 11, () -> filterWorth(label));
+            }
         }
         int colW = (w - 16) / listCols;
         for (int i = 0; i < parts.size(); i++) {
             Part p = parts.get(i);
             int cx = x + 8 + (i % listCols) * colW;
             int cy = y + 36 + (i / listCols) * 13;
+            boolean clickable = hasHoldings(p.label());
+            boolean selected = p.label().equals(worthFilter);
+            boolean hover = clickable && hover(cx - 3, cy - 2, colW - 4, 12);
+            if (hover || selected) {
+                ModernGuiUtils.drawRoundedRect(graphics, cx - 3, cy - 2, colW - 4, 12, 3, selected ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW_HOVER);
+            }
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy + 2, 5, 5, 2, ink(PALETTE[i % PALETTE.length]));
-            text(graphics, p.label(), cx + 9, cy, AlpakaStyle.TEXT_SOFT);
+            int labelColor = selected ? AlpakaStyle.accent() : worthFilter != null ? AlpakaStyle.TEXT_MUTED : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+            text(graphics, p.label(), cx + 9, cy, labelColor);
             String value = Coins.compact(p.value());
             String share = String.format(Locale.US, "%.1f%%", total > 0 ? p.value() / total * 100 : 0);
             int right = cx + colW - 10;
             text(graphics, share, right - textW(share), cy, AlpakaStyle.TEXT_MUTED);
             text(graphics, value, right - textW(share) - 8 - textW(value), cy, AlpakaStyle.TEXT);
-        }
-        y += h + 6;
-
-        if (valuables.isEmpty()) return y;
-        int shown = Math.min(12, valuables.size());
-        h = 24 + shown * 14 + 4;
-        card(graphics, x, y, w, h);
-        text(graphics, "Most Valuable Items", x + 8, y + 7, AlpakaStyle.TEXT);
-        int ry = y + 22;
-        for (int i = 0; i < shown; i++) {
-            Valuable v = valuables.get(i);
-            String rank = (i + 1) + ".";
-            text(graphics, rank, x + 8, ry, AlpakaStyle.TEXT_MUTED);
-            String value = Coins.compact(v.value());
-            String where = v.where();
-            int right = x + w - 8;
-            text(graphics, value, right - textW(value), ry, AlpakaStyle.TEXT);
-            int whereX = right - textW(value) - 10 - textW(where);
-            text(graphics, where, whereX, ry, AlpakaStyle.TEXT_MUTED);
-            String name = v.name() + (v.count() > 1 ? " §8x" + v.count() : "");
-            int nameX = x + 24;
-            styled(graphics, name, nameX, ry, whereX - 8 - nameX);
-            ry += 14;
+            if (clickable) {
+                String label = p.label();
+                hit(cx - 3, cy - 2, colW - 4, 12, () -> filterWorth(label));
+            }
         }
         return y + h;
     }
 
-    private void readBreakdown(JsonElement answer) {
-        Map<String, Double> grouped = new LinkedHashMap<>();
-        List<Valuable> items = new ArrayList<>();
-        for (var category : Json.obj(answer, "categories").entrySet()) {
-            String label = categoryLabel(category.getKey());
-            double total = Json.num(category.getValue(), "total", 0);
-            if (total > 0) grouped.merge(label, total, Double::sum);
-            for (JsonElement item : Json.arr(category.getValue(), "items")) {
-                String name = Json.str(item, "item.name");
-                String id = Json.str(item, "item.skyblockId");
-                double value = Json.num(item, "networth", 0);
-                // Sacks and essence name raw ids; pets come without a name at all.
-                if (name == null || id == null || name.equals(id) || value <= 0
-                        || category.getKey().equals("sacks") || category.getKey().equals("essence")) continue;
-                items.add(new Valuable(name, (int) Json.num(item, "item.count", 1), label, value));
+    /** Works out what the filter lets through, the rows of the list and the sums of both insight cards. */
+    private void narrowWorth() {
+        String key = holdingsVersion + "/" + worthFilter + "/" + worthGrouped;
+        if (key.equals(worthFor)) return;
+        worthFor = key;
+        List<Holding> in = new ArrayList<>();
+        java.util.Arrays.fill(worthSources, 0);
+        java.util.Arrays.fill(spreadCounts, 0);
+        java.util.Arrays.fill(spreadValues, 0);
+        double total = 0;
+        Map<String, List<Holding>> byKey = new LinkedHashMap<>();
+        for (int i = 0; i < holdings.size(); i++) {
+            Holding h = holdings.get(i);
+            if (worthFilter != null && !worthFilter.equals(h.category())) continue;
+            in.add(h);
+            total += h.value();
+            if (h.pieces().isEmpty()) {
+                // Sacks and essence are the items themselves, nothing put on them.
+                worthSources[ItemValue.Group.BASE.ordinal()] += h.value();
+            } else {
+                for (Piece p : h.pieces()) worthSources[group(p.group()).ordinal()] += p.value();
+            }
+            int bucket = SPREAD_AT.length - 1;
+            for (int b = 0; b < SPREAD_AT.length; b++) {
+                if (h.value() >= SPREAD_AT[b]) {
+                    bucket = b;
+                    break;
+                }
+            }
+            spreadCounts[bucket]++;
+            spreadValues[bucket] += h.value();
+            byKey.computeIfAbsent(worthGrouped ? sameItem(h) : "#" + i, k -> new ArrayList<>()).add(h);
+        }
+        List<Line> lines = new ArrayList<>();
+        byKey.forEach((k, list) -> {
+            double value = 0;
+            long count = 0;
+            for (Holding h : list) {
+                value += h.value();
+                count += h.count();
+            }
+            lines.add(new Line(k, List.copyOf(list), value, count));
+        });
+        lines.sort((a, b) -> Double.compare(b.value(), a.value()));
+        worthIn = List.copyOf(in);
+        worthLines = List.copyOf(lines);
+        worthTotal = total;
+    }
+
+    /**
+     * What makes two holdings the same item for the grouped list: the same id under the same name.
+     * Enchanted books all share both, so for them the enchantments on them count too.
+     */
+    private static String sameItem(Holding h) {
+        String key = h.id() + "|" + SkyblockUtils.cleanColor(h.name());
+        if ("ENCHANTED_BOOK".equals(h.id())) {
+            StringBuilder b = new StringBuilder(key);
+            for (Piece p : h.pieces()) b.append('|').append(p.label());
+            return b.toString();
+        }
+        return key;
+    }
+
+    private int sourcesShown() {
+        int n = 0;
+        for (double v : worthSources) if (v > 0) n++;
+        return Math.max(1, n);
+    }
+
+    private int sourcesHeight() {
+        return 36 + sourcesShown() * 12 + 4;
+    }
+
+    /** What the items are worth as they are and what was put on them: stars, enchantments, gemstones and so on. */
+    private void worthSourcesCard(GuiGraphicsExtractor graphics, int x, int y, int w, int h) {
+        card(graphics, x, y, w, h);
+        text(graphics, "Value Sources", x + 8, y + 7, AlpakaStyle.TEXT);
+        double base = worthSources[ItemValue.Group.BASE.ordinal()];
+        if (worthTotal > base) {
+            String extra = "+" + Coins.compact(worthTotal - base) + " on top";
+            if (textW("Value Sources") + 24 + textW(extra) < w) {
+                text(graphics, extra, x + w - 8 - textW(extra), y + 7, AlpakaStyle.TEXT_MUTED);
+                if (hover(x + w - 8 - textW(extra), y + 5, textW(extra), 11)) {
+                    tip("worth-extra", "What was put on the items - stars, enchantments, gemstones, reforges and more - adds "
+                            + Coins.compact(worthTotal - base) + " to the " + Coins.compact(base) + " the items are worth as they are.");
+                }
             }
         }
-        List<Part> list = new ArrayList<>();
-        grouped.forEach((label, value) -> list.add(new Part(label, value)));
+        int bx = x + 8;
+        int bw = w - 16;
+        int by = y + 22;
+        ModernGuiUtils.drawRoundedRect(graphics, bx, by, bw, 7, 3, AlpakaStyle.TRACK);
+        double acc = 0;
+        ItemValue.Group[] groups = ItemValue.Group.values();
+        List<ItemValue.Group> order = new ArrayList<>();
+        for (ItemValue.Group g : groups) if (worthSources[g.ordinal()] > 0) order.add(g);
+        order.sort((a, b) -> Double.compare(worthSources[b.ordinal()], worthSources[a.ordinal()]));
+        for (ItemValue.Group g : order) {
+            int from = bx + (int) Math.round(acc / worthTotal * bw);
+            acc += worthSources[g.ordinal()];
+            int to = bx + (int) Math.round(acc / worthTotal * bw);
+            if (to - from >= 1) ModernGuiUtils.drawRect(graphics, from, by, to - from, 7, groupColor(g));
+        }
+        int ry = y + 36;
+        for (ItemValue.Group g : order) {
+            double v = worthSources[g.ordinal()];
+            ModernGuiUtils.drawRoundedRect(graphics, x + 8, ry + 2, 5, 5, 2, groupColor(g));
+            String share = String.format(Locale.US, "%.1f%%", v / worthTotal * 100);
+            String value = Coins.compact(v);
+            int right = x + w - 8;
+            text(graphics, share, right - textW(share), ry, AlpakaStyle.TEXT_MUTED);
+            int valueX = right - textW(share) - 8 - textW(value);
+            text(graphics, value, valueX, ry, AlpakaStyle.TEXT);
+            text(graphics, AlpakaStyle.ellipsize(this.font, g.title, valueX - 6 - (x + 17)), x + 17, ry, AlpakaStyle.TEXT_SOFT);
+            ry += 12;
+        }
+    }
+
+    private int spreadRows() {
+        int n = 0;
+        for (int c : spreadCounts) if (c > 0) n++;
+        return Math.max(1, n);
+    }
+
+    private int spreadHeight() {
+        return 24 + spreadRows() * 13 + 14;
+    }
+
+    /** How the worth is spread over cheap and dear items, and how much of it the few dearest hold. */
+    private void worthSpreadCard(GuiGraphicsExtractor graphics, int x, int y, int w, int h) {
+        card(graphics, x, y, w, h);
+        text(graphics, "Value Spread", x + 8, y + 7, AlpakaStyle.TEXT);
+        String counted = Coins.full(worthIn.size()) + (worthIn.size() == 1 ? " item" : " items");
+        if (textW("Value Spread") + 24 + textW(counted) < w) text(graphics, counted, x + w - 8 - textW(counted), y + 7, AlpakaStyle.TEXT_MUTED);
+        int labelW = 0;
+        int countW = 0;
+        int valueW = 0;
+        for (int b = 0; b < SPREAD_AT.length; b++) {
+            if (spreadCounts[b] == 0) continue;
+            labelW = Math.max(labelW, textW(SPREAD_LABELS[b]));
+            countW = Math.max(countW, textW("×" + Coins.full(spreadCounts[b])));
+            valueW = Math.max(valueW, textW(Coins.compact(spreadValues[b])));
+        }
+        int barX = x + 8 + labelW + 6;
+        int barW = x + w - 8 - valueW - 8 - countW - 8 - barX;
+        double most = 0;
+        for (double v : spreadValues) most = Math.max(most, v);
+        int ry = y + 22;
+        for (int b = 0; b < SPREAD_AT.length; b++) {
+            if (spreadCounts[b] == 0) continue;
+            text(graphics, SPREAD_LABELS[b], x + 8, ry, AlpakaStyle.TEXT_SOFT);
+            if (barW >= 16) {
+                ModernGuiUtils.drawRoundedRect(graphics, barX, ry + 2, barW, 5, 2, AlpakaStyle.TRACK);
+                int fill = (int) Math.round(spreadValues[b] / most * barW);
+                if (fill >= 2) ModernGuiUtils.drawRoundedRect(graphics, barX, ry + 2, fill, 5, 2, MarketIcons.fade(AlpakaStyle.TEXT_SOFT, 0.75f));
+            }
+            String count = "×" + Coins.full(spreadCounts[b]);
+            String value = Coins.compact(spreadValues[b]);
+            text(graphics, value, x + w - 8 - textW(value), ry, AlpakaStyle.TEXT);
+            text(graphics, count, x + w - 8 - valueW - 8 - textW(count), ry, AlpakaStyle.TEXT_MUTED);
+            if (hover(x + 4, ry - 2, w - 8, 12)) {
+                tip(SPREAD_LABELS[b], Coins.full(spreadCounts[b]) + (spreadCounts[b] == 1 ? " item" : " items") + " worth "
+                        + SPREAD_LABELS[b].replace("Under", "under") + " each, " + Coins.compact(spreadValues[b]) + " together ("
+                        + String.format(Locale.US, "%.1f%%", spreadValues[b] / worthTotal * 100) + ").");
+            }
+            ry += 13;
+        }
+        // How top-heavy it is: the share of the dearest item and of the ten dearest, one stack each.
+        double top1 = worthIn.isEmpty() ? 0 : maxValue(worthIn);
+        double top10 = topSum(worthIn, 10);
+        String line = "Top item " + percent(top1 / worthTotal) + " · Top 10 " + percent(top10 / worthTotal);
+        text(graphics, AlpakaStyle.ellipsize(this.font, line, w - 16), x + 8, y + h - 13, AlpakaStyle.TEXT_MUTED);
+    }
+
+    private static double maxValue(List<Holding> list) {
+        double max = 0;
+        for (Holding h : list) max = Math.max(max, h.value());
+        return max;
+    }
+
+    private static double topSum(List<Holding> list, int n) {
+        List<Double> values = new ArrayList<>(list.size());
+        for (Holding h : list) values.add(h.value());
+        values.sort(java.util.Comparator.reverseOrder());
+        double sum = 0;
+        for (int i = 0; i < Math.min(n, values.size()); i++) sum += values.get(i);
+        return sum;
+    }
+
+    private static String percent(double share) {
+        return String.format(Locale.US, "%.1f%%", share * 100);
+    }
+
+    /** Opens a holding where the dashboard shows it, or null where it doesn't (sacks, essence). */
+    private Runnable worthOpener(Holding h) {
+        if (h.pet() != null) return opener(Page.PETS, null, null, h.pet());
+        if (h.item() != null && h.inventory() != null) return opener(h.inventory(), h.item());
+        return null;
+    }
+
+    private static String openerTitle(Holding h) {
+        if (h.pet() != null) return "Show in Pets";
+        if ("museum".equals(h.inventory())) return "Show in Museum";
+        return "Show in Inventory";
+    }
+
+    /** The parts of a row's worth, those of every holding on it added up by what they are. */
+    private static List<Piece> pieces(Line line) {
+        if (line.holdings().size() == 1) return line.first().pieces();
+        Map<String, Piece> merged = new LinkedHashMap<>();
+        for (Holding h : line.holdings()) {
+            for (Piece p : h.pieces()) {
+                merged.merge(p.group() + "|" + p.label(), p,
+                        (a, b) -> new Piece(a.group(), a.label(), a.count() + b.count(), a.value() + b.value()));
+            }
+        }
+        List<Piece> out = new ArrayList<>(merged.values());
+        out.sort((a, b) -> Double.compare(b.value(), a.value()));
+        return out;
+    }
+
+    /** How tall the part a row folds open is. */
+    private int detailHeight(Line line) {
+        int h = 4;
+        List<Piece> pieces = pieces(line);
+        h += pieces.isEmpty() ? 12 : Math.min(WORTH_DETAIL_MAX, pieces.size()) * 12 + (pieces.size() > WORTH_DETAIL_MAX ? 12 : 0);
+        if (line.holdings().size() > 1) {
+            int places = line.holdings().size();
+            h += 6 + 12 + Math.min(WORTH_DETAIL_MAX, places) * 12 + (places > WORTH_DETAIL_MAX ? 12 : 0);
+        } else if (worthOpener(line.first()) != null) {
+            h += 4 + 15;
+        }
+        return h + 6;
+    }
+
+    /** Every item the networth counts, dearest first, a few at a time; a click on one shows what it is worth and where it is. */
+    private int worthItems(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        List<Line> lines = worthLines;
+        int shown = Math.min(worthShown, lines.size());
+        int h = 24;
+        for (int i = 0; i < shown; i++) {
+            h += WORTH_ROW_H;
+            if (lines.get(i).key().equals(worthOpen)) h += detailHeight(lines.get(i));
+        }
+        boolean more = lines.size() > shown;
+        boolean fewer = shown > WORTH_FIRST;
+        if (more || fewer) h += 22;
+        h += 4;
+        card(graphics, x, y, w, h);
+        String title = worthFilter == null ? "Items" : "Items · " + worthFilter;
+        text(graphics, title, x + 8, y + 7, AlpakaStyle.TEXT);
+        String group = "Group Same Items";
+        int groupX = x + w - 8 - textW(group) - 14;
+        chip(graphics, group, groupX, y + 4, worthGrouped, () -> {
+            worthGrouped = !worthGrouped;
+            worthOpen = null;
+        });
+        String count = Coins.full(lines.size()) + (lines.size() == 1 ? " item" : " items");
+        if (x + 8 + textW(title) + 12 + textW(count) < groupX - 8) text(graphics, count, groupX - 8 - textW(count), y + 7, AlpakaStyle.TEXT_MUTED);
+
+        double top = lines.isEmpty() ? 1 : lines.get(0).value();
+        double all = Math.max(1, worthTotalAll());
+        int rankW = textW(shown + ".");
+        String widest = "100.0%";
+        int shareW = textW(widest);
+        int ry = y + 22;
+        for (int i = 0; i < shown; i++) {
+            Line line = lines.get(i);
+            Holding first = line.first();
+            boolean open = line.key().equals(worthOpen);
+            boolean visible = ry <= clipY + clipH && ry + WORTH_ROW_H >= clipY;
+            if (visible) {
+                boolean hover = hover(x + 4, ry, w - 8, WORTH_ROW_H - 1);
+                if (hover || open) {
+                    ModernGuiUtils.drawRoundedRect(graphics, x + 4, ry, w - 8, WORTH_ROW_H - 1, AlpakaStyle.ROW_RADIUS,
+                            open ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW_HOVER);
+                }
+                String rank = (i + 1) + ".";
+                text(graphics, rank, x + 8 + rankW - textW(rank), ry + 5, AlpakaStyle.TEXT_MUTED);
+                int ix = x + 8 + rankW + 4;
+                ItemStack stack = first.item() != null ? InventoryItems.stack(first.item())
+                        : first.pet() != null ? PetIcons.icon(first.pet())
+                        : ItemIcons.forItem(first.id(), SkyblockUtils.cleanColor(first.name()));
+                if (stack != null && !stack.isEmpty()) graphics.item(stack, ix, ry);
+                int right = x + w - 18;
+                AlpakaStyle.chevron(graphics, x + w - 12, ry + 8, open, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED);
+                String share = percent(line.value() / all);
+                text(graphics, share, right - textW(share), ry + 5, AlpakaStyle.TEXT_MUTED);
+                String value = Coins.compact(line.value());
+                int valueX = right - shareW - 8 - textW(value);
+                text(graphics, value, valueX, ry + 5, AlpakaStyle.TEXT);
+                String where = line.holdings().size() > 1 ? line.holdings().size() + " places" : first.where();
+                int whereX = valueX - 10 - textW(where);
+                int nameX = ix + 20;
+                boolean roomForWhere = whereX - nameX > 60;
+                if (roomForWhere) text(graphics, where, whereX, ry + 5, AlpakaStyle.TEXT_MUTED);
+                int nameMax = (roomForWhere ? whereX : valueX) - 8 - nameX;
+                String amount = line.count() > 1 ? "×" + Coins.full(line.count()) : "";
+                int amountW = amount.isEmpty() ? 0 : textW(amount) + 5;
+                styled(graphics, first.name(), nameX, ry + 3, nameMax - amountW);
+                if (!amount.isEmpty()) {
+                    int nameW = Math.min(nameMax - amountW, this.font.width(GuiFont.text(first.name())));
+                    text(graphics, amount, nameX + nameW + 5, ry + 3, AlpakaStyle.TEXT_MUTED);
+                }
+                // How it compares with the dearest row, in its category's color.
+                int barMax = Math.max(0, nameMax);
+                int fill = (int) Math.round(line.value() / top * barMax);
+                if (fill >= 1) ModernGuiUtils.drawRect(graphics, nameX, ry + 13, fill, 1, MarketIcons.fade(categoryColor(first.category()), 0.7f));
+                String key = line.key();
+                hit(x + 4, ry, w - 8, WORTH_ROW_H - 1, () -> worthOpen = key.equals(worthOpen) ? null : key);
+                if (hover && first.item() != null) hoveredItem = first.item();
+            }
+            ry += WORTH_ROW_H;
+            if (open) ry = worthDetail(graphics, line, x + 4, ry, w - 8);
+        }
+        if (more || fewer) {
+            int cx = x + 8;
+            int cy = ry + 4;
+            if (more) {
+                int next = Math.min(WORTH_MORE, lines.size() - shown);
+                cx += chip(graphics, "Show " + next + " More", cx, cy, false, () -> worthShown = shown + next) + 4;
+                cx += chip(graphics, "Show All (" + Coins.full(lines.size()) + ")", cx, cy, false, () -> worthShown = Integer.MAX_VALUE) + 4;
+            }
+            if (fewer) {
+                chip(graphics, "Show Fewer", cx, cy, false, () -> {
+                    worthShown = WORTH_FIRST;
+                    worthOpen = null;
+                });
+            }
+        }
+        return y + h;
+    }
+
+    /** The networth over everything, which each row's share is of, whatever the filter. */
+    private double worthTotalAll() {
+        double total = 0;
+        for (Part p : parts) total += p.value();
+        return total;
+    }
+
+    /** A row folded open: what its worth is made of, and where it is. */
+    private int worthDetail(GuiGraphicsExtractor graphics, Line line, int x, int y, int w) {
+        int h = detailHeight(line);
+        boolean visible = y <= clipY + clipH && y + h >= clipY;
+        if (!visible) return y + h;
+        ModernGuiUtils.drawRect(graphics, x + 10, y + 2, 1, h - 6, AlpakaStyle.LINE);
+        int lx = x + 18;
+        int right = x + w - 14;
+        int ry = y + 4;
+        List<Piece> pieces = pieces(line);
+        if (pieces.isEmpty()) {
+            double each = line.value() / Math.max(1, line.count());
+            String text = Coins.full(line.count()) + " × " + Coins.compact(each) + " each";
+            text(graphics, text, lx, ry, AlpakaStyle.TEXT_SOFT);
+            ry += 12;
+        } else {
+            int n = Math.min(WORTH_DETAIL_MAX, pieces.size());
+            for (int i = 0; i < n; i++) {
+                Piece p = pieces.get(i);
+                ItemValue.Group g = group(p.group());
+                ModernGuiUtils.drawRoundedRect(graphics, lx, ry + 2, 5, 5, 2, groupColor(g));
+                String share = percent(p.value() / line.value());
+                String value = Coins.compact(p.value());
+                text(graphics, share, right - textW(share), ry, AlpakaStyle.TEXT_MUTED);
+                int valueX = right - textW("100.0%") - 8 - textW(value);
+                text(graphics, value, valueX, ry, AlpakaStyle.TEXT);
+                String label = p.label() + (p.count() > 1 ? " ×" + Coins.full(p.count()) : "");
+                String what = g == ItemValue.Group.BASE ? "" : g.title + " · ";
+                text(graphics, AlpakaStyle.ellipsize(this.font, what + label, valueX - 8 - (lx + 9)), lx + 9, ry,
+                        g == ItemValue.Group.BASE ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+                ry += 12;
+            }
+            if (pieces.size() > n) {
+                double rest = 0;
+                for (int i = n; i < pieces.size(); i++) rest += pieces.get(i).value();
+                String more = (pieces.size() - n) + " more parts";
+                text(graphics, more, lx + 9, ry, AlpakaStyle.TEXT_MUTED);
+                String value = Coins.compact(rest);
+                text(graphics, value, right - textW("100.0%") - 8 - textW(value), ry, AlpakaStyle.TEXT_MUTED);
+                ry += 12;
+            }
+        }
+        if (line.holdings().size() > 1) {
+            ry += 6;
+            text(graphics, "Where", lx, ry, AlpakaStyle.TEXT);
+            ry += 12;
+            List<Holding> places = new ArrayList<>(line.holdings());
+            places.sort((a, b) -> Double.compare(b.value(), a.value()));
+            int n = Math.min(WORTH_DETAIL_MAX, places.size());
+            for (int i = 0; i < n; i++) {
+                Holding place = places.get(i);
+                Runnable open = worthOpener(place);
+                boolean hover = open != null && hover(lx - 3, ry - 2, right - lx + 6, 12);
+                if (hover) ModernGuiUtils.drawRoundedRect(graphics, lx - 3, ry - 2, right - lx + 6, 12, 3, AlpakaStyle.ROW_HOVER);
+                String value = Coins.compact(place.value());
+                text(graphics, value, right - textW("100.0%") - 8 - textW(value), ry, AlpakaStyle.TEXT);
+                String label = place.where() + (place.count() > 1 ? " ×" + Coins.full(place.count()) : "");
+                text(graphics, AlpakaStyle.ellipsize(this.font, label, right - textW("100.0%") - 16 - textW(value) - lx), lx, ry,
+                        hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_SOFT);
+                if (open != null) {
+                    hit(lx - 3, ry - 2, right - lx + 6, 12, open);
+                    if (hover) tip(place, "Click to show it there.");
+                }
+                ry += 12;
+            }
+            if (places.size() > n) {
+                text(graphics, "and " + (places.size() - n) + " more places", lx, ry, AlpakaStyle.TEXT_MUTED);
+            }
+        } else {
+            Runnable open = worthOpener(line.first());
+            if (open != null) chip(graphics, openerTitle(line.first()), lx, ry + 4, false, open);
+        }
+        return y + h;
+    }
+
+    private void readBreakdown(JsonElement answer, ProfileData d) {
+        if (!d.profileId.equals(breakdownProfile)) {
+            // Another profile: the list starts over.
+            breakdownProfile = d.profileId;
+            worthFilter = null;
+            worthShown = WORTH_FIRST;
+            worthOpen = null;
+        }
+        Map<String, Double> grouped = new LinkedHashMap<>();
+        List<Holding> list = new ArrayList<>();
+        List<ProfileData.Pet> petsLeft = new ArrayList<>(d.pets);
+        for (var category : Json.obj(answer, "categories").entrySet()) {
+            String key = category.getKey();
+            String label = categoryLabel(key);
+            double total = Json.num(category.getValue(), "total", 0);
+            if (total > 0) grouped.merge(label, total, Double::sum);
+            for (JsonElement e : Json.arr(category.getValue(), "items")) {
+                double value = Json.num(e, "networth", 0);
+                String id = Json.str(e, "item.skyblockId");
+                if (!(value > 0) || id == null) continue;
+                int count = Math.max(1, (int) Json.num(e, "item.count", 1));
+                List<Piece> pieces = new ArrayList<>();
+                for (JsonElement p : Json.arr(e, "parts")) {
+                    pieces.add(new Piece(Json.str(p, "group"), String.valueOf(Json.str(p, "label")), Json.num(p, "count", 1), Json.num(p, "value", 0)));
+                }
+                pieces.sort((a, b) -> Double.compare(b.value(), a.value()));
+                String inventory = Json.str(e, "inventory");
+                String slot = Json.str(e, "slot");
+                JsonElement item = inventory == null || slot == null ? null : Json.obj(session.inventory(inventory), "items").get(slot);
+                if (item != null && !item.isJsonObject()) item = null;
+                ProfileData.Pet pet = null;
+                String name;
+                String where;
+                switch (key) {
+                    case "pets" -> {
+                        pet = takePet(petsLeft, id, Json.str(e, "tier"), (int) Json.num(e, "level", -1));
+                        name = pet != null ? "§7[Lvl " + pet.level() + "] " + rarityCode(pet.tier()) + pet.name() : "§f" + Json.str(e, "item.name");
+                        where = pet != null && pet.active() ? "Pets · Active" : "Pets";
+                    }
+                    case "sacks", "essence" -> {
+                        String title = ItemIcons.name(id);
+                        name = "§f" + (title != null ? title : ProfileData.title(id));
+                        where = label;
+                    }
+                    default -> {
+                        String title = Json.str(e, "item.name");
+                        name = title != null ? title : "§f" + ProfileData.title(id);
+                        where = inventory != null && slot != null ? where(inventory, slot) : label;
+                    }
+                }
+                list.add(new Holding(name, id, count, label, where, value, List.copyOf(pieces), item, pet, inventory));
+            }
+        }
+        List<Part> out = new ArrayList<>();
+        grouped.forEach((label, value) -> out.add(new Part(label, value)));
+        out.sort((a, b) -> Double.compare(b.value(), a.value()));
         list.sort((a, b) -> Double.compare(b.value(), a.value()));
-        items.sort((a, b) -> Double.compare(b.value(), a.value()));
-        parts = List.copyOf(list);
-        valuables = List.copyOf(items.subList(0, Math.min(20, items.size())));
+        parts = List.copyOf(out);
+        holdings = List.copyOf(list);
+        java.util.Set<String> categories = new java.util.HashSet<>();
+        for (Holding h : list) categories.add(h.category());
+        holdingCategories = categories;
+        holdingsVersion++;
+        if (worthFilter != null && !hasHoldings(worthFilter)) worthFilter = null;
+    }
+
+    /** The profile's pet a networth entry is about, by kind, rarity and level; each pet is taken once. */
+    private static ProfileData.Pet takePet(List<ProfileData.Pet> pets, String type, String tier, int level) {
+        for (int i = 0; i < pets.size(); i++) {
+            ProfileData.Pet p = pets.get(i);
+            if (p.type().equals(type) && (tier == null || tier.equalsIgnoreCase(p.tier())) && (level < 0 || p.level() == level)) {
+                return pets.remove(i);
+            }
+        }
+        return null;
     }
 
     private static String categoryLabel(String key) {
@@ -2379,10 +3256,12 @@ public class ProfileDashboardScreen extends Screen {
             ProfileData.Pet p = d.pets.get(i);
             int cx = x + (i % cols) * (cw + gap);
             int cy = y + (i / cols) * (ch + gap);
+            if (p == focusPet) focusAt(cy, ch);
             if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
             boolean hover = hover(cx, cy, cw, ch);
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-            if (p.active()) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
+            if (p == focusPet) focusMark(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS);
+            else if (p.active()) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
             // The pet's head, in the skin it wears, as the game shows it; a placeholder while it loads.
             ItemStack head = PetIcons.icon(p);
             // Twice the size of an item, so the head can be made out; a whole multiple stays sharp.
@@ -2980,6 +3859,11 @@ public class ProfileDashboardScreen extends Screen {
         int tx = x + 8;
         if (s.icon() != null) {
             ItemStack icon = InventoryItems.stack(s.icon());
+            if (s.icon() == focusItem) {
+                // A backpack's icon from the Storage menu: the card is where it is.
+                focusAt(y, h);
+                focusMark(graphics, x + 5, y + 2, 18, 18, 3);
+            }
             if (!icon.isEmpty()) {
                 stackIcon(graphics, icon, x + 6, y + 3, 1.0f);
                 tx = x + 26;
@@ -3007,9 +3891,11 @@ public class ProfileDashboardScreen extends Screen {
             int size = SLOT * slotScale;
             int sx = x + (i % cols) * size;
             int sy = y + (i / cols) * size;
+            JsonElement item = items.get(key);
+            if (item != null && item == focusItem) focusAt(sy, size);
             // Far outside the view: not even the slot is drawn; an Ender Chest has 405 of them.
             if (sy > clipY + clipH || sy + size < clipY) continue;
-            slot(graphics, items.get(key), sx, sy);
+            slot(graphics, item, sx, sy);
         }
     }
 
@@ -3019,6 +3905,10 @@ public class ProfileDashboardScreen extends Screen {
         boolean hover = has && hover(sx, sy, size, size);
         ModernGuiUtils.drawRoundedRect(graphics, sx, sy, size, size, 2 * slotScale, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.PANEL);
         if (!has) return;
+        if (item == focusItem) {
+            focusAt(sy, size);
+            focusMark(graphics, sx, sy, size, size, 2 * slotScale);
+        }
         ItemStack stack = InventoryItems.stack(item);
         if (!stack.isEmpty()) {
             int inset = (size - 16 * slotScale) / 2;
@@ -3345,6 +4235,15 @@ public class ProfileDashboardScreen extends Screen {
             museumValues = values;
         }
         Museum.Donated m = repo != null && inventory != null ? museum : null;
+        if (m != null && focusMuseum) {
+            // A search result opens the category its item was donated in.
+            focusMuseum = false;
+            if (containsSame(m.special(), focusItem)) skillDetail = SPECIAL;
+            for (Museum.Category c : m.categories()) {
+                for (Museum.Entry e : c.entries()) if (containsSame(e.items(), focusItem)) skillDetail = c.def().id();
+            }
+            focusView = viewKey();
+        }
         if (m != null && skillDetail != null) {
             if (skillDetail.equals(SPECIAL)) return museumSpecial(graphics, m, x, y, w);
             for (Museum.Category c : m.categories()) {
@@ -3419,10 +4318,12 @@ public class ProfileDashboardScreen extends Screen {
             Museum.Entry e = entries.get(i);
             int sx = x + (i % cols) * CELL;
             int sy = y + (i / cols) * CELL;
+            boolean focus = focusItem != null && containsSame(e.items(), focusItem);
+            if (focus) focusAt(sy, CELL - 2);
             if (sy > clipY + clipH || sy + CELL < clipY) continue;
             JsonElement shown = museumItem(repo, e);
             ItemStack stack = shown != null ? InventoryItems.stack(shown) : ItemIcons.forItem(Museum.iconId(repo, e.id()), null);
-            museumSlot(graphics, stack, sx, sy, !e.donated(), e.borrowed(), museumTip(repo, e));
+            museumSlot(graphics, stack, sx, sy, !e.donated(), e.borrowed(), museumTip(repo, e), focus);
         }
         return y + ((entries.size() + cols - 1) / cols) * CELL - 2;
     }
@@ -3435,6 +4336,7 @@ public class ProfileDashboardScreen extends Screen {
             JsonElement item = m.special().get(i);
             int sx = x + (i % cols) * CELL;
             int sy = y + (i / cols) * CELL;
+            if (item == focusItem) focusAt(sy, CELL - 2);
             if (sy > clipY + clipH || sy + CELL < clipY) continue;
             boolean out = Museum.borrowed(item);
             List<Component> lines = new ArrayList<>();
@@ -3443,16 +4345,18 @@ public class ProfileDashboardScreen extends Screen {
             lines.add(Component.literal(out ? "§eDonated, taken out right now" : "§aDonated"));
             double value = museumValue(List.of(item));
             if (value > 0) lines.add(Component.literal("§7Value: §6" + Coins.compact(value)));
-            museumSlot(graphics, InventoryItems.stack(item), sx, sy, false, out, lines);
+            museumSlot(graphics, InventoryItems.stack(item), sx, sy, false, out, lines, item == focusItem);
         }
         return y + ((m.special().size() + cols - 1) / cols) * CELL - 2;
     }
 
     /** A slot of the museum: greyed out while missing, with a dot in the corner while taken out. */
-    private void museumSlot(GuiGraphicsExtractor graphics, ItemStack stack, int sx, int sy, boolean missing, boolean out, List<Component> tip) {
+    private void museumSlot(GuiGraphicsExtractor graphics, ItemStack stack, int sx, int sy, boolean missing, boolean out, List<Component> tip,
+                            boolean focus) {
         int size = CELL - 2;
         boolean hover = hover(sx, sy, size, size);
         ModernGuiUtils.drawRoundedRect(graphics, sx, sy, size, size, 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+        if (focus) focusMark(graphics, sx, sy, size, size, 2);
         if (!stack.isEmpty()) graphics.item(stack, sx + 1, sy + 1);
         if (missing) veils.add(new int[] {sx, sy, size, size});
         if (out) borrowedDots.add(new int[] {sx + size - 5, sy + 1});
@@ -3758,21 +4662,35 @@ public class ProfileDashboardScreen extends Screen {
         }
     }
 
-    /** Leaves the search for the page an item is shown on. */
-    private Runnable opener(Page target, InvTab tab, String detail) {
+    /**
+     * Leaves the search for the page an item or pet is shown on, with the tab or view it is in
+     * ({@code view}), scrolled to it and marked there.
+     */
+    private Runnable opener(Page target, Runnable view, JsonElement item, ProfileData.Pet pet) {
         return () -> {
             itemSearch.setText("");
             itemSearchOpen = false;
             itemSearchFocused = false;
             page = target;
             lastPage = target;
-            skillDetail = detail;
-            if (tab != null) invTab = tab;
+            skillDetail = null;
+            if (view != null) view.run();
+            focusItem = item;
+            focusPet = pet;
+            focusData = session.data;
+            focusSince = System.currentTimeMillis();
+            focusScroll = true;
+            focusMuseum = target == Page.MUSEUM;
+            focusView = viewKey();
         };
     }
 
-    private Runnable opener(String inventory) {
-        if (inventory.equals("museum")) return opener(Page.MUSEUM, null, null);
+    private Runnable opener(String inventory, JsonElement item) {
+        if (inventory.equals("museum")) return opener(Page.MUSEUM, null, item, null);
+        if (inventory.startsWith(ProfileSession.RIFT)) {
+            boolean chest = inventory.equals(ProfileSession.RIFT + "ender_chest");
+            return opener(Page.RIFT, () -> riftEnderChest = chest, item, null);
+        }
         InvTab tab;
         if (inventory.startsWith("backpack_") || inventory.equals("icons_backpack")) tab = InvTab.BACKPACKS;
         else tab = switch (inventory) {
@@ -3783,7 +4701,71 @@ public class ProfileDashboardScreen extends Screen {
             case "personal_vault" -> InvTab.VAULT;
             default -> InvTab.BAGS;
         };
-        return opener(Page.INVENTORY, tab, null);
+        return opener(Page.INVENTORY, () -> invTab = tab, item, null);
+    }
+
+    // ---- Search target --------------------------------------------------------------------------
+
+    /**
+     * The item or pet a search result was opened on, by identity: the page scrolls to it once and
+     * marks it until another page, tab or profile is shown. Null for none.
+     */
+    private JsonElement focusItem;
+    private ProfileData.Pet focusPet;
+    private ProfileData focusData;
+    private long focusSince;
+    /** Still to be scrolled to; it is, the first frame it is drawn on a settled view. */
+    private boolean focusScroll;
+    /** Its museum category still to be found, once the museum has loaded. */
+    private boolean focusMuseum;
+    /** The view it was opened on, see {@link #viewKey}. */
+    private String focusView;
+    /** Where it was drawn this frame, on screen; MIN_VALUE when not. */
+    private int focusY = Integer.MIN_VALUE;
+    private int focusH;
+
+    /** The page, sub-page and tab shown, which the marked item belongs to. */
+    private String viewKey() {
+        return page + "/" + skillDetail + "/" + (page == Page.INVENTORY ? invTab : page == Page.RIFT ? riftEnderChest : "");
+    }
+
+    private boolean focused() {
+        return focusItem != null || focusPet != null;
+    }
+
+    private void dropMark() {
+        focusItem = null;
+        focusPet = null;
+        focusData = null;
+        focusScroll = false;
+        focusMuseum = false;
+    }
+
+    /** Notes where the marked thing is drawn; called for it even when it is outside the view. */
+    private void focusAt(int y, int h) {
+        if (focusY == Integer.MIN_VALUE) {
+            focusY = y;
+            focusH = h;
+        }
+    }
+
+    /** How strongly the mark shows: three pulses on arrival, so the eye finds it, then steady. */
+    private float focusGlow() {
+        long t = System.currentTimeMillis() - focusSince;
+        if (t >= 1800) return 1.0f;
+        return 0.5f + 0.5f * (float) Math.cos(t / 600.0 * 2 * Math.PI);
+    }
+
+    /** The mark around a slot, card or cell of the thing a search result was opened on. */
+    private void focusMark(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int radius) {
+        float glow = focusGlow();
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, radius, MarketIcons.fade(AlpakaStyle.accent(), 0.12f + 0.2f * glow));
+        ModernGuiUtils.drawRoundedOutline(graphics, x - 1, y - 1, w + 2, h + 2, radius + 1, MarketIcons.fade(AlpakaStyle.accent(), 0.45f + 0.55f * glow));
+    }
+
+    private static boolean containsSame(List<JsonElement> items, JsonElement item) {
+        for (JsonElement e : items) if (e == item) return true;
+        return false;
     }
 
     private static String haystack(String name, String id) {
@@ -3815,7 +4797,6 @@ public class ProfileDashboardScreen extends Screen {
             JsonElement inv = answers.get(i);
             if (inv == null) continue;
             String name = names.get(i);
-            Runnable open = opener(name);
             for (var e : Json.obj(inv, "items").entrySet()) {
                 JsonElement item = e.getValue();
                 if (!InventoryItems.present(item)) continue;
@@ -3825,7 +4806,7 @@ public class ProfileDashboardScreen extends Screen {
                 String id = Json.str(item, "skyblockId");
                 if (title == null && id == null) continue;
                 index.add(new Found(title != null ? title : ProfileData.title(id), haystack(title, id), where(name, e.getKey()),
-                        (int) Json.num(item, "count", 1), item, null, null, open));
+                        (int) Json.num(item, "count", 1), item, null, null, opener(name, item)));
             }
         }
         for (var e : Json.obj(d.raw, "sacks").entrySet()) {
@@ -3836,10 +4817,10 @@ public class ProfileDashboardScreen extends Screen {
             index.add(new Found("§f" + (title != null ? title : ProfileData.title(id)), haystack(title, id), "Sacks",
                     (int) Math.min(Integer.MAX_VALUE, n), null, id, null, null));
         }
-        Runnable pets = opener(Page.PETS, null, null);
         for (ProfileData.Pet p : d.pets) {
             String title = "§7[Lvl " + p.level() + "] " + rarityCode(p.tier()) + p.name();
-            index.add(new Found(title, haystack(p.name() + " pet", p.type()), p.active() ? "Pets · Active" : "Pets", 1, null, null, p, pets));
+            index.add(new Found(title, haystack(p.name() + " pet", p.type()), p.active() ? "Pets · Active" : "Pets", 1, null, null, p,
+                    opener(Page.PETS, null, null, p)));
         }
         searchIndex = List.copyOf(index);
         searchIndexKey = key.toString();
@@ -3911,7 +4892,8 @@ public class ProfileDashboardScreen extends Screen {
             ItemStack stack = f.item() != null ? InventoryItems.stack(f.item())
                     : f.pet() != null ? PetIcons.icon(f.pet())
                     : ItemIcons.forItem(f.iconId(), SkyblockUtils.cleanColor(f.name()));
-            if (!stack.isEmpty()) graphics.item(stack, x + 2, ry + 1);
+            // A pet's head is null while its texture is still being looked up.
+            if (stack != null && !stack.isEmpty()) graphics.item(stack, x + 2, ry + 1);
             String where = f.where();
             int whereW = textW(where);
             text(graphics, where, x + w - 8 - whereW, ry + 5, AlpakaStyle.TEXT_MUTED);
@@ -4100,6 +5082,12 @@ public class ProfileDashboardScreen extends Screen {
      * ({@link GuiFont#title}): the normal text under a scaled pose was resampled, and blurry. The
      * pixel font has no such cut and is scaled as before.
      */
+    /** How wide a number is in the large cut, or in the normal size where there is none. */
+    private int bigWidth(String value) {
+        Component big = GuiFont.title(value);
+        return big != null ? this.font.width(big) : (int) Math.ceil(textW(value) * 1.35f);
+    }
+
     private void value(GuiGraphicsExtractor graphics, String value, int x, int y, int maxW) {
         Component big = GuiFont.title(value);
         if (big != null && this.font.width(big) <= maxW) {
@@ -4145,7 +5133,8 @@ public class ProfileDashboardScreen extends Screen {
 
     /** Whether the mouse is on this area, and inside the content where the content is drawn. */
     private boolean hover(int x, int y, int w, int h) {
-        if (menuOpen) return false;
+        // Dragging the scrollbar, nothing it passes over lights up.
+        if (menuOpen || scrollDragging) return false;
         if (clipping && !AlpakaStyle.inside(mx, my, clipX, clipY, clipW, clipH)) return false;
         if (clipping && !drawingPin && my >= pinTop && my < pinBottom) return false;
         return AlpakaStyle.inside(mx, my, x, y, w, h);
@@ -4197,12 +5186,14 @@ public class ProfileDashboardScreen extends Screen {
                 () -> com.mojang.blaze3d.Blaze3D.openUri(java.net.URI.create(url))));
     }
 
-    private void lookUp() {
-        String name = search.getText().trim();
+    private void lookUp(String name) {
         if (!name.matches("[A-Za-z0-9_]{1,16}")) return;
         session = session(name);
+        searchedPending = session.query;
         search.setText("");
         searchFocused = false;
+        recent = List.of();
+        recentPicked = null;
         itemSearch.setText("");
         itemSearchOpen = false;
         searchIndex = List.of();
@@ -4285,6 +5276,7 @@ public class ProfileDashboardScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (event.button() == MouseButtons.RIGHT) rightHeld = true;
         if (event.button() != MouseButtons.LEFT) return true;
         click = event;
         clickFrom = searchFocused ? search : itemSearchFocused ? itemSearch : null;
@@ -4304,6 +5296,7 @@ public class ProfileDashboardScreen extends Screen {
             menuOpen = false;
             return true;
         }
+        if (!overRecent(event.x(), event.y()) && pressScrollbar(event.x(), event.y())) return true;
         for (int i = hits.size() - 1; i >= 0; i--) {
             Hit hit = hits.get(i);
             if (AlpakaStyle.inside(event.x(), event.y(), hit.x(), hit.y(), hit.w(), hit.h())) {
@@ -4316,8 +5309,24 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
+        if (scrollDragging) {
+            dragScrollbar(event.y());
+            return true;
+        }
+        return super.mouseDragged(event, deltaX, deltaY);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        scrollDragging = false;
+        if (event.button() == 1) rightHeld = false;
+        return super.mouseReleased(event);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (scrollY != 0 && !menuOpen && AlpakaStyle.inside(mouseX, mouseY, clipX, clipY, clipW, clipH)) scroll.by(-scrollY * 24);
+        if (scrollY != 0 && !menuOpen && !overRecent(mouseX, mouseY) && AlpakaStyle.inside(mouseX, mouseY, clipX, clipY, clipW, clipH)) scroll.by(-scrollY * 24);
         return true;
     }
 
@@ -4349,10 +5358,29 @@ public class ProfileDashboardScreen extends Screen {
                 return true;
             }
             if (event.isConfirmation()) {
-                lookUp();
+                lookUp(recentPicked != null ? recentPicked : search.getText().trim());
                 return true;
             }
+            int key = event.key();
+            if (!recent.isEmpty() && (key == InputConstants.KEY_DOWN || key == InputConstants.KEY_UP)) {
+                // The arrows walk the recent players, and past either end back to what is typed.
+                int at = recentPicked == null ? -1 : recent.indexOf(recentPicked);
+                int next = key == InputConstants.KEY_DOWN ? at + 1 : (at < 0 ? recent.size() : at) - 1;
+                recentPicked = next >= 0 && next < recent.size() ? recent.get(next) : null;
+                return true;
+            }
+            if (!recent.isEmpty() && key == InputConstants.KEY_TAB) {
+                // Fills the field with the picked player, or the first; the pick stays, so a second
+                // Tab fills the same name again.
+                String player = recentPicked != null ? recentPicked : recent.get(0);
+                search.setText(player);
+                recentPicked = player;
+                caretFrom = System.currentTimeMillis();
+                return true;
+            }
+            String before = search.getText();
             search.keyPressed(event);
+            if (!before.equals(search.getText())) recentPicked = null;
             caretFrom = System.currentTimeMillis();
             return true;
         }
@@ -4385,6 +5413,7 @@ public class ProfileDashboardScreen extends Screen {
         for (char c : Character.toChars(event.codepoint())) {
             if (Character.isLetterOrDigit(c) && c < 128 || c == '_') search.insert(c);
         }
+        recentPicked = null;
         caretFrom = System.currentTimeMillis();
         return true;
     }

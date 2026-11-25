@@ -332,17 +332,13 @@ public class SlayerDropTracker {
         // Also ahead of the tracker's switch: the slayer log has no switch of its own.
         Matcher loggedDrop = DROP_PATTERN.matcher(string);
         boolean isDrop = loggedDrop.matches();
+        // Only with a quest up: a drop claimed for a boss has to come from a slayer being run, and
+        // the Rift's ordinary mobs drop rare items too. In the Rift a quest can only be the Vampire.
+        SlayerType dropBoss = null;
         if (isDrop) {
-            // Only with a quest up, unlike the tracker below, which files any Rift drop under the
-            // Vampire: a log line claiming a boss drop has to come from a slayer being run.
-            SlayerType boss = SlayerQuestDetector.INSTANCE.currentOrRecent();
-            if (boss != null && isInRift()) boss = SlayerType.VAMPIRE;
-            if (boss != null) SlayerKillLog.INSTANCE.onDrop(boss, loggedDrop.group("item"), string);
-            // Ahead of the tracker's switch too: the animation is a cosmetic of its own.
-            if (boss != null) {
-                String item = DROP_ITEM_PREFIX.matcher(loggedDrop.group("item").trim()).replaceFirst("").trim();
-                net.alpaka.addons.features.cosmetics.RareDropAnimation.onSlayerDrop(boss, item);
-            }
+            dropBoss = SlayerQuestDetector.INSTANCE.currentOrRecent();
+            if (dropBoss != null && isInRift()) dropBoss = SlayerType.VAMPIRE;
+            if (dropBoss != null) SlayerKillLog.INSTANCE.onDrop(dropBoss, loggedDrop.group("item"), string);
         }
 
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
@@ -365,7 +361,7 @@ public class SlayerDropTracker {
         // Check drop message, with the match already made for the slayer log above.
         Matcher dropMatcher = loggedDrop;
         if (isDrop) {
-            SlayerType activeBoss = isInRift() ? SlayerType.VAMPIRE : SlayerQuestDetector.INSTANCE.currentOrRecent();
+            SlayerType activeBoss = dropBoss;
             if (activeBoss == null) {
                 // Not on a slayer - this was a drop from farming, mining, a dungeon, etc.
                 return;

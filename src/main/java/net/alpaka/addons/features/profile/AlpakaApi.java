@@ -21,8 +21,8 @@ import java.util.concurrent.Executor;
  * (see {@code backend/} in the repository) and the server hands out what the dashboard shows.
  *
  * Logging in works as joining a server does: the API hands out a one-time challenge, the game tells
- * Mojang's session server that the player joins a server with that id, and the API asks Mojang
- * whether they did. The player's access token
+ * Mojang's session server that the player joins a server with an id worked out from it
+ * ({@link #loginServerId}), and the API asks Mojang whether they did. The player's access token
  * only ever goes to Mojang, never to the API. The API then hands out a token of its own for half a
  * day, which is kept on disk for the account it belongs to, so a game started again within that time
  * needs no new login. Only used from the Profile Dashboard, while Network Features is on, and only
@@ -52,6 +52,19 @@ final class AlpakaApi {
     }
 
     /**
+     * Mojang turned the login down, before the API was even asked. Not a refused token of the API's
+     * own, so {@link #get} doesn't log in once more for it: that would only ask Mojang again.
+     */
+    static final class MojangRefused extends RuntimeException {
+        MojangRefused(String message) {
+            super(message);
+        }
+    }
+
+    /** How long Mojang is left alone after it said there were too many logins. */
+    private static final long MOJANG_BUSY_MS = 60_000L;
+
+    /**
      * Whether an answer came from Cloudflare in front of the API rather than from the API: the API
      * answers everything with {@code "success"} in JSON, Cloudflare's 502 and its kin are a page.
      */
@@ -72,6 +85,13 @@ final class AlpakaApi {
     private static volatile String token;
     private static volatile long tokenUntil;
     private static CompletableFuture<String> login;
+    /**
+     * The game's access token Mojang no longer accepts: it runs out after a while, and only the
+     * launcher gets a new one. Asking again with it can't work and only counts towards Mojang's
+     * limit, so it isn't tried again until the game has another one (a restart, an account switch).
+     */
+    private static volatile String rejectedAccessToken;
+    private static volatile long mojangBusyUntil;
 
     private static synchronized HttpClient client() {
         if (client == null) client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
@@ -120,6 +140,17 @@ final class AlpakaApi {
             return CompletableFuture.failedFuture(new ProfileApi.NotFound("No such profile."));
         }
         return get("/v1/museum/" + player + "/" + profile + (fresh ? "?fresh=1" : ""), true);
+    }
+
+    /**
+     * Whether the player is online on Hypixel and where: {@code {"online": true, "gameType":
+     * "SKYBLOCK", "mode": "hub"}}. {@code fresh} is the Refresh button.
+     */
+    static CompletableFuture<JsonElement> status(String playerUuid, boolean fresh) {
+        if (!ProfileApi.allowed()) return CompletableFuture.failedFuture(new ProfileApi.NetworkOff());
+        String player = playerUuid == null ? "" : playerUuid.replace("-", "");
+        if (!player.matches("[0-9a-fA-F]{32}")) return CompletableFuture.failedFuture(new ProfileApi.NotFound("No such player."));
+        return get("/v1/status/" + player + (fresh ? "?fresh=1" : ""), true);
     }
 
     /**
@@ -203,26 +234,45 @@ final class AlpakaApi {
             }
         }
         if (login != null && !login.isDone()) return login;
-        login = CompletableFuture.supplyAsync(AlpakaApi::logIn);
+        login = CompletableFuture.supplyAsync(AlpakaApi::logIn, LOGIN);
         return login;
     }
+
+    /**
+     * The login waits on Mojang and the API in turn, up to a minute with its retries. It gets a
+     * thread of its own: on the shared pool it would hold up everything else the mod and the game
+     * hand there meanwhile (the networth, reading the kept profile).
+     */
+    private static final Executor LOGIN = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "Alpaka API login");
+        t.setDaemon(true);
+        return t;
+    });
 
     private static String logIn() {
         Minecraft mc = Minecraft.getInstance();
         User user = mc.getUser();
-        // The server id comes from the API, so a login can't be made from any other server's join.
-        String serverId = challenge();
+        String accessToken = user.getAccessToken();
+        if (accessToken != null && accessToken.equals(rejectedAccessToken)) throw new MojangRefused(SESSION_EXPIRED);
+        if (System.currentTimeMillis() < mojangBusyUntil) throw new MojangRefused(MOJANG_BUSY);
+        String challenge = challenge();
+        // The game tells Mojang it joins a server id worked out from the challenge, never the
+        // challenge itself: the API could otherwise hand out the hash of a real server's login
+        // (Hypixel's, say) and be let into that server as this player. No challenge leads to a
+        // given server's hash, and the API checks the same id worked out from its own challenge.
+        String serverId = loginServerId(challenge);
         try {
-            mc.services().sessionService().joinServer(user.getProfileId(), user.getAccessToken(), serverId);
+            mc.services().sessionService().joinServer(user.getProfileId(), accessToken, serverId);
         } catch (Exception e) {
             AlpakaAddons.LOGGER.warn("AlpakaAddons API: Mojang refused the login: {}", e.toString());
-            throw new Refused(401, "Couldn't log in to the AlpakaAddons API: Mojang refused. Is the game logged in to a Microsoft account?");
+            throw mojangRefused(e, accessToken);
         }
         HttpRequest request = HttpRequest.newBuilder(URI.create(BASE + "/v1/auth"))
                 .timeout(Duration.ofSeconds(20))
                 .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
                 .header("X-Minecraft-Username", user.getName())
-                .header("X-Minecraft-Server", serverId)
+                .header("X-Minecraft-Server", challenge)
+                .header("X-Alpaka-Login", LOGIN_VERSION)
                 .GET()
                 .build();
         HttpResponse<String> response;
@@ -245,6 +295,46 @@ final class AlpakaApi {
             if (uuid != null) save(new Saved(uuid, t, tokenUntil));
         }
         return t;
+    }
+
+    /** Tells the API that Mojang was told {@link #loginServerId}, not the challenge itself. */
+    static final String LOGIN_VERSION = "2";
+
+    /**
+     * The server id a login tells Mojang for an API challenge: SHA-1 of the challenge behind a
+     * prefix of this API's own, as 40 hex digits. The API works it out the same way
+     * ({@code Challenges.loginServerId} in {@code backend/}).
+     */
+    static String loginServerId(String challenge) {
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-1")
+                    .digest(("alpaka-api-login:" + challenge).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    static final String SESSION_EXPIRED = "Couldn't log in to the AlpakaAddons API: Mojang no longer accepts this game's"
+            + " Microsoft login (it runs out after a while). Restart the game to log in again.";
+    static final String MOJANG_BUSY = "Couldn't log in to the AlpakaAddons API: Mojang got too many logins in a short"
+            + " time. Try again in a minute.";
+    static final String MOJANG_DOWN = "Couldn't log in to the AlpakaAddons API: Mojang's login server can't be reached"
+            + " right now. Try again in a moment.";
+
+    /** What Mojang's refusal means for the player, and what is kept so Mojang isn't asked in vain. */
+    private static MojangRefused mojangRefused(Exception e, String accessToken) {
+        if (e instanceof com.mojang.authlib.exceptions.InvalidCredentialsException) {
+            rejectedAccessToken = accessToken;
+            return new MojangRefused(SESSION_EXPIRED);
+        }
+        if (String.valueOf(e.getMessage()).contains("429")) {
+            mojangBusyUntil = System.currentTimeMillis() + MOJANG_BUSY_MS;
+            return new MojangRefused(MOJANG_BUSY);
+        }
+        if (e instanceof com.mojang.authlib.exceptions.AuthenticationUnavailableException) return new MojangRefused(MOJANG_DOWN);
+        return new MojangRefused("Couldn't log in to the AlpakaAddons API: Mojang refused (" + e.getMessage()
+                + "). Is the game logged in to a Microsoft account?");
     }
 
     // ---- The login on disk ----------------------------------------------------------------------

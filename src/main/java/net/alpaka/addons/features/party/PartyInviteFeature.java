@@ -67,7 +67,7 @@ public final class PartyInviteFeature {
     private static long noticeId = 0L;
 
     public static boolean isEnabled() {
-        return AlpakaConfig.instance.partyInvitePromptEnabled;
+        return AlpakaConfig.instance.playerRequestsEnabled && AlpakaConfig.instance.playerRequestsParty;
     }
 
     public static void register() {
@@ -180,7 +180,7 @@ public final class PartyInviteFeature {
     }
 
     /** The lower-case character a key produces on the current layout, or 0 when it has none. */
-    static char keyCharacter(int key, int keycode) {
+    public static char keyCharacter(int key, int keycode) {
         // SDL's key code is the character the key types on the current layout, for letters at least.
         if (keycode >= 'a' && keycode <= 'z') return (char) keycode;
         // No layout name (some keyboards, some platforms): fall back to the US position.

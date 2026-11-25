@@ -2,7 +2,7 @@ package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
-import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
+import net.alpaka.addons.features.viewmodel.SwingTrailFeature;
 import net.minecraft.client.renderer.SubmitNodeCollection;
 import net.minecraft.client.renderer.feature.submit.SubmitNode;
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,7 +26,7 @@ public class SubmitNodeCollectionMixin {
     private SubmitNode alpaka$rememberTranslucentHandItem(SubmitNode submit) {
         HandItemLightingFeature.onItemSubmitted(submit);
         HandItemStarlightFeature.onItemSubmitted(submit);
-        ItemMotionBlurFeature.onItemSubmitted(submit);
+        SwingTrailFeature.onItemSubmitted(submit);
         return submit;
     }
 
@@ -37,7 +37,7 @@ public class SubmitNodeCollectionMixin {
     private SubmitNode alpaka$rememberSolidHandItem(SubmitNode submit) {
         HandItemLightingFeature.onItemSubmitted(submit);
         HandItemStarlightFeature.onItemSubmitted(submit);
-        ItemMotionBlurFeature.onItemSubmitted(submit);
+        SwingTrailFeature.onItemSubmitted(submit);
         return submit;
     }
 }

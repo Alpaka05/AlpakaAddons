@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import net.alpaka.addons.features.market.ItemIcons;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.DyedItemColor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -45,6 +46,11 @@ final class InventoryItems {
         ItemStack stack = base.copyWithCount(Math.max(1, Math.min(99, (int) Json.num(item, "count", 1))));
         // Enchanted gear shimmers in the game; the looks are of the plain item.
         if (!Json.obj(item, "enchantments").isEmpty()) stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+        // Dyed armor in the color it was dyed, not the one it comes in.
+        if (item.isJsonObject() && item.getAsJsonObject().has("color")
+                && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().startsWith("leather_")) {
+            stack.set(DataComponents.DYED_COLOR, new DyedItemColor((int) Json.num(item, "color", 0)));
+        }
         if (STACKS.size() > 4000) STACKS.clear();
         STACKS.put(item, new Built(base, stack));
         return stack;

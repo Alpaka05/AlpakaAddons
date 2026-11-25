@@ -52,6 +52,18 @@ object StarredMobsHighlight {
     /** Ticks until the name tags are read again. */
     private var rescanIn = 0
 
+    /** Up to this far (squared), a mob's line of sight is checked every tick. */
+    private const val SIGHT_NEAR_SQ = 16.0 * 16.0
+
+    /** Up to this far (squared) every second tick; farther, every fourth. */
+    private const val SIGHT_MID_SQ = 32.0 * 32.0
+
+    /** Counts the ticks in a dungeon, to spread the line of sight checks; see [canSee]. */
+    private var ticks = 0L
+
+    /** Starred mob id to whether the player saw it when last checked. */
+    private val sight = HashMap<Int, Boolean>()
+
     /** Entity id to ARGB highlight color, for this tick. */
     private val targets = EntityColors()
 
@@ -88,6 +100,7 @@ object StarredMobsHighlight {
     fun reset() {
         targets.clear()
         starredIds.clear()
+        sight.clear()
         hiddenTags.clear()
         starredTags.clear()
         hideNames = false
@@ -118,12 +131,33 @@ object StarredMobsHighlight {
 
         // Only mobs the player can see: the outline glow is drawn through walls, and highlighting a
         // mob behind one is the mob ESP Hypixel bans. Checked every tick, so a mob lights up as it
-        // comes into view and goes dark behind the next corner.
+        // comes into view and goes dark behind the next corner. Never an invisible one either: a
+        // Shadow Assassin turns invisible on its own, and outlining it then would show what the game
+        // hides. Checked here rather than in the rescan, which only runs every few ticks.
+        ticks++
         val color = cfg.starredMobsHighlightColor
         for (id in starredIds) {
             val mob = level.getEntity(id) as? LivingEntity ?: continue
-            if (!mob.isRemoved && mob.isAlive && player.hasLineOfSight(mob)) targets.put(id, color)
+            if (!mob.isRemoved && mob.isAlive && !mob.isInvisible && canSee(player, mob)) {
+                targets.put(id, color)
+            }
         }
+    }
+
+    /**
+     * [Player.hasLineOfSight], a ray through the blocks up to 128 long, for every starred mob loaded.
+     * Close by it is cast every tick, where a mob steps out from behind a corner; a far one is
+     * checked every second or fourth tick, spread out over the ticks by its id, and keeps the last
+     * answer in between: a tenth of a second later at most, at a distance where that can't be told.
+     */
+    private fun canSee(player: Player, mob: LivingEntity): Boolean {
+        val distanceSq = player.distanceToSqr(mob)
+        val every = if (distanceSq <= SIGHT_NEAR_SQ) 1 else if (distanceSq <= SIGHT_MID_SQ) 2 else 4
+        val known = sight[mob.id]
+        if (known != null && (ticks + mob.id) % every != 0L) return known
+        val visible = player.hasLineOfSight(mob)
+        sight[mob.id] = visible
+        return visible
     }
 
     private fun rescan(level: ClientLevel, player: Player) {
@@ -139,6 +173,7 @@ object StarredMobsHighlight {
             if (!isStarred(entity.id, name)) continue
             mobUnder(level, entity, player)?.let { starredIds.add(it.id) }
         }
+        sight.keys.retainAll(starredIds)
     }
 
     /**

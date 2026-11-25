@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AlpakaApiTest {
@@ -19,5 +20,13 @@ class AlpakaApiTest {
         assertEquals("Couldn't get through to the AlpakaAddons API just now (502). Try again in a moment.", AlpakaApi.reason(502, null));
         assertEquals("Hypixel can't be reached. Try again in a minute.",
                 AlpakaApi.reason(502, JsonParser.parseString("{\"success\":false,\"cause\":\"Hypixel can't be reached\"}")));
+    }
+
+    @Test
+    void mojangIsNeverToldTheChallengeItself() {
+        String challenge = "0123456789abcdef0123456789abcdef01234567";
+        // The same value the API's own test expects (ApiTest in backend/): both sides must agree.
+        assertEquals("90fe3bc0abcf59105e79f8548cec1a1ef1e6724d", AlpakaApi.loginServerId(challenge));
+        assertNotEquals(challenge, AlpakaApi.loginServerId(challenge));
     }
 }

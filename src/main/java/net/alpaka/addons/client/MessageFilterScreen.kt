@@ -209,7 +209,8 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
         val h = AlpakaStyle.BUTTON_H
         val hovered = inside(mouseX, mouseY, x, y, w, h)
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.FIELD_RADIUS, if (hovered && !inputFocused) AlpakaStyle.ROW_HOVER else AlpakaStyle.FIELD)
-        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, if (inputFocused) AlpakaStyle.accent() else AlpakaStyle.LINE)
+        AlpakaStyle.fieldEdge(graphics, x, y, w, h, hovered && !inputFocused)
+        AlpakaStyle.fieldUnderline(graphics, x, y, w, h, inputFocused)
 
         val textY = y + (h - 8) / 2
         val text = input.text

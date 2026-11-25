@@ -57,6 +57,11 @@ class ApiTest {
                     return new Api.Upstream.Result(gardenStatus, gardenStatus == 200 ? GARDEN : "{\"success\":false}", remaining, 120);
                 }
                 if (path.startsWith("/v2/skyblock/museum")) return new Api.Upstream.Result(status, MUSEUM, remaining, 120);
+                if (path.startsWith("/v2/status")) {
+                    boolean on = path.endsWith(PLAYER);
+                    return new Api.Upstream.Result(status, "{\"success\":true,\"uuid\":\"x\",\"session\":{\"online\":" + on
+                            + (on ? ",\"gameType\":\"SKYBLOCK\",\"mode\":\"hub\",\"extra\":1" : "") + "}}", remaining, 120);
+                }
                 String uuid = path.substring(path.indexOf("uuid=") + 5);
                 return new Api.Upstream.Result(status, uuid.equals(LEFT) ? "{\"success\":true,\"profiles\":null}" : hypixelProfiles(uuid), remaining, 120);
             },
@@ -129,10 +134,14 @@ class ApiTest {
         Api.Response c = get("/v1/auth/challenge", Map.of());
         assertEquals(200, c.status(), c.body());
         String challenge = field(c.body(), "challenge");
-        joined.put("Alpakaa", challenge);
-        Api.Response r = get("/v1/auth", Map.of("X-Minecraft-Username", "Alpakaa", "X-Minecraft-Server", challenge));
+        joined.put("Alpakaa", Challenges.loginServerId(challenge));
+        Api.Response r = get("/v1/auth", loginHeaders(challenge));
         assertEquals(200, r.status(), r.body());
         return field(r.body(), "token");
+    }
+
+    private static Map<String, String> loginHeaders(String challenge) {
+        return Map.of("X-Minecraft-Username", "Alpakaa", "X-Minecraft-Server", challenge, "X-Alpaka-Login", "2");
     }
 
     private Map<String, String> auth() {
@@ -177,15 +186,33 @@ class ApiTest {
     @Test
     void aChallengeWorksOnceAndNotForLong() {
         String challenge = field(get("/v1/auth/challenge", Map.of()).body(), "challenge");
-        joined.put("Alpakaa", challenge);
-        Map<String, String> headers = Map.of("X-Minecraft-Username", "Alpakaa", "X-Minecraft-Server", challenge);
+        joined.put("Alpakaa", Challenges.loginServerId(challenge));
+        Map<String, String> headers = loginHeaders(challenge);
         assertEquals(200, get("/v1/auth", headers).status());
         assertEquals(401, get("/v1/auth", headers).status());
 
         String late = field(get("/v1/auth/challenge", Map.of()).body(), "challenge");
-        joined.put("Alpakaa", late);
+        joined.put("Alpakaa", Challenges.loginServerId(late));
         now.addAndGet(Challenges.LIFETIME_MS + 1);
-        assertEquals(401, get("/v1/auth", Map.of("X-Minecraft-Username", "Alpakaa", "X-Minecraft-Server", late)).status());
+        assertEquals(401, get("/v1/auth", loginHeaders(late)).status());
+    }
+
+    @Test
+    void theModTellsMojangAnIdWorkedOutFromTheChallenge() {
+        // The same value the mod's own test expects (AlpakaApiTest): both sides must agree.
+        assertEquals("90fe3bc0abcf59105e79f8548cec1a1ef1e6724d",
+                Challenges.loginServerId("0123456789abcdef0123456789abcdef01234567"));
+        // A new mod that joined the challenge itself isn't let in: Mojang must know the worked-out id.
+        String challenge = field(get("/v1/auth/challenge", Map.of()).body(), "challenge");
+        joined.put("Alpakaa", challenge);
+        assertEquals(401, get("/v1/auth", loginHeaders(challenge)).status());
+    }
+
+    @Test
+    void anOlderModThatJoinsTheChallengeItselfStillLogsIn() {
+        String challenge = field(get("/v1/auth/challenge", Map.of()).body(), "challenge");
+        joined.put("Alpakaa", challenge);
+        assertEquals(200, get("/v1/auth", Map.of("X-Minecraft-Username", "Alpakaa", "X-Minecraft-Server", challenge)).status());
     }
 
     @Test
@@ -372,6 +399,25 @@ class ApiTest {
         assertEquals(401, get("/v1/museum/" + PLAYER + "/" + APPLE, Map.of()).status());
         assertEquals(400, get("/v1/museum/" + PLAYER, auth).status());
         assertEquals(400, get("/v1/museum/" + PLAYER + "/x", auth).status());
+    }
+
+    @Test
+    void whetherAPlayerIsOnlineAndWhereForAMinute() {
+        Map<String, String> auth = auth();
+        Api.Response r = get("/v1/status/" + PLAYER, auth);
+        assertEquals(200, r.status(), r.body());
+        // Only what the overview shows, nothing else Hypixel sends.
+        assertEquals("{\"success\":true,\"online\":true,\"gameType\":\"SKYBLOCK\",\"mode\":\"hub\"}", r.body());
+        assertEquals("{\"success\":true,\"online\":false}", get("/v1/status/" + OTHER, auth).body());
+        assertEquals("HIT", get("/v1/status/" + PLAYER, auth).headers().get("X-Cache"));
+        now.addAndGet(Api.STATUS_REFRESH_AGE_MS + 1);
+        assertEquals("HIT", get("/v1/status/" + PLAYER, auth).headers().get("X-Cache"));
+        assertEquals("MISS", get("/v1/status/" + PLAYER + "?fresh=1", auth).headers().get("X-Cache"));
+        now.addAndGet(Api.STATUS_AGE_MS + 1);
+        assertEquals("MISS", get("/v1/status/" + PLAYER, auth).headers().get("X-Cache"));
+        assertEquals(4, asked.stream().filter(p -> p.startsWith("/v2/status")).count());
+        assertEquals(401, get("/v1/status/" + PLAYER, Map.of()).status());
+        assertEquals(400, get("/v1/status/Alpakaa", auth).status());
     }
 
     @Test

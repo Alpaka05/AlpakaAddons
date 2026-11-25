@@ -153,6 +153,25 @@ public final class GuiFont {
         return Component.empty().withStyle(style).append(component);
     }
 
+    /** The last scoreboard score {@link #restyleScore} was given, the style then, and what it gave back. */
+    private static Component scoreIn;
+    private static Style scoreStyle;
+    private static Component scoreOut;
+
+    /**
+     * {@link #restyle} for a scoreboard line's score, which is asked for twice in a row: for the score
+     * drawn and for its width. The second call gets the first one's component back instead of a new
+     * one, whichever of the two it is handed. Render thread only.
+     */
+    public static Component restyleScore(Component score) {
+        Style style = style();
+        if (style == scoreStyle && (score == scoreIn || score == scoreOut)) return scoreOut;
+        scoreIn = score;
+        scoreStyle = style;
+        scoreOut = style.isEmpty() ? score : Component.empty().withStyle(style).append(score);
+        return scoreOut;
+    }
+
     /** Whether chat is to be written in the configured font. */
     public static boolean inChat() {
         return AlpakaConfig.instance.betterChatOn(AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.menuFontInChat))

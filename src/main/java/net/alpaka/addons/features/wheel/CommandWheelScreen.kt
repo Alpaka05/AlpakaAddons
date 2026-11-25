@@ -1,12 +1,12 @@
 package net.alpaka.addons.features.wheel
 
 import net.alpaka.addons.utils.MouseButtons
+import net.alpaka.addons.compliance.Outbound
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.client.gui.PloppAnimation
-import net.alpaka.addons.features.commands.TypedCommands
 import net.alpaka.addons.features.sound.CustomSoundFeature
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.TAU
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.lerpColor
@@ -207,13 +207,13 @@ class CommandWheelScreen(
     /**
      * Sends the selected command, once, and closes the wheel. The only thing the wheel ever sends:
      * one command per explicit release or click, nothing on hover, timers or events, and never a
-     * sequence of commands. It goes past Shorten Warp and Warp Cooldown like a typed command.
+     * sequence of commands.
      */
     private fun runSelectedAndClose() {
         if (selectedIndex in commands.indices) {
             var command = commands[selectedIndex]
             if (command.startsWith("/")) command = command.substring(1)
-            TypedCommands.sendPicked(command)
+            Outbound.command(command, Outbound.Cause.WHEEL)
         }
         close()
     }

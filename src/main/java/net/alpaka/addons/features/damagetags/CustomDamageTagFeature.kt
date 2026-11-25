@@ -36,6 +36,7 @@ import kotlin.math.sin
  * Purely a picture. Hypixel's splash is an invisible armor stand with the number as its name; that
  * name tag is hidden (see [DamageTagFeature.shouldHideNameTag]) and a copy of the number is drawn
  * where it stood. Nothing is sent and nothing about the fight changes.
+ * The copy shows through walls, like a nameplate seen through a wall, but solid.
  *
  * Splashes are found on the client tick, as young armor stands whose name reads as a damage number,
  * each taken once. From then on the copy lives on its own clock, so it animates the same however
@@ -321,7 +322,9 @@ object CustomDamageTagFeature {
             poseStack.scale(scale, -scale, scale)
 
             val color = ARGB.color(alpha, 0xFFFFFF)
-            out.submitText(poseStack, -width / 2f, -4f, sequence, cfg.customDamageTagShadow, Font.DisplayMode.NORMAL, FULL_BRIGHT, color, 0, 0)
+            // Drawn without the depth test, so a wall or the mob itself never cuts a number in half: a
+            // splash stands half a block above the hit, and next to a wall it would otherwise end inside it.
+            out.submitText(poseStack, -width / 2f, -4f, sequence, cfg.customDamageTagShadow, Font.DisplayMode.SEE_THROUGH, FULL_BRIGHT, color, 0, 0)
             poseStack.popPose()
         }
     }

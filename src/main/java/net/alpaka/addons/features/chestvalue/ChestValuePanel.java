@@ -360,6 +360,7 @@ public final class ChestValuePanel {
         List<Stack> stacks = new ArrayList<>();
         List<Held> heldNow = new ArrayList<>();
         boolean any = false;
+        java.util.IdentityHashMap<ItemStack, Listed> listedNow = new java.util.IdentityHashMap<>();
         List<Slot> slots = c.getMenu().slots;
         for (int i = 0; i < slots.size(); i++) {
             Slot slot = slots.get(i);
@@ -374,14 +375,28 @@ public final class ChestValuePanel {
             if (v.id() == null) continue;
             int count = count(item, player);
             if (count <= 0) continue;
-            String name = SkyblockUtils.cleanColor(item.getHoverName().getString());
-            stacks.add(new Stack(i, v.id(), name, count, v.each(), v.estimated(), v.market(), item.copy()));
+            Listed listed = listedBefore.get(item);
+            if (listed == null || listed.count() != item.getCount()) {
+                listed = new Listed(item.getCount(), item.copy(), SkyblockUtils.cleanColor(item.getHoverName().getString()));
+            }
+            listedNow.put(item, listed);
+            stacks.add(new Stack(i, v.id(), listed.name(), count, v.each(), v.estimated(), v.market(), listed.copy()));
             heldNow.add(new Held(custom, count));
         }
+        listedBefore = listedNow;
         anyItems = any;
         summary = ChestValue.of(stacks, Sort.of(AlpakaConfig.instance.chestValueSort));
         if (baseline == null && !waiting()) baseline = List.copyOf(heldNow);
     }
+
+    /**
+     * The copy and name taken of each item listed, by the slot's own item object. The menu is read
+     * four times a second and mostly holds the same items; the server sends a changed item as a new
+     * one, and a stack that only grows or shrinks is caught by its count.
+     */
+    private record Listed(int count, ItemStack copy, String name) {}
+
+    private static java.util.IdentityHashMap<ItemStack, Listed> listedBefore = new java.util.IdentityHashMap<>();
 
     /**
      * Reads a menu of sacks for what they hold: each sack slot is looked up in what Item Search saw
@@ -558,6 +573,7 @@ public final class ChestValuePanel {
         builtAt = 0L;
         dirty = true;
         baseline = null;
+        listedBefore = new java.util.IdentityHashMap<>();
         contents = false;
         unseenSacks = List.of();
         unseenSlots = List.of();

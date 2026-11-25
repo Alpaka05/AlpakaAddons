@@ -142,18 +142,54 @@ public class AlpakaConfig {
     /** How strongly the aura glows, in percent. */
     public float auraBrightness = 80.0f;
     /**
-     * A slayer's rarest drop pops up as a big spinning item in a golden glow where the boss died.
+     * A rare drop flies onto the screen as a big spinning item in a golden glow, the item alone.
      * Drawn by this client only. Off by default while it is being tried out.
      */
     public boolean rareDropAnimationEnabled = false;
+    /** Plays for a slayer's rarest drop (Judgement Core, Warden Heart, ...). */
+    public boolean rareDropAnimationSlayer = true;
+    /** Plays for a dye the player finds. */
+    public boolean rareDropAnimationDyes = true;
+    /** Plays for a dungeon chest's rare reward (Necron's Handle, master stars, ...). */
+    public boolean rareDropAnimationDungeon = true;
+    /**
+     * Plays for any other drop that is crazy rare or better, a pet, or worth at least
+     * {@link #rareDropAnimationMinValue}.
+     */
+    public boolean rareDropAnimationValuable = true;
+    /** What another drop has to be worth for the animation, in millions of coins. */
+    public float rareDropAnimationMinValue = 5.0f;
     /** How big the item and its glow are, as a factor. */
     public float rareDropAnimationSize = 1.0f;
     /** How long the animation stays, in seconds. */
     public float rareDropAnimationDuration = 6.0f;
-    /** A rising chime as the item pops up, heard only by this client. */
+    /** A rising chime as the item lands, heard only by this client. */
     public boolean rareDropAnimationSound = true;
-    /** Each slayer's own color mixed into the gold. */
-    public boolean rareDropAnimationSlayerColors = true;
+    /**
+     * The light around the item (glow, rays, sparkles, the landing's flash), a different effect for
+     * slayer drops, dyes, dungeon rewards, pets and other drops. Off shows the item alone.
+     */
+    public boolean rareDropAnimationEffects = true;
+
+    /**
+     * The picture warps for a moment after the player teleports with an item (Aspect of the End,
+     * Aspect of the Void, ...). Drawn by this client only; the teleport itself is untouched.
+     */
+    public boolean teleportWarpEnabled = false;
+    /** Whether the picture warps (the Style below); Smooth Teleport is switched on its own. */
+    public boolean teleportWarpScreenEffect = true;
+    /** Which look: 0 Warp (lens pull and ring), 1 Hyperspace (zoom and light streaks). */
+    public int teleportWarpStyle = 0;
+    /** How strong the warp is, as a factor. */
+    public float teleportWarpStrength = 1.0f;
+    /** How long the warp takes to fade, in seconds. */
+    public float teleportWarpDuration = 0.45f;
+    /** The camera glides to the destination instead of jumping there; only the picture moves. */
+    public boolean teleportWarpSmooth = true;
+    /** How long the camera's glide takes, in milliseconds. */
+    public float teleportWarpSmoothTime = 150.0f;
+    /** Whether an Etherwarp (sneak + right-click) warps the picture too. */
+    public boolean teleportWarpEtherwarp = true;
 
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.
@@ -253,28 +289,24 @@ public class AlpakaConfig {
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
     /**
-     * Hide Visual Clutter, the master switch over the effects below. It was Hide Explosions, so an
-     * older file's value still turns it on (and {@link #migrateTo4} keeps such a file to explosions).
+     * Hide Visual Clutter, the master switch over the effects below. It was Hide Explosions, whose
+     * effect is gone since, so {@link #migrateTo4} switches an older file's value off again.
      * Cosmetic only.
      */
     @SerializedName(value = "hideVisualClutter", alternate = "hideExplosions")
     public boolean hideVisualClutter = false;
-    /** Explosion particles, server smoke puffs and explosion debris. */
-    public boolean clutterExplosions = true;
     /** Falling block entities are never added. */
     public boolean clutterFallingBlocks = true;
-    /** The particles of broken and mined blocks. */
-    public boolean clutterBlockBreak = true;
     /** Critical and enchanted hit sparks, and the crit trail of arrows. */
     public boolean clutterHitParticles = true;
     /** Firework rocket bursts. */
     public boolean clutterFireworks = true;
-    /** Experience orbs are never added. */
-    public boolean clutterExperienceOrbs = true;
     /** A dying Ender Dragon, its light rays and its death explosions. */
     public boolean clutterDragonDeath = true;
     /** Arrows stuck in players and in blocks. */
     public boolean clutterAttachedArrows = true;
+    /** Lightning bolts and the sky flash they cause. */
+    public boolean clutterLightning = true;
     /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
     public boolean hideEntityFire = false;
     /** Opacity of the fire covering the screen while you burn in first person, 0..1; 1 is vanilla, 0 hides it. */
@@ -283,21 +315,7 @@ public class AlpakaConfig {
     public float firstPersonFireHeight = 1.0f;
     /** Draws that fire as one still frame instead of the flickering animation. */
     public boolean firstPersonFireStatic = false;
-    /**
-     * The box behind every nametag. The default is vanilla's own box, which then stays vanilla's,
-     * accessibility opacity setting included; zero opacity drops the box and leaves only the text.
-     */
-    public int nameTagBackgroundColor = DEFAULT_NAME_TAG_BACKGROUND;
-    public static final int DEFAULT_NAME_TAG_BACKGROUND = 0x3F000000;
-    /** Legacy, before the background color. Read once on load and then cleared. */
-    public Boolean hideNameTagBackground = null;
-    /** Shows the player their own vanilla nametag in third person. */
-    public boolean showOwnNameTag = false;
-    /** Gives the text of every name tag the usual drop shadow, which vanilla leaves off in the world. */
-    public boolean nameTagTextShadow = false;
-    public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
-    public int smoothPerspectiveDurationMs = 350;
     public boolean customSoundsEnabled = false;
     public float customSoundsVolume = 1.0f;
     public boolean customSoundButtonClick = true;
@@ -439,46 +457,6 @@ public class AlpakaConfig {
      */
     public boolean slayerHudOnlyInSlayerAreas = true;
 
-    // Farming HUD, on the Garden only. Each line has its own toggle, like the slayer session HUD.
-    public boolean farmingHudEnabled = false;
-    public int farmingHudX = net.alpaka.addons.client.hud.HudDefaults.FARMING_X;
-    public int farmingHudY = net.alpaka.addons.client.hud.HudDefaults.FARMING_Y;
-    public float farmingHudScale = 1.0f;
-    public boolean farmingHudShowTitle = true;
-    public boolean farmingHudShowBps = true;
-    public boolean farmingHudShowXpPerHour = true;
-    public boolean farmingHudShowMilestone = true;
-    public boolean farmingHudShowMilestoneEta = true;
-    public boolean farmingHudShowPestCooldown = true;
-    public boolean farmingHudShowRepellent = true;
-    public boolean farmingHudShowVisitors = true;
-    public boolean farmingHudShowContest = true;
-    public boolean farmingHudBlur = true;
-    public boolean farmingHudSmoothFont = true;
-    /**
-     * When the last Pest Repellent runs out (epoch ms), from its chat message; kept so the time left
-     * survives a restart. Whether it was a Pest Repellent MAX.
-     */
-    public long farmingRepellentUntilMs = 0L;
-    public boolean farmingRepellentMax = false;
-    /**
-     * How long the pest cooldown runs after pests spawn, learned from the Pests widget, so the HUD
-     * can count it down from the spawn message alone. 0 until learned.
-     */
-    public long farmingPestCooldownMs = 0L;
-    /**
-     * Each crop's progress as the Crop Milestones menu last showed it, by crop name: what turns the
-     * tab list's percentage into crops.
-     */
-    public Map<String, CropMilestone> farmingMilestones = new HashMap<>();
-
-    public static class CropMilestone {
-        public int tier;
-        public long current;
-        public long needed;
-        public double percent;
-    }
-
     // Slayer boss timer. Times a single boss fight over the boss entity's own lifetime - the way
     // SkyHanni does - and remembers the fastest ever per slayer. The sidebar is only the fallback
     // for a fight where the boss entity could not be watched, so there is no setting for it.
@@ -544,17 +522,8 @@ public class AlpakaConfig {
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
     public boolean ragnarockEnabled = false;
 
-    /** Skill gains in the action bar as XP ("1,948,760/4,300,000") instead of a percentage. */
-    public boolean exactSkillXpEnabled = false;
-    /** The XP shortened ("1.95M/4.3M"): the last digits are only an estimate anyway. */
-    public boolean exactSkillXpRounded = false;
-    /** Hypixel's SKILL LEVEL UP message in the chat when a maxed skill reaches its next overflow level. */
-    public boolean exactSkillXpLevelUpMessage = true;
-
     // Deployable timer: the strongest deployable of each family in range, with its time left.
     public boolean deployableTimerEnabled = false;
-    /** Clicking a garden visitor's Accept Offer while items are missing opens the bazaar for them. */
-    public boolean visitorBazaarEnabled = false;
     public int deployableTimerHudX = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_X;
     public int deployableTimerHudY = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_Y;
     public float deployableTimerHudScale = 1.0f;
@@ -636,30 +605,6 @@ public class AlpakaConfig {
     /** Index into {@code EtherwarpOverlayFeature.SOUND_NAMES}: whoosh, pling, thud, chime, pop. */
     public int etherwarpSoundIndex = 0;
     public float etherwarpSoundVolume = 1.0f;
-
-    // Pest Finder: the vacuum's trail extended to a waypoint, and an outline on the pests on the Garden.
-    public boolean pestFinderEnabled = false;
-    public int pestFinderGuessColor = 0xFFFF5555;
-    public boolean pestFinderGuessLine = true;
-    public int pestFinderGuessSeconds = 15;
-    public boolean pestFinderHideParticles = true;
-    public boolean pestFinderHighlight = true;
-    public int pestFinderHighlightColor = 0xFF55FF55;
-    public boolean pestFinderLineToPests = true;
-    /** The Garden's plot names by grid square, read from the desk's Configure Plots menu; empty until then. */
-    public java.util.List<String> pestFinderPlotNames = new java.util.ArrayList<>();
-
-    // Alignment Helper: slower mouse and the angles under the crosshair while lining up on the Garden.
-    public boolean alignmentHelperEnabled = false;
-    /** How long the player stands still on the ground with a farming tool before it turns on. */
-    public float alignmentHelperStillSeconds = 1.0f;
-    /** What the mouse's movement is multiplied by while it is active. */
-    public float alignmentHelperSensitivity = 0.25f;
-    /** Only slow mouse movements are slowed down; quick flicks pass at full speed. */
-    public boolean alignmentHelperFineOnly = true;
-    public boolean alignmentHelperShowAngles = true;
-    /** Locks the camera while farming: a farming tool in hand and the attack key held. */
-    public boolean alignmentHelperLockMouse = true;
 
     // Dungeon Map: screen position is edited in the HUD editor.
     /** Highlight the starred mobs and minibosses during a dungeon clear. */
@@ -907,8 +852,6 @@ public class AlpakaConfig {
     public boolean alwaysSprintEnabled = false;
     /** Always sprint stays off on the Garden, where farming wants walking speed. */
     public boolean alwaysSprintIgnoreGarden = false;
-    /** The cursor stays put when Hypixel swaps one menu for the next (backpack pages and the like). */
-    public boolean keepCursorPositionEnabled = true;
     /** Quick Join's main switch. Off for fresh installs: it sends a command nobody typed. */
     public boolean quickJoinEnabled = false;
     /** Quick Join sends /skyblock once after joining Hypixel. */
@@ -1011,38 +954,6 @@ public class AlpakaConfig {
     public boolean oldMasterStarsEnabled = false;
     /** Hovering a backpack or ender chest page in the Storage menu shows what was last seen inside. */
     public boolean storagePreviewEnabled = true;
-    /** Enchantments at their highest level are drawn in {@link #maxEnchantColor} in tooltips. */
-    public boolean maxEnchantColorEnabled = false;
-    public int maxEnchantColor = 0xFFFFAA00;
-    /** Maxed enchantments in moving rainbow colors instead of {@link #maxEnchantColor}; set in its picker. */
-    public Chroma maxEnchantChroma = new Chroma();
-    /** Ultimate enchantments too, which Hypixel already marks with bold pink. */
-    public boolean maxEnchantColorUltimate = false;
-    /** In SkyBlock's anvil, books that combine with the one put in are highlighted. */
-    public boolean anvilCombineHelperEnabled = false;
-    public int anvilCombineHelperColor = 0x8055FF55;
-    /** Slots in SkyBlock menus marked the way Item Search marks what it found: ready ones in one color, missing ones in another. */
-    public boolean slotHighlightEnabled = true;
-    public boolean slotHighlightActivePet = true;
-    public boolean slotHighlightUnfinishedTasks = true;
-    public boolean slotHighlightAuctions = true;
-    public boolean slotHighlightBazaarOrders = true;
-    public boolean slotHighlightCroesus = true;
-    public boolean slotHighlightJacobContests = true;
-    public boolean slotHighlightSlayerRewards = true;
-    public boolean slotHighlightRngMeter = true;
-    public boolean slotHighlightCommissions = true;
-    public boolean slotHighlightChocolateFactory = true;
-    public boolean slotHighlightComposterUpgrades = true;
-    public boolean slotHighlightBestiary = true;
-    public int slotHighlightReadyColor = 0x5055FF55;
-    public int slotHighlightMissingColor = 0x50FF5555;
-    /** Chronomatron, Ultrasequencer and Superpairs: what to click next is highlighted. */
-    public boolean experimentSolverEnabled = false;
-    public int experimentSolverNextColor = 0xA055FF55;
-    public int experimentSolverLaterColor = 0x70FFFF55;
-    /** Clicks on a wrong block in Chronomatron or Ultrasequencer are dropped instead of ending the game. */
-    public boolean experimentSolverPreventMisclicks = false;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
@@ -1052,37 +963,28 @@ public class AlpakaConfig {
     public boolean wideHealthBarCentered = false;
     /** Absorption hearts: 0 a row of their own, 1 gold over the first hearts, 2 hidden. */
     public int wideHealthBarAbsorption = 0;
+
     /**
-     * Custom Tab: SkyBlock's player list on one panel, sorted into its categories. Layout 0 puts the
-     * categories next to each other, 1 under each other. See CustomTabFeature.
+     * A party invite or a trade, friend, guild or duel request raises a notification: Y accepts,
+     * N dismisses. Was the Party Invite Prompt's switch before the other requests joined it.
      */
-    public boolean customTabEnabled = false;
-    public boolean customTabBlur = true;
-    public boolean customTabSmoothFont = true;
-    public int customTabLayout = 0;
-    public boolean customTabHideAds = true;
-    public boolean customTabToggle = false;
-    /** The list stays up in the chat and in inventories and chests, drawn above them. */
-    public boolean customTabInMenus = false;
-    /** Hypixel's progress drawn as bars: its pipe bars, counts toward a goal, skill percentages. */
-    public boolean customTabProgressBars = true;
-    /** A row lights up for a moment when its value changes. */
-    public boolean customTabHighlightChanges = true;
-    /** Each widget (Area, Profile, Pet, ...) in a faint box of its own. */
-    public boolean customTabSectionBoxes = true;
-    /** The panel behind the list; off leaves only the text. */
-    public boolean customTabBackground = true;
-    /** The list slides down out of the top edge and back up instead of appearing at once. */
-    public boolean customTabAnimated = true;
-    public float customTabScale = 1.0f;
+    @SerializedName(value = "playerRequestsEnabled", alternate = "partyInvitePromptEnabled")
+    public boolean playerRequestsEnabled = false;
+    /** Which requests are raised; see PartyInviteFeature and ChatPromptsFeature. */
+    public boolean playerRequestsParty = true;
+    public boolean playerRequestsTrade = true;
+    public boolean playerRequestsFriend = true;
+    public boolean playerRequestsGuild = true;
+    public boolean playerRequestsDuel = true;
 
-    /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
-    public boolean partyInvitePromptEnabled = false;
+    /** What an NPC or Hypixel itself asks in chat raises a notification with keys; see ChatPromptsFeature. */
+    public boolean npcPromptsEnabled = false;
+    /** Which kinds of prompt are raised. */
+    public boolean npcPromptsDialogs = true;
+    public boolean npcPromptsAbiphone = true;
+    public boolean npcPromptsRequeue = true;
+    public boolean npcPromptsGg = true;
 
-    /** "/isle" is sent as "/warp isle"; see WarpShortcut. */
-    public boolean shortenWarpEnabled = false;
-    /** A warp typed in the first seconds on a server waits for Hypixel's cooldown; see WarpCooldownQueue. */
-    public boolean warpCooldownQueueEnabled = false;
     /** A party member's "!warp", "!tps"... raises a Y/N prompt to answer it; see PartyCommandsFeature. */
     public boolean partyCommandsEnabled = false;
     /** Info and fun party commands are answered without the Y/N prompt. */
@@ -1369,14 +1271,27 @@ public class AlpakaConfig {
     /** 0: over every held item. 1: in place of the enchantment glint, so only on glinting items. */
     public int itemStarlightMode = 0;
 
-    // Swing motion blur: faded copies trail behind the held item while it swings; see ItemMotionBlurFeature.
-    public boolean itemMotionBlurEnabled = false;
-    /** How far back in time the trail reaches, in milliseconds. */
-    public float itemMotionBlurLength = 80.0f;
-    /** Opacity of the newest ghost copy; the older ones fade out from there. */
-    public float itemMotionBlurOpacity = 0.35f;
-    /** Number of ghost copies spread over the trail length. */
-    public float itemMotionBlurSteps = 8.0f;
+    // Swing trail: the tip of the held item draws a sweep in the air while it strikes; see SwingTrailFeature.
+    public boolean itemSwingTrailEnabled = false;
+    public int itemSwingTrailColor = 0xFFFFFFFF;
+    /** How long the sweep stays after it was drawn, in milliseconds. */
+    public float itemSwingTrailDuration = 250.0f;
+    /** How thick the sweep is, 1.0 its usual thickness: a fifth of the item's length. */
+    public float itemSwingTrailWidth = 1.0f;
+
+    // Equip animation: how the held item leaves and arrives when you switch slots; see EquipAnimation.
+    public boolean itemEquipAnimationEnabled = false;
+    /** Index into EquipAnimation.Style. */
+    public int itemEquipAnimationStyle = 1;
+    /** How far the item moves, in percent: 0 swaps instantly, 100 is the style as designed, 200 doubles it. */
+    public float itemEquipAnimationIntensity = 100.0f;
+    /** Percent of vanilla's re-equip pace; below 100 the switch takes longer, so the path can be seen. */
+    public float itemEquipAnimationSpeed = 50.0f;
+
+    // Inspect Animation: the hand shows off the held item on a key press; see ItemInspectFeature.
+    public boolean itemInspectEnabled = false;
+    /** How fast the inspect plays, 1.0 the animation's own length. */
+    public float itemInspectSpeed = 1.0f;
 
     // Swing Animation Customizations
     public float swingDriftX = 0.0f;
@@ -1406,10 +1321,19 @@ public class AlpakaConfig {
         public float swingArcY = 0.0f;
         public float swingArcZ = 0.0f;
         // Newer than the constructor below; presets saved before these existed load with the defaults.
-        public boolean motionBlurEnabled = false;
-        public float motionBlurLength = 80.0f;
-        public float motionBlurOpacity = 0.35f;
-        public float motionBlurSteps = 8.0f;
+        public boolean swingTrailEnabled = false;
+        public int swingTrailColor = 0xFFFFFFFF;
+        public float swingTrailDuration = 250.0f;
+        public float swingTrailWidth = 1.0f;
+        public boolean equipAnimationEnabled = false;
+        public int equipAnimationStyle = 1;
+        public float equipAnimationIntensity = 100.0f;
+        public float equipAnimationSpeed = 50.0f;
+        /**
+         * First-Person Hand in F5. Null in presets saved before it was part of them, so loading
+         * one of those leaves the switch as it is instead of turning it off.
+         */
+        public Boolean renderHandInThirdPerson = null;
         /** What the player called it; empty for none, and it shows as "Preset n" then. */
         public String name = "";
 
@@ -1473,10 +1397,15 @@ public class AlpakaConfig {
             this.swingArcX = preset.swingArcX;
             this.swingArcY = preset.swingArcY;
             this.swingArcZ = preset.swingArcZ;
-            this.itemMotionBlurEnabled = preset.motionBlurEnabled;
-            this.itemMotionBlurLength = preset.motionBlurLength;
-            this.itemMotionBlurOpacity = preset.motionBlurOpacity;
-            this.itemMotionBlurSteps = preset.motionBlurSteps;
+            this.itemSwingTrailEnabled = preset.swingTrailEnabled;
+            this.itemSwingTrailColor = preset.swingTrailColor;
+            this.itemSwingTrailDuration = preset.swingTrailDuration;
+            this.itemSwingTrailWidth = preset.swingTrailWidth;
+            this.itemEquipAnimationEnabled = preset.equipAnimationEnabled;
+            this.itemEquipAnimationStyle = preset.equipAnimationStyle;
+            this.itemEquipAnimationIntensity = preset.equipAnimationIntensity;
+            this.itemEquipAnimationSpeed = preset.equipAnimationSpeed;
+            if (preset.renderHandInThirdPerson != null) this.renderHandInThirdPerson = preset.renderHandInThirdPerson;
             this.activeItemPresetIndex = index;
             save();
         }
@@ -1509,10 +1438,15 @@ public class AlpakaConfig {
         this.itemStarlightColor = 0xFF9B5CFF;
         this.itemStarlightStrength = 0.8f;
         this.itemStarlightMode = 0;
-        this.itemMotionBlurEnabled = false;
-        this.itemMotionBlurLength = 80.0f;
-        this.itemMotionBlurOpacity = 0.35f;
-        this.itemMotionBlurSteps = 8.0f;
+        this.itemSwingTrailEnabled = false;
+        this.itemSwingTrailColor = 0xFFFFFFFF;
+        this.itemSwingTrailDuration = 250.0f;
+        this.itemSwingTrailWidth = 1.0f;
+        this.itemEquipAnimationEnabled = false;
+        this.itemEquipAnimationStyle = 1;
+        this.itemEquipAnimationIntensity = 100.0f;
+        this.itemEquipAnimationSpeed = 50.0f;
+        this.itemInspectSpeed = 1.0f;
 
         this.swingDriftX = 0.0f;
         this.swingDriftY = 0.0f;
@@ -1571,10 +1505,15 @@ public class AlpakaConfig {
                 this.swingArcY,
                 this.swingArcZ
         );
-        preset.motionBlurEnabled = this.itemMotionBlurEnabled;
-        preset.motionBlurLength = this.itemMotionBlurLength;
-        preset.motionBlurOpacity = this.itemMotionBlurOpacity;
-        preset.motionBlurSteps = this.itemMotionBlurSteps;
+        preset.swingTrailEnabled = this.itemSwingTrailEnabled;
+        preset.swingTrailColor = this.itemSwingTrailColor;
+        preset.swingTrailDuration = this.itemSwingTrailDuration;
+        preset.swingTrailWidth = this.itemSwingTrailWidth;
+        preset.equipAnimationEnabled = this.itemEquipAnimationEnabled;
+        preset.equipAnimationStyle = this.itemEquipAnimationStyle;
+        preset.equipAnimationIntensity = this.itemEquipAnimationIntensity;
+        preset.equipAnimationSpeed = this.itemEquipAnimationSpeed;
+        preset.renderHandInThirdPerson = this.renderHandInThirdPerson;
         return preset;
     }
 
@@ -1751,7 +1690,6 @@ public class AlpakaConfig {
 
         // Settings that were replaced keep the other pattern: a legacy field, read once and then
         // cleared, so it needs no number.
-        instance.migrateNameTagBackground();
         boolean chromaMoved = instance.migrateChroma();
         instance.migrateInventoryHudVisibility();
         instance.migrateWorldAgeHud();
@@ -1844,17 +1782,16 @@ public class AlpakaConfig {
     }
 
     /**
-     * Layout 3 to 4: Hide Explosions became Hide Visual Clutter, with more effects than explosions.
-     * Whoever had Hide Explosions on keeps exactly that; the new effects wait to be switched on.
+     * Layout 3 to 4: Hide Explosions became Hide Visual Clutter, with other effects. Explosions are
+     * no longer hidden, so nothing of what Hide Explosions did is left: the switch goes off, and the
+     * effects wait to be switched on, so nothing hides that was not hidden before.
      */
     private void migrateTo4() {
         if (!hideVisualClutter) return;
-        clutterExplosions = true;
+        hideVisualClutter = false;
         clutterFallingBlocks = false;
-        clutterBlockBreak = false;
         clutterHitParticles = false;
         clutterFireworks = false;
-        clutterExperienceOrbs = false;
         clutterDragonDeath = false;
     }
 
@@ -1944,12 +1881,6 @@ public class AlpakaConfig {
 
     private static float clampSpeed(float speed) {
         return Math.max(Chroma.MIN_SPEED, Math.min(Chroma.MAX_SPEED, speed));
-    }
-
-    private void migrateNameTagBackground() {
-        if (hideNameTagBackground == null) return;
-        if (hideNameTagBackground) nameTagBackgroundColor = 0;
-        hideNameTagBackground = null;
     }
 
     /**
@@ -2068,12 +1999,12 @@ public class AlpakaConfig {
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
-        this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
         this.customNameTagEnabled = false;
         this.chromaHatEnabled = false;
         this.auraEnabled = false;
         this.rareDropAnimationEnabled = false;
+        this.teleportWarpEnabled = false;
         this.playerScaleEnabled = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;
@@ -2088,10 +2019,7 @@ public class AlpakaConfig {
         this.hideVisualClutter = false;
         this.hideEntityFire = false;
         this.firstPersonFireStatic = false;
-        this.showOwnNameTag = false;
-        this.nameTagTextShadow = false;
         this.wideHealthBarEnabled = false;
-        this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;
         this.customSoundsEnabled = false;
         this.customSoundButtonClick = false;
@@ -2112,13 +2040,9 @@ public class AlpakaConfig {
         this.playerModelEnabled = false;
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
-        this.farmingHudEnabled = false;
-        this.customTabEnabled = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.ragnarockEnabled = false;
-        this.exactSkillXpEnabled = false;
-        this.visitorBazaarEnabled = false;
         this.deployableTimerEnabled = false;
         this.customAuctionHouseEnabled = false;
         this.customBazaarEnabled = false;
@@ -2142,7 +2066,6 @@ public class AlpakaConfig {
         this.chatSearchEnabled = false;
         this.chatCopyEnabled = false;
         this.alwaysSprintEnabled = false;
-        this.keepCursorPositionEnabled = false;
         this.quickJoinEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
@@ -2155,8 +2078,6 @@ public class AlpakaConfig {
         this.teammateClassGlowEnabled = false;
         this.leapMenuEnabled = false;
         this.dungeonDoorHighlight = false;
-        this.pestFinderEnabled = false;
-        this.alignmentHelperEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;
@@ -2166,17 +2087,14 @@ public class AlpakaConfig {
         this.scrollableTooltipsEnabled = false;
         this.persistentItemNameEnabled = false;
         this.storagePreviewEnabled = false;
-        this.maxEnchantColorEnabled = false;
-        this.anvilCombineHelperEnabled = false;
-        this.slotHighlightEnabled = false;
-        this.experimentSolverEnabled = false;
         this.mentionNotificationEnabled = false;
-        this.itemMotionBlurEnabled = false;
+        this.itemSwingTrailEnabled = false;
+        this.itemEquipAnimationEnabled = false;
+        this.itemInspectEnabled = false;
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
-        this.partyInvitePromptEnabled = false;
-        this.shortenWarpEnabled = false;
-        this.warpCooldownQueueEnabled = false;
+        this.playerRequestsEnabled = false;
+        this.npcPromptsEnabled = false;
         this.partyCommandsEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;

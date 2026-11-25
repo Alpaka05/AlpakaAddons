@@ -299,7 +299,45 @@ public final class ItemValue {
             }
             return;
         }
+        Variant variant = variant(id, data);
+        if (variant != null) {
+            ItemPrices.Quote q = b.prices.quote(variant.key());
+            if (q != null) {
+                b.parts.add(new Part(Group.BASE, "Base Item", id, 1, q.price(), q.market(), false, variant.note()));
+                return;
+            }
+            // None sold lately: the ordinary item's price, which the rare form is worth far more than.
+            ItemPrices.Quote plain = b.prices.quote(id);
+            b.parts.add(new Part(Group.BASE, "Base Item", id, 1, plain == null ? Double.NaN : plain.price(),
+                    plain == null ? null : plain.market(), true, variant.unpricedNote()));
+            return;
+        }
         b.item(Group.BASE, id, 1, "Base Item", null);
+    }
+
+    /**
+     * An item Hypixel handed out in a rare form under the ordinary item's id, told apart by an
+     * attribute only the rare form has. Its price is kept under {@code key}, worked out from what
+     * items with that attribute sold for ({@code coflFilter} is SkyCofl's filter for them), since
+     * the lowest BIN of the id is the ordinary item's.
+     */
+    public record Variant(String id, String attribute, String key, String coflFilter, String note, String unpricedNote) {}
+
+    public static final List<Variant> VARIANTS = List.of(
+            // Dctr's own Space Helmets carry an edition number and who he gave them to; the many
+            // Space Helmets without one sell for a few percent of their price.
+            new Variant("DCTR_SPACE_HELM", "edition", "DCTR_SPACE_HELM;PERSONALIZED", "Edition=1-100000",
+                    "A personalized Space Helmet from Dctr, with an edition number: priced by what those sold for"
+                            + " on the Auction House, not by the ordinary Space Helmet's lowest BIN.",
+                    "A personalized Space Helmet from Dctr, but none sold lately: priced as an ordinary Space Helmet,"
+                            + " so it is worth a lot more."));
+
+    /** The rare form this item is, or null for an ordinary one. */
+    static Variant variant(String id, JsonObject data) {
+        for (Variant v : VARIANTS) {
+            if (v.id().equals(id) && data.has(v.attribute())) return v;
+        }
+        return null;
     }
 
     /** A pet: the cheapest of its kind and rarity, its held item and its skin. */

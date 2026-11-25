@@ -52,6 +52,11 @@ public final class LocalAttackTracker {
         return System.currentTimeMillis() - usedItemAtMs <= USE_MEMORY_MS;
     }
 
+    /** Whether the local player right-clicked within the last {@code ms} milliseconds. */
+    public static boolean usedItemWithin(long ms) {
+        return System.currentTimeMillis() - usedItemAtMs <= ms;
+    }
+
     private LocalAttackTracker() {}
 
     /** Records that the local player just attacked the entity with this id. */

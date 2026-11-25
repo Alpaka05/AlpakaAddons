@@ -36,21 +36,27 @@ session always win over this file.
     Prefer `@WrapOperation`, `@WrapWithCondition` and `@ModifyExpressionValue` over `@Redirect` and
     `@ModifyConstant`, and never target a generated `lambda$...` method.
   - `compliance/Outbound.java`: the only place that may send chat messages or commands to the
-    server, and only as the direct result of a key press, click or Enter.
+    server, and only as the direct result of a key press, click or Enter. A key on a Player Requests
+    or NPC Prompts notice sends what a click on that chat line would send: the command on it, or for an NPC
+    dialog its click action (`Outbound.dialogueResponse`, `skyblock:dialogue_response` only).
     `OutboundBytecodeScanTest` scans the compiled classes and fails the build if anything else
-    sends to the server (packets, chat, commands, gameplay actions, method references included).
+    sends to the server (packets, chat, commands, gameplay actions, closing a menu or sign,
+    simulated key presses, held-slot changes, reflection, method references included), and lists
+    the reviewed exceptions per method, not per class.
     The documented exceptions: `Outbound.latencyProbe()`, the Performance HUD's ping (at most every
     5 s), `Outbound.quickJoinSkyblock()`, Quick Join's opt-in /skyblock after joining Hypixel
     (at most every 30 s), party chat answers to a party member's "!tps"-style command when the
     player switched on Auto Answer (`Cause.PARTY_CHAT_REQUEST`, off by default,
-    at most every 2 s), Warp Cooldown's delayed resend of a command the player typed and sent
-    with Enter, or picked on the command wheel, on SkyBlock (`features/commands/WarpCooldownQueue`, `Cause.QUEUED_CHAT_INPUT`): a
-    warp (/warp, /is, /hub, /warpforge, /garden) typed in the first 3 s after a world change, or
-    any command Hypixel refuses within 3 s with "You may only use this command after Ns on the
-    server!", is held and sent once when that wait is over (at most 30 s after the world change);
-    only the latest command, never retried, dropped on a world change or disconnect,
-    and the resource pack answers of the pack cache in
+    at most every 2 s), and the resource pack answers of the pack cache in
     `mixin/DownloadedPackSourceMixin` and `mixin/ClientCommonPacketListenerPackCacheMixin`.
+  - `compat/oneconfig/`: puts the settings into OneConfig's own menu (OneClient) through its
+    `oneconfig:config` entrypoint, as a tree built from `ConfigTree`, so a new option shows up
+    there by itself. The values stay in the mod's config; OneConfig only calls the options'
+    getters and setters. Whatever OneConfig has a control for is set right there (a key in its
+    key field, a color's gradient or rainbow as a mode with its rows); a button into the mod's
+    own menu is the last resort. OneConfig is compile-only (`oneconfigApi` in `build.gradle`) and on
+    javac's classpath alone: it is built with a newer Kotlin than this project's compiler reads,
+    so only Java code may touch it. `ALPAKA_SCREENSHOT_TOUR=oneconfig` shows the result.
 - `src/test/`: JUnit 5 tests (Java and Kotlin).
 - `tools/`: helper scripts (Modrinth cleanup, menu icons, ...).
 

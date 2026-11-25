@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.dungeonmobs
 
+import net.alpaka.addons.features.dungeon.puzzle.HigherOrLowerTag
 import net.alpaka.addons.utils.SkyblockUtils
 
 /** Reads Hypixel's dungeon mob name tags, `✯ Zombie Commander 1.2M❤` for a starred one. */
@@ -30,13 +31,17 @@ object StarredMobs {
         return STAR in clean && HEALTH.containsMatchIn(clean)
     }
 
-    /** Whether [name] is the name tag of a mob without a star, the kind Hide Non-Starred Name Tags hides. */
+    /**
+     * Whether [name] is the name tag of a mob without a star, the kind Hide Non-Starred Name Tags hides.
+     * The Higher Or Lower blazes keep theirs: their health is what the puzzle is solved by.
+     */
     @JvmStatic
     fun isPlainMobTag(name: String): Boolean {
         if (HEART !in name) return false
         val clean = SkyblockUtils.cleanColor(name)
         if (STAR in clean || !HEALTH.containsMatchIn(clean)) return false
-        return ALWAYS_SHOWN.none { it in clean }
+        if (ALWAYS_SHOWN.any { it in clean }) return false
+        return HigherOrLowerTag.parse(clean) == null
     }
 
     @JvmStatic

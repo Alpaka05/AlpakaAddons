@@ -21,6 +21,12 @@ public interface AlpakaGuiElementSink {
      */
     void alpaka$submitUnderlay(GuiElementRenderState state);
 
+    /**
+     * Adds a picture-in-picture element, drawn by the renderer registered for its class through
+     * Fabric's {@code PictureInPictureRendererRegistry}.
+     */
+    void alpaka$submitPicture(net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState state);
+
     /** The scissor rectangle in effect, in screen-space GUI coordinates, or null when none is. */
     ScreenRectangle alpaka$currentScissor();
 }

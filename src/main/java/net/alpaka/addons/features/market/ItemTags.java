@@ -179,6 +179,11 @@ public final class ItemTags {
         return List.copyOf(all);
     }
 
+    /** Whether SkyCofl's names are in, so a name they don't know stays unknown. */
+    public static boolean namesLoaded() {
+        return bazaarByName != null && auctionByName != null;
+    }
+
     /** Whether a list the suggestions need is on its way: SkyCofl's names, or Hypixel's word on which are plain items. */
     public static boolean loading() {
         return fetching || ItemIcons.loading();
@@ -223,19 +228,23 @@ public final class ItemTags {
             for (JsonElement element : root.getAsJsonArray()) {
                 if (!element.isJsonObject()) continue;
                 JsonObject o = element.getAsJsonObject();
+                String coded = string(o, "name");
                 // A few names carry formatting codes, which neither a search nor a lookup wants.
-                String name = string(o, "name").replaceAll("§.", "").trim();
+                String raw = coded.replaceAll("§.", "").trim();
                 String tag = string(o, "tag");
-                if (name.isEmpty() || tag.isEmpty() || name.equals("null")) continue;
-                String key = name.toLowerCase(Locale.ROOT);
+                if (raw.isEmpty() || tag.isEmpty() || raw.equals("null")) continue;
+                String name = searchName(coded, raw, tag);
+                String key = (name == null ? raw : name).toLowerCase(Locale.ROOT);
                 String flags = string(o, "flags");
                 if (flags.contains("BAZAAR")) {
                     bazaar.putIfAbsent(key, tag);
-                    bazaarList.add(name);
+                    bazaar.putIfAbsent(raw.toLowerCase(Locale.ROOT), tag);
+                    if (name != null) bazaarList.add(name);
                 } else {
                     auction.putIfAbsent(key, tag);
+                    auction.putIfAbsent(raw.toLowerCase(Locale.ROOT), tag);
                     // Only what is actually sold there: items that never are would crowd the suggestions.
-                    if (flags.contains("AUCTION") || flags.contains("MUSEUM")) {
+                    if (name != null && (flags.contains("AUCTION") || flags.contains("MUSEUM"))) {
                         auctionList.computeIfAbsent(name, n -> new ArrayList<>()).add(tag);
                     }
                 }
@@ -247,6 +256,62 @@ public final class ItemTags {
         // Last: it is what tells the lists are there.
         bazaarByName = bazaar;
         bazaarNames = List.copyOf(bazaarList);
+    }
+
+    private static final java.util.regex.Pattern RUNE_NAME = java.util.regex.Pattern.compile("(?:◆ )?(.+ Rune) [IVX]+");
+    /** Enchantments whose name SkyCofl's words do not give: a hyphen, or a tag's leftover. */
+    private static final Map<String, String> ENCHANT_SPELLING = Map.of(
+            "Counter Strike", "Counter-Strike", "Triple Strike", "Triple-Strike", "Looting New", "Looting");
+
+    /**
+     * The name to suggest for an item, as the market's search finds it; null for one not worth
+     * suggesting. SkyCofl's list has a few that no search finds: an id for a name
+     * (FACTION_RABBIT_SUNSET), and copies of an item marked in grey, "Booster Cookie (Untradable)".
+     * A rune is suggested without its level, so the search shows every level, not only the one
+     * SkyCofl happened to see.
+     */
+    static String searchName(String coded, String plain, String tag) {
+        if (plain.equals(tag) && tag.indexOf('_') >= 0) return null;
+        if (coded.contains("§8(")) return null;
+        if (tag.startsWith("RUNE_")) {
+            java.util.regex.Matcher m = RUNE_NAME.matcher(plain);
+            return m.matches() ? m.group(1) : plain;
+        }
+        return enchantmentName(plain, tag);
+    }
+
+    private static final java.util.regex.Pattern ENCHANT_NAME = java.util.regex.Pattern.compile("(.+) (\\d{1,2}) enchant");
+    private static final Set<String> SMALL_WORDS = Set.of("of", "the", "a", "an", "and", "in", "on", "to");
+
+    /**
+     * An enchantment as Hypixel writes it, the way the Bazaar finds it: SkyCofl calls Chimera IV
+     * "chimera 4 enchant", and a search for that finds nothing. Any other name stays as it is.
+     */
+    static String enchantmentName(String name, String tag) {
+        if (!tag.startsWith("ENCHANTMENT_")) return name;
+        java.util.regex.Matcher m = ENCHANT_NAME.matcher(name);
+        if (!m.matches()) return name;
+        int level = Integer.parseInt(m.group(2));
+        if (level < 1) return name;
+        StringBuilder out = new StringBuilder();
+        String[] words = m.group(1).trim().split("\\s+");
+        for (int i = 0; i < words.length; i++) {
+            String w = words[i].toLowerCase(Locale.ROOT);
+            if (i > 0) out.append(' ');
+            if (i > 0 && SMALL_WORDS.contains(w)) out.append(w);
+            else out.append(Character.toUpperCase(w.charAt(0))).append(w, 1, w.length());
+        }
+        // Hypixel joins the farming ones with a hyphen: Turbo-Wheat.
+        String base = out.toString().replaceFirst("^Turbo ", "Turbo-");
+        base = ENCHANT_SPELLING.getOrDefault(base, base);
+        return base + " " + roman(level);
+    }
+
+    /** 1 to 99 in Roman numerals, as enchantment levels are written. */
+    static String roman(int n) {
+        String[] tens = {"", "X", "XX", "XXX", "XL", "L", "LX", "LXX", "LXXX", "XC"};
+        String[] ones = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"};
+        return tens[n / 10 % 10] + ones[n % 10];
     }
 
     /** The Auction House's names with their tags after {@link #index}, for the tests. */

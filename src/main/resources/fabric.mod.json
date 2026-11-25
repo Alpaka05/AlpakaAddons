@@ -22,6 +22,9 @@
     ],
     "modmenu": [
       "net.alpaka.addons.client.AlpakaModMenu"
+    ],
+    "oneconfig:config": [
+      "net.alpaka.addons.compat.oneconfig.OneConfigEntrypoint"
     ]
   },
   "mixins": [

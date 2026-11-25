@@ -5,6 +5,7 @@ import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.server.IntegratedServer;
@@ -30,7 +31,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.FireworkExplosion;
 import net.minecraft.world.item.component.Fireworks;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.block.Blocks;
@@ -91,7 +91,12 @@ public final class DevClutterBenchmark {
 
     private DevClutterBenchmark() {}
 
+    /**
+     * Only in the dev client: the variable alone could be set on a player's machine, and the
+     * benchmark spawns entities and quits the game.
+     */
     public static void register() {
+        if (!FabricLoader.getInstance().isDevelopmentEnvironment()) return;
         String wanted = System.getenv(ENV);
         if (wanted == null) return;
         defineScenarios(wanted);
@@ -101,12 +106,9 @@ public final class DevClutterBenchmark {
 
     private static void defineScenarios(String wanted) {
         List<Scenario> all = List.of(
-                new Scenario("explosions", on -> AlpakaConfig.instance.clutterExplosions = on, DevClutterBenchmark::explosions, null),
                 new Scenario("falling_blocks", on -> AlpakaConfig.instance.clutterFallingBlocks = on, DevClutterBenchmark::fallingBlocks, null),
-                new Scenario("block_break", on -> AlpakaConfig.instance.clutterBlockBreak = on, DevClutterBenchmark::blockBreak, null),
                 new Scenario("hit_particles", on -> AlpakaConfig.instance.clutterHitParticles = on, DevClutterBenchmark::critArrows, DevClutterBenchmark::hitSparks),
                 new Scenario("fireworks", on -> AlpakaConfig.instance.clutterFireworks = on, DevClutterBenchmark::fireworks, null),
-                new Scenario("experience_orbs", on -> AlpakaConfig.instance.clutterExperienceOrbs = on, DevClutterBenchmark::experienceOrbs, null),
                 new Scenario("dragon_death", on -> AlpakaConfig.instance.clutterDragonDeath = on, DevClutterBenchmark::dragonDeath, null));
         for (Scenario s : all) {
             if (wanted.equals("all") || wanted.equals("1") || List.of(wanted.split(",")).contains(s.name())) SCENARIOS.add(s);
@@ -198,12 +200,9 @@ public final class DevClutterBenchmark {
         AlpakaConfig config = AlpakaConfig.instance;
         // In memory only: the benchmark never saves.
         config.hideVisualClutter = true;
-        config.clutterExplosions = false;
         config.clutterFallingBlocks = false;
-        config.clutterBlockBreak = false;
         config.clutterHitParticles = false;
         config.clutterFireworks = false;
-        config.clutterExperienceOrbs = false;
         config.clutterDragonDeath = false;
         SCENARIOS.get(scenario).toggle().accept(PHASES[phase]);
     }
@@ -313,15 +312,6 @@ public final class DevClutterBenchmark {
 
     // Workloads (server thread, once per client tick) --------------------------------------------
 
-    /** Hyperion spam: three explosions a tick, each with an explosion particle packet like Hypixel's. */
-    private static void explosions(ServerLevel level) {
-        for (int i = 0; i < 3; i++) {
-            double x = ax(), y = oy + 1 + RANDOM.nextDouble() * 2, z = az();
-            level.explode(null, x, y, z, 3.0f, Level.ExplosionInteraction.NONE);
-            level.sendParticles(ParticleTypes.EXPLOSION, x, y, z, 8, 1.5, 1.0, 1.5, 0.0);
-        }
-    }
-
     /** Molten Wave: fifteen gold blocks a tick hanging in the air for two seconds. */
     private static void fallingBlocks(ServerLevel level) {
         BlockState gold = Blocks.GOLD_BLOCK.defaultBlockState();
@@ -333,17 +323,6 @@ public final class DevClutterBenchmark {
             block.setNoGravity(true);
             block.dropItem = false;
             SPAWNED.addLast(new Spawned(block, serverTicks + 40));
-        }
-    }
-
-    /** Farming with other players around: five full blocks broken a tick, 100 a second. */
-    private static void blockBreak(ServerLevel level) {
-        BlockState[] kinds = {Blocks.STONE.defaultBlockState(), Blocks.MELON.defaultBlockState(),
-                Blocks.PUMPKIN.defaultBlockState(), Blocks.OAK_LOG.defaultBlockState(), Blocks.DIRT.defaultBlockState()};
-        for (int i = 0; i < 5; i++) {
-            BlockPos pos = BlockPos.containing(ox - 4 + RANDOM.nextInt(9), oy + RANDOM.nextInt(2), oz + 4 + RANDOM.nextInt(4));
-            level.setBlock(pos, kinds[i], 3);
-            level.destroyBlock(pos, false);
         }
     }
 
@@ -381,13 +360,6 @@ public final class DevClutterBenchmark {
         rocket.set(DataComponents.FIREWORKS, new Fireworks(0, List.of(star, star, star)));
         FireworkRocketEntity entity = new FireworkRocketEntity(level, ax(), oy + 1, az(), rocket);
         level.addFreshEntity(entity);
-    }
-
-    /** Experience Bottles: ten orbs a tick on the ground, gone after three seconds. */
-    private static void experienceOrbs(ServerLevel level) {
-        for (int i = 0; i < 10; i++) {
-            keep(level, new ExperienceOrb(level, ax(), oy + 0.5, az(), 1 + RANDOM.nextInt(7)), 60);
-        }
     }
 
     /** A dragon killed every two seconds, so about five are dying at a time, like M7's last phase. */

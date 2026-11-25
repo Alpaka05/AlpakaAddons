@@ -443,6 +443,31 @@ class MarketParsingTest {
     }
 
     @Test
+    void namesEnchantmentsAsTheBazaarFindsThem() {
+        assertEquals("Chimera IV", ItemTags.enchantmentName("chimera 4 enchant", "ENCHANTMENT_ULTIMATE_CHIMERA_4"));
+        assertEquals("Luck of the Sea III", ItemTags.enchantmentName("luck of the sea 3 enchant", "ENCHANTMENT_LUCK_OF_THE_SEA_3"));
+        assertEquals("Bobbin' Time V", ItemTags.enchantmentName("bobbin' time 5 enchant", "ENCHANTMENT_ULTIMATE_BOBBIN_TIME_5"));
+        assertEquals("Turbo-Wheat V", ItemTags.enchantmentName("turbo wheat 5 enchant", "ENCHANTMENT_TURBO_WHEAT_5"));
+        assertEquals("Sharpness VII", ItemTags.enchantmentName("sharpness 7 enchant", "ENCHANTMENT_SHARPNESS_7"));
+        assertEquals("Fortune X", ItemTags.enchantmentName("fortune 10 enchant", "ENCHANTMENT_FORTUNE_10"));
+        assertEquals("Enchantment Table", ItemTags.enchantmentName("Enchantment Table", "ENCHANTMENT_TABLE"));
+        assertEquals("Counter-Strike V", ItemTags.enchantmentName("counter strike 5 enchant", "ENCHANTMENT_COUNTER_STRIKE_5"));
+        assertEquals("Looting VII", ItemTags.enchantmentName("looting new 7 enchant", "ENCHANTMENT_LOOTING_NEW_7"));
+        assertEquals("One For All I", ItemTags.enchantmentName("one for all 1 enchant", "ENCHANTMENT_ULTIMATE_ONE_FOR_ALL_1"));
+        // Runes without their level, ids and grey-marked copies not at all.
+        assertEquals("Tidal Rune", ItemTags.searchName("Tidal Rune I", "Tidal Rune I", "RUNE_TIDAL"));
+        assertEquals("Turkey Rune", ItemTags.searchName("◆ Turkey Rune III", "◆ Turkey Rune III", "RUNE_TURKEY"));
+        assertNull(ItemTags.searchName("FACTION_RABBIT_SUNSET", "FACTION_RABBIT_SUNSET", "FACTION_RABBIT_SUNSET"));
+        assertNull(ItemTags.searchName("Booster Cookie §8(Untradable)", "Booster Cookie (Untradable)", "BOOSTER_COOKIE"));
+        assertEquals("X", ItemTags.searchName("X", "X", "X"));
+        ItemTags.index("""
+                [{"name":"chimera 4 enchant","tag":"ENCHANTMENT_ULTIMATE_CHIMERA_4","flags":"BAZAAR"}]""");
+        assertEquals(List.of("Chimera IV"), ItemTags.names(MarketKind.BAZAAR));
+        assertEquals("ENCHANTMENT_ULTIMATE_CHIMERA_4", ItemTags.lookup("Chimera IV", MarketKind.BAZAAR));
+        assertEquals("ENCHANTMENT_ULTIMATE_CHIMERA_4", ItemTags.lookup("chimera 4 enchant", MarketKind.BAZAAR));
+    }
+
+    @Test
     void theAuctionHousesSuggestionsLeaveOutPlainMinecraftItems() {
         ItemIcons.Catalog catalog = ItemIcons.index(com.google.gson.JsonParser.parseString("""
                 {"items":[
@@ -502,6 +527,31 @@ class MarketParsingTest {
     }
 
     @Test
+    void keepsTheNeuRepositorysAnswersOnDiskForAWhile() {
+        long now = 100L * 24 * 3_600_000L;
+        long day = 24 * 3_600_000L;
+        NeuItems.readKept("""
+                {"items":{
+                  "TEST_KEPT_FRESH":{"at":%d,"look":{"material":"player_head","damage":3,"skin":"ewogIA==","glowing":true,"model":"hypixel:x"}},
+                  "TEST_KEPT_STALE":{"at":%d,"look":{"material":"stone"}},
+                  "TEST_KEPT_MISSING":{"at":%d},
+                  "TEST_KEPT_MISSING_OLD":{"at":%d}}}""".formatted(now - day, now - 20 * day, now - day, now - 5 * day), now);
+        assertTrue(NeuItems.missing("TEST_KEPT_MISSING"));
+        // Too old: asked for again.
+        assertFalse(NeuItems.missing("TEST_KEPT_MISSING_OLD"));
+        String written = NeuItems.keptJson(now);
+        assertTrue(written.contains("TEST_KEPT_FRESH") && written.contains("TEST_KEPT_MISSING"), written);
+        assertFalse(written.contains("TEST_KEPT_STALE") || written.contains("TEST_KEPT_MISSING_OLD"), written);
+        // What was written reads back the same.
+        assertTrue(written.contains("\"skin\":\"ewogIA==\"") && written.contains("\"model\":\"hypixel:x\""), written);
+
+        // After failures GitHub gets a minute, then longer, never more than a quarter of an hour.
+        assertEquals(60_000L, NeuItems.pause(1));
+        assertEquals(120_000L, NeuItems.pause(2));
+        assertEquals(15 * 60_000L, NeuItems.pause(50));
+    }
+
+    @Test
     void findsPetsRunesAndShardsInTheNeuRepository() {
         List<String> pet = NeuItems.candidates("PET_GRIFFIN", null);
         assertEquals("GRIFFIN;4", pet.get(0));
@@ -511,6 +561,7 @@ class MarketParsingTest {
         assertEquals(List.of("PET_ITEM_BIG_TEETH_COMMON"), NeuItems.candidates("PET_ITEM_BIG_TEETH_COMMON", null));
         assertEquals(List.of("TIDAL_RUNE;1", "TIDAL_RUNE;2", "TIDAL_RUNE;3", "RUNE_TIDAL"), NeuItems.candidates("RUNE_TIDAL", null));
         assertEquals("SMITTEN_RUNE;3", NeuItems.candidates("UNIQUE_RUNE_SMITTEN", null).get(0));
+        assertEquals(List.of("FIERY_BURST_RUNE;1", "RUNE_FIERY_BURST_1"), NeuItems.candidates("RUNE_FIERY_BURST_1", null));
 
         Map<String, String> shards = NeuItems.shardIds("""
                 [{"stock":"SHARD_CRETAN_BULL","id":"ATTRIBUTE_SHARD_MYTHOLOGICAL_RESISTANCE;1"},
@@ -542,6 +593,15 @@ class MarketParsingTest {
         ItemIcons.Info old = NeuItems.parse("""
                 {"itemid":"minecraft:skull","damage":3,"nbttag":"{}"}""");
         assertEquals("player_head", LegacyItems.modernId(old.material(), old.damage()));
+    }
+
+    @Test
+    void skyCoflItemNames() throws Exception {
+        String json = "[{\"name\":\"Pestilence Rune I\",\"tag\":\"RUNE_ZOMBIE_SLAYER\",\"flags\":\"AUCTION\"},"
+                + "{\"name\":\"null\",\"tag\":\"LOG_2:2\",\"flags\":\"AUCTION\"},"
+                + "{\"name\":\"Necron Dye\",\"tag\":\"DYE_NECRON\",\"flags\":\"AUCTION\"}]";
+        Map<String, String> names = ItemNames.parse(new java.io.StringReader(json));
+        assertEquals(Map.of("RUNE_ZOMBIE_SLAYER", "Pestilence Rune I", "DYE_NECRON", "Necron Dye"), names);
     }
 
     @Test
@@ -594,6 +654,15 @@ class MarketParsingTest {
         assertArrayEquals(new int[] {0, 4, 10, 13}, match.ranges());
         SearchSuggestions.Match initials = SearchSuggestions.rank("aotd", List.of("Aspect of the Dragons"), 1).get(0);
         assertArrayEquals(new int[] {0, 1, 7, 8, 10, 11, 14, 15}, initials.ranges());
+    }
+
+    @Test
+    void findsRomanLevelsByTheirNumber() {
+        List<String> books = List.of("Chimera I", "Chimera IV", "Chimera V", "Personal Compactor 5000");
+        assertEquals("Chimera IV", SearchSuggestions.rank("chimera 4", books, 5).get(0).name());
+        assertEquals("Chimera I", SearchSuggestions.rank("chimera 1", books, 5).get(0).name());
+        assertEquals("Personal Compactor 5000", SearchSuggestions.rank("compactor 5000", books, 5).get(0).name());
+        assertArrayEquals(new int[] {0, 10}, SearchSuggestions.rank("chimera 4", books, 1).get(0).ranges());
     }
 
     // ---- Market stats ---------------------------------------------------------------------------

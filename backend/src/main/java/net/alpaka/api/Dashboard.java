@@ -295,6 +295,25 @@ final class Dashboard {
         return Json.write(member == null ? Map.of() : keep(member, MUSEUM_FIELDS));
     }
 
+    /**
+     * Hypixel's status answer cut down to whether the player is online and where - the game, its
+     * mode and map - as the mod's answer; null for an answer without a session.
+     */
+    static String status(String hypixelBody) {
+        Object root = Json.parse(hypixelBody);
+        if (!(root instanceof Map<?, ?> r) || !(r.get("session") instanceof Map<?, ?> session)) return null;
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("success", true);
+        boolean online = Boolean.TRUE.equals(session.get("online"));
+        out.put("online", online);
+        if (online) {
+            for (String field : List.of("gameType", "mode", "map")) {
+                if (session.get(field) instanceof String value) out.put(field, value);
+            }
+        }
+        return Json.write(out);
+    }
+
     private static void put(Map<String, Object> into, String key, Object value) {
         if (value != null) into.put(key, value);
     }

@@ -28,10 +28,32 @@ public final class AlpakaGuiPipelines {
 
     private AlpakaGuiPipelines() {}
 
+    private static RenderPipeline glow;
+
     public static void init() {
         roundedRect();
         blurRect();
         roundedImage();
+        glow();
+    }
+
+    /**
+     * Soft shapes of light - glows, rings, rays, sparkles - for the rare drop animation, each from
+     * one quad with its shape worked out in the fragment shader. See {@link GlowRenderState}.
+     */
+    public static RenderPipeline glow() {
+        if (glow == null) {
+            glow = RenderPipelinesAccessor.alpaka$register(
+                    RenderPipeline.builder(RenderPipelinesAccessor.alpaka$guiSnippet())
+                            .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/gui_glow"))
+                            .withVertexShader(Identifier.fromNamespaceAndPath("alpaka", "core/gui_glow"))
+                            .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "core/gui_glow"))
+                            .withVertexBinding(0, DefaultVertexFormat.ENTITY)
+                            // A ray's corners turn either way round, depending on where it points.
+                            .withCull(false)
+                            .build());
+        }
+        return glow;
     }
 
     /**

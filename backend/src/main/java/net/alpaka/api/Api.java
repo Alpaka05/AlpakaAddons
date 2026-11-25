@@ -16,7 +16,8 @@ import java.util.function.LongSupplier;
  * player ever reaches this server, and a challenge works once only (see {@link Challenges}).
  *
  * Logged in, a player may ask for what the Profile Dashboard shows of a player
- * ({@code /v1/dashboard/<name or uuid>}) and a profile's museum ({@code /v1/museum/<uuid>/<profile>}).
+ * ({@code /v1/dashboard/<name or uuid>}), a profile's museum ({@code /v1/museum/<uuid>/<profile>})
+ * and whether the player is online and where ({@code /v1/status/<uuid>}).
  * It is fetched from Hypixel with the server's key only when asked for, cut down to the dashboard's
  * fields ({@link Dashboard}), cached, and limited per player, so the key's budget can't be spent by
  * one of them. It is not a copy of Hypixel's API: there is no way to ask for Hypixel's answer as it
@@ -99,6 +100,9 @@ final class Api {
     static final long OWN_REFRESH_AGE_MS = 60_000L;
     /** A name keeps its account, and an account its skin, this long. */
     static final long ACCOUNT_AGE_MS = 6 * 60 * 60_000L;
+    /** Whether a player is online, and where: a minute old at most, half that with Refresh. */
+    static final long STATUS_AGE_MS = 60_000L;
+    static final long STATUS_REFRESH_AGE_MS = 30_000L;
     /** The Bazaar moves by the minute; Hypixel updates its list about that often. */
     static final long BAZAAR_AGE_MS = 60_000L;
     /** About 48 MB of answers; the service runs with a 512 MB heap. */
@@ -170,6 +174,7 @@ final class Api {
         if (path.equals("/v1/auth")) return login(r);
         if (path.startsWith("/v1/dashboard/")) return dashboard(r, path.substring("/v1/dashboard/".length()));
         if (path.startsWith("/v1/museum/")) return museum(r, path.substring("/v1/museum/".length()));
+        if (path.startsWith("/v1/status/")) return status(r, path.substring("/v1/status/".length()));
         if (path.equals("/v1/bazaar")) return bazaar(r);
         return Response.error(404, "Not found");
     }
@@ -191,9 +196,12 @@ final class Api {
         if (!Ids.username(username) || !Ids.serverId(serverId)) return Response.error(400, "Missing username or server id");
         // Only a challenge this server handed out, once: see Challenges for why.
         if (!challenges.consume(serverId)) return Response.error(401, "Unknown or used challenge");
+        // A mod that says so told Mojang the id worked out from the challenge (see Challenges);
+        // 2.0.0-alpha.1 still tells it the challenge itself, until no one runs that any more.
+        String joined = "2".equals(r.header("X-Alpaka-Login")) ? Challenges.loginServerId(serverId) : serverId;
         String uuid;
         try {
-            uuid = Ids.uuid(mojang.hasJoined(username, serverId));
+            uuid = Ids.uuid(mojang.hasJoined(username, joined));
         } catch (IOException e) {
             return Response.error(503, "Mojang can't be reached");
         }
@@ -349,6 +357,34 @@ final class Api {
         }
         String body = "{\"success\":true,\"museum\":" + (museum == null ? "null" : museum) + "}";
         return new Response(200, "application/json", body, Map.of("X-Cache", hit ? "HIT" : "MISS"));
+    }
+
+    /**
+     * Whether a player is online and where, for the dashboard's overview:
+     * {@code {"success":true,"online":true,"gameType":"SKYBLOCK","mode":"hub"}}. Asked for by the
+     * mod once the profile is on screen; {@code ?fresh=1} is the dashboard's Refresh. A player who
+     * turned this off in Hypixel's API settings shows as offline, as Hypixel answers.
+     */
+    private Response status(Request r, String rest) {
+        String player = player(r);
+        if (player == null) return Response.error(401, "Log in first");
+        String uuid = Ids.uuid(rest);
+        if (uuid == null) return Response.error(400, "Not a UUID");
+        if (!requests.tryUse(player)) {
+            return Response.error(429, "Too many requests").with("Retry-After", String.valueOf(requests.retryAfterSeconds(player)));
+        }
+        String key = "status/" + uuid;
+        ResponseCache.Entry cached = cache.get(key, "1".equals(r.param("fresh")) ? STATUS_REFRESH_AGE_MS : STATUS_AGE_MS);
+        if (cached != null) return answer(cached.body(), true, cached.fetchedAt());
+        try {
+            Upstream.Result result = fetch("/v2/status?uuid=" + uuid, player);
+            String status = Dashboard.status(result.body());
+            if (status == null) return Response.error(502, "Hypixel's answer couldn't be read");
+            cache.put(key, 200, status);
+            return answer(status, false, clock.getAsLong());
+        } catch (Refusal refusal) {
+            return refusal.response;
+        }
     }
 
     /**

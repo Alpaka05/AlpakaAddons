@@ -544,7 +544,7 @@ public class ProfileDashboardScreen extends Screen {
                 if (recentPicked != null && !recent.contains(recentPicked)) recentPicked = null;
                 int widest = 0;
                 for (String player : recent) widest = Math.max(widest, textW(player));
-                recentW = Math.max(sw, widest + 34);
+                recentW = Math.max(sw, widest + 20);
                 // Under the field, from its left edge, unless that would run past the window.
                 recentX = Math.min(sx, x + w - PAD - recentW);
                 recentY = by - 1 + AlpakaStyle.BUTTON_H + 3;
@@ -575,8 +575,7 @@ public class ProfileDashboardScreen extends Screen {
             boolean hover = AlpakaStyle.inside(mx, my, px + 4, ry, mw - 8, RECENT_ROW_H);
             boolean lit = hover || player.equals(recentPicked);
             if (lit) ModernGuiUtils.drawRoundedRect(graphics, px + 4, ry, mw - 8, RECENT_ROW_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-            MarketIcons.draw(graphics, MarketIcons.Glyph.CLOCK, px + 10, ry + 4, 8, AlpakaStyle.TEXT_MUTED);
-            text(graphics, player, px + 24, ry + 4, lit ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            text(graphics, player, px + 10, ry + 4, lit ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
             hits.add(new Hit(px + 4, ry, mw - 8, RECENT_ROW_H, () -> lookUp(player)));
             ry += RECENT_ROW_H;
         }

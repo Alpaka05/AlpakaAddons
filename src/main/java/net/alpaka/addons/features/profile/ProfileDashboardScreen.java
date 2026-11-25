@@ -1031,8 +1031,8 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     /**
-     * The player in the armor they wear, with the pet they have out floating beside them and named
-     * below. Outside a world, where no figure can be made, the face instead.
+     * The player in the armor they wear, with the pet they have out floating beside them, named in
+     * its tooltip. Outside a world, where no figure can be made, the face instead.
      */
     private void figureCard(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w, int h, long now) {
         card(graphics, x, y, w, h);
@@ -1043,15 +1043,14 @@ public class ProfileDashboardScreen extends Screen {
                 break;
             }
         }
-        int captionH = pet != null ? 26 : 0;
         int petSize = w >= 130 ? 32 : 24;
         int petW = pet != null ? petSize + 2 : 0;
         int statusH = onlineStatus(graphics, x, y, w);
-        // The figure's box: what is left beside the pet, below the status and above the pet's name.
+        // The figure's box: what is left beside the pet and below the status.
         int bx = x + 6;
         int by = y + 8 + statusH;
         int bw = w - 12 - petW;
-        int bh = h - 14 - statusH - captionH;
+        int bh = h - 14 - statusH;
         // A player in armor is a little over two blocks tall, turned towards the mouse, and about
         // one wide, arms included.
         int scale = (int) Math.max(8, Math.min(bh / 2.5f, bw / 1.1f));
@@ -1093,14 +1092,11 @@ public class ProfileDashboardScreen extends Screen {
             graphics.item(head, 0, 0);
             graphics.pose().popMatrix();
         }
-        String name = pet.name();
-        String level = "Lvl " + pet.level();
-        int ny = y + h - 6 - captionH + 4;
-        text(graphics, AlpakaStyle.ellipsize(this.font, name, w - 12), x + (w - Math.min(w - 12, textW(name))) / 2, ny,
-                ink(ProfileData.rarityColor(pet.tier())));
-        text(graphics, level, x + (w - textW(level)) / 2, ny + 11, pet.level() >= pet.maxLevel() ? ink(GOLD) : AlpakaStyle.TEXT_MUTED);
-        if (hover(px, py, petSize, petSize) || hover(x, ny - 2, w, captionH)) {
-            tip("figurePet", name + " · " + level + "\n" + petTip(pet));
+        // Over the whole height it floats through, so the tooltip doesn't flicker as it moves.
+        int reach = (int) Math.ceil(petSize * 0.2f);
+        if (hover(px, py - reach, petSize, petSize + 2 * reach)) {
+            String held = pet.heldItem() == null ? "" : "\nHeld Item: " + heldItem(pet.heldItem());
+            tip("figurePet", pet.name() + " · Lvl " + pet.level() + held + "\n" + petTip(pet));
         }
     }
 

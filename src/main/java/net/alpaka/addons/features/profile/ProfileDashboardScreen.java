@@ -974,6 +974,7 @@ public class ProfileDashboardScreen extends Screen {
 
         List<Tile> tiles = new ArrayList<>();
         tiles.add(new Tile(Metrics.NETWORTH, "Networth", networthText(d), null));
+        tiles.add(new Tile(Metrics.SB_LEVEL, "SkyBlock Level", String.format(Locale.US, "%.2f", d.skyblockLevel), null));
         tiles.add(new Tile(Metrics.SKILL_AVG, "Skill Average", d.skillsApi ? String.format(Locale.US, "%.2f", d.skillAverage) : "API off", null));
         tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null));
         tiles.add(new Tile(Metrics.SLAYER_TOTAL, "Slayer XP", Coins.compact(d.slayerXp), null));
@@ -982,34 +983,18 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(d.farmingWeight > 0
                 ? new Tile(Metrics.FARMING_WEIGHT, "Farming Weight", Coins.full(Math.round(d.farmingWeight * 10) / 10.0), null)
                 : new Tile(Metrics.RUNS, "Dungeon Runs", Coins.full(d.totalRuns), null));
-        Tile level = new Tile(Metrics.SB_LEVEL, "SkyBlock Level", String.format(Locale.US, "%.2f", d.skyblockLevel), null);
-        Tile pets = new Tile(Metrics.PETS_MAXED, "Max Level Pets", d.petsMaxed + " / " + d.pets.size(), null);
+        y = tiles(graphics, tiles, x, y, w, 4);
+
+        // The player beside the graph, as profile viewers show them, the two as tall as each
+        // other; on the narrowest the graph alone.
         String metric = metricFor(Page.OVERVIEW);
-        // The player beside the numbers and the graph, as profile viewers show them; with too little
-        // room for the tiles four in a row, beside the graph alone, and on the narrowest not at all.
-        int figureW = Math.max(120, Math.min(160, w / 5));
-        if (w - figureW - 6 >= 380) {
-            int top = y;
-            int rx = x + figureW + 6;
-            int rw = w - figureW - 6;
-            // The SkyBlock Level goes above the figure, Max Level Pets takes its place in the grid.
-            tiles.add(tiles.size() - 1, pets);
-            y = tiles(graphics, tiles, rx, y, rw, 4);
-            y = chartCard(graphics, metric, metricMaxLevel(d, metric), rx, y + 6, rw, 130);
-            // One more card above the figure, in line with the first row, so the figure's card is
-            // no taller than the graph beside it plus a row.
-            int figureTop = tiles(graphics, List.of(level), x, top, figureW, 1) + 6;
-            figureCard(graphics, d, x, figureTop, figureW, y - figureTop, now);
+        int chartH = 150;
+        int figureW = Math.max(100, Math.min(160, w / 5));
+        if (w - figureW - 6 >= 180) {
+            figureCard(graphics, d, x, y + 6, figureW, chartH, now);
+            y = chartCard(graphics, metric, metricMaxLevel(d, metric), x + figureW + 6, y + 6, w - figureW - 6, chartH);
         } else {
-            tiles.add(1, level);
-            y = tiles(graphics, tiles, x, y, w, 4);
-            figureW = 100;
-            if (w - figureW - 6 >= 180) {
-                figureCard(graphics, d, x, y + 6, figureW, 150, now);
-                y = chartCard(graphics, metric, metricMaxLevel(d, metric), x + figureW + 6, y + 6, w - figureW - 6, 150);
-            } else {
-                y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y + 6, w, 130);
-            }
+            y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y + 6, w, 130);
         }
 
         int colW = (w - 6) / 2;

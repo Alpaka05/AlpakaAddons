@@ -612,7 +612,24 @@ public final class ProfileSession {
             put(m, Metrics.TROPHY_FISH, Json.num(p, "trophy_fish.total_caught"), true);
             for (var v : m.entrySet()) out.computeIfAbsent(v.getKey(), k -> new ArrayList<>()).add(new ProfileHistory.Point(t, v.getValue()));
         }
-        out.computeIfPresent(Metrics.NETWORTH, (k, v) -> withoutDips(v));
+        out.computeIfPresent(Metrics.NETWORTH, (k, v) -> median3(withoutDips(v)));
+        return out;
+    }
+
+    /**
+     * Each point the middle of itself and its two neighbours. SkyKings looks once a day at prices
+     * of that moment, so its networth wobbles a few percent from day to day around where it goes.
+     */
+    static List<ProfileHistory.Point> median3(List<ProfileHistory.Point> points) {
+        if (points.size() < 3) return points;
+        List<ProfileHistory.Point> out = new ArrayList<>(points.size());
+        out.add(points.get(0));
+        for (int i = 1; i + 1 < points.size(); i++) {
+            double a = points.get(i - 1).value(), b = points.get(i).value(), c = points.get(i + 1).value();
+            double median = Math.max(Math.min(a, b), Math.min(Math.max(a, b), c));
+            out.add(new ProfileHistory.Point(points.get(i).timeMs(), median));
+        }
+        out.add(points.get(points.size() - 1));
         return out;
     }
 
@@ -742,14 +759,36 @@ public final class ProfileSession {
      * off for a while makes the networth read a tenth of itself. Up: one item's price spiking for a
      * few days - SkyKings once had 48B, 106B, 165B, 165B, 48B within a week while nothing on the
      * profile changed. A run may be a few points long, since the looks that found nothing new
-     * repeat it; it only goes when the value comes back to where it was.
+     * repeat it; it only goes when the value comes back to where it was. A single point goes
+     * already at a fifth off, when the points either side of it agree.
      */
     static List<ProfileHistory.Point> withoutDips(List<ProfileHistory.Point> points) {
         List<ProfileHistory.Point> out = new ArrayList<>(points.size());
         int i = 0;
         while (i < points.size()) {
+            // The very first point has nothing before it to be a dip from; it goes when it is far
+            // off the two after it, they agree, and none of the next few comes back to it.
+            // SkyKings' first look at one profile read 118B, then 47B for weeks.
+            if (i == 0 && points.size() >= 3) {
+                double value = points.get(0).value(), a = points.get(1).value(), b = points.get(2).value();
+                boolean returns = false;
+                for (int j = 1; j < Math.min(points.size(), 10); j++) returns |= back(points.get(j).value(), value);
+                if (Math.abs(b / a - 1) <= 0.05 && away(value, a) && !returns) {
+                    i++;
+                    continue;
+                }
+            }
             if (!out.isEmpty()) {
                 double before = out.get(out.size() - 1).value();
+                // A single look a fifth off between two that agree: Soopy once read 53B, 69B, 53B
+                // within three days while nothing on the profile changed.
+                if (i + 1 < points.size()) {
+                    double value = points.get(i).value(), after = points.get(i + 1).value();
+                    if (Math.abs(after / before - 1) <= 0.05 && Math.abs(value / before - 1) > 0.2) {
+                        i++;
+                        continue;
+                    }
+                }
                 int end = i;
                 while (end < points.size() && end - i < 8 && away(points.get(end).value(), before)) end++;
                 if (end > i && end < points.size() && back(points.get(end).value(), before)) {
@@ -795,10 +834,21 @@ public final class ProfileSession {
             seriesVersion = current;
         }
         return seriesCache.computeIfAbsent(metric, m -> {
-            List<ProfileHistory.Point> merged = new ArrayList<>(ProfileHistory.series(d.uuid, d.profileId, m));
-            merged.addAll(soopySeries.getOrDefault(m, List.of()));
-            merged.addAll(skykingsSeries.getOrDefault(m, List.of()));
-            merged.sort(Comparator.comparingLong(ProfileHistory.Point::timeMs));
+            List<ProfileHistory.Point> own = ProfileHistory.series(d.uuid, d.profileId, m);
+            List<ProfileHistory.Point> soopy = soopySeries.getOrDefault(m, List.of());
+            List<ProfileHistory.Point> skykings = skykingsSeries.getOrDefault(m, List.of());
+            List<ProfileHistory.Point> merged;
+            if (m.equals(Metrics.NETWORTH)) {
+                // SkyKings first: it is kept up and prices close to the dashboard. Soopy's networth
+                // hardly moved in a year in which SkyKings' and the profile's grew by half - Soopy
+                // isn't developed any more and misses what newer items are worth.
+                merged = stitch(List.of(skykings, soopy, own), STITCH_GAP_MS);
+            } else {
+                merged = new ArrayList<>(own);
+                merged.addAll(soopy);
+                merged.addAll(skykings);
+                merged.sort(Comparator.comparingLong(ProfileHistory.Point::timeMs));
+            }
             // The sources often looked at almost the same moment; one point is enough.
             List<ProfileHistory.Point> out = new ArrayList<>(merged.size());
             for (ProfileHistory.Point p : merged) {
@@ -810,6 +860,100 @@ public final class ProfileSession {
             }
             return List.copyOf(out);
         });
+    }
+
+    /** Up to this far apart, two points of a better source leave no room for a worse one between them. */
+    static final long STITCH_GAP_MS = 4 * ProfileHistory.DAY;
+
+    /**
+     * Puts networth histories that were worked out in different ways into one line, best source
+     * first. Even scaled to end on today's networth, each sits at its own level in the past (Soopy,
+     * SkyKings and the dashboard's own snapshots from older versions price items differently and
+     * drift apart), so taking turns between them drew a zigzag that never happened. Instead a worse
+     * source only fills the stretches the better ones leave empty, before, after or in a gap longer
+     * than {@code maxGapMs}, and is scaled there to meet the line at both ends. An end is only met
+     * where the source has a reading of its own close to it: across a gap the two may disagree
+     * about how the networth went, and a guess at the source's value there would draw a cliff.
+     */
+    static List<ProfileHistory.Point> stitch(List<List<ProfileHistory.Point>> byPriority, long maxGapMs) {
+        List<ProfileHistory.Point> line = new ArrayList<>();
+        for (List<ProfileHistory.Point> source : byPriority) {
+            if (source.isEmpty()) continue;
+            List<ProfileHistory.Point> sorted = new ArrayList<>(source);
+            sorted.sort(Comparator.comparingLong(ProfileHistory.Point::timeMs));
+            if (line.isEmpty()) {
+                line = sorted;
+                continue;
+            }
+            List<ProfileHistory.Point> next = new ArrayList<>(line);
+            for (ProfileHistory.Point p : sorted) {
+                ProfileHistory.Point before = null, after = null;
+                for (ProfileHistory.Point q : line) {
+                    if (q.timeMs() <= p.timeMs()) before = q;
+                    else {
+                        after = q;
+                        break;
+                    }
+                }
+                if (before != null && before.timeMs() == p.timeMs()) continue;
+                if (before != null && after != null && after.timeMs() - before.timeMs() <= maxGapMs) continue;
+                double factor = stitchFactor(sorted, before, after, p.timeMs(), maxGapMs);
+                if (Double.isNaN(factor)) continue;
+                next.add(new ProfileHistory.Point(p.timeMs(), p.value() * factor));
+            }
+            next.sort(Comparator.comparingLong(ProfileHistory.Point::timeMs));
+            line = next;
+        }
+        return line;
+    }
+
+    /**
+     * What a worse source is multiplied by at {@code t} to meet the line: its ratio to the line at
+     * the line's points either side, blended by how close {@code t} is to each. Between two ends
+     * of which only one has a reading of the source nearby, that one alone.
+     */
+    private static double stitchFactor(List<ProfileHistory.Point> source, ProfileHistory.Point before,
+                                       ProfileHistory.Point after, long t, long maxGapMs) {
+        double left = before == null ? Double.NaN : before.value() / valueAt(source, before.timeMs());
+        double right = after == null ? Double.NaN : after.value() / valueAt(source, after.timeMs());
+        boolean hasLeft = left > 0 && Double.isFinite(left);
+        boolean hasRight = right > 0 && Double.isFinite(right);
+        if (hasLeft && hasRight) {
+            boolean nearLeft = distance(source, before.timeMs()) <= maxGapMs;
+            boolean nearRight = distance(source, after.timeMs()) <= maxGapMs;
+            if (nearLeft != nearRight) {
+                hasLeft = nearLeft;
+                hasRight = nearRight;
+            }
+        }
+        if (hasLeft && hasRight) {
+            double f = (t - before.timeMs()) / (double) (after.timeMs() - before.timeMs());
+            return Math.exp(Math.log(left) * (1 - f) + Math.log(right) * f);
+        }
+        return hasLeft ? left : hasRight ? right : Double.NaN;
+    }
+
+    /** How far {@code t} is from the nearest point of a series. */
+    private static long distance(List<ProfileHistory.Point> points, long t) {
+        long best = Long.MAX_VALUE;
+        for (ProfileHistory.Point p : points) best = Math.min(best, Math.abs(p.timeMs() - t));
+        return best;
+    }
+
+    /** A series' value at {@code t}, read along its line; its first or last value outside it. */
+    static double valueAt(List<ProfileHistory.Point> points, long t) {
+        ProfileHistory.Point first = points.get(0), last = points.get(points.size() - 1);
+        if (t <= first.timeMs()) return first.value();
+        if (t >= last.timeMs()) return last.value();
+        for (int i = 1; i < points.size(); i++) {
+            ProfileHistory.Point b = points.get(i);
+            if (b.timeMs() < t) continue;
+            ProfileHistory.Point a = points.get(i - 1);
+            if (b.timeMs() == a.timeMs()) return b.value();
+            double f = (t - a.timeMs()) / (double) (b.timeMs() - a.timeMs());
+            return a.value() + (b.value() - a.value()) * f;
+        }
+        return last.value();
     }
 
     /** The networth of the profile on show, 0 until it is worked out. */

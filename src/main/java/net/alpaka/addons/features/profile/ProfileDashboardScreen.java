@@ -380,6 +380,7 @@ public class ProfileDashboardScreen extends Screen {
 
         boolean pushed = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height);
         AlpakaStyle.panel(graphics, x, y, w, h);
+        AlpakaStyle.headerBand(graphics, x, y, w);
 
         drawHeader(graphics, x, y, w);
         AlpakaStyle.headerLine(graphics, x, y, w);

@@ -28,9 +28,9 @@ public final class AlpakaStyle {
     public static int BACKDROP = 0x80000000;
     public static int PANEL = 0xFF131313;
     /**
-     * The config menu's sidebar column and the header strip over its other two columns. Most
-     * themes keep them in the panel's own color; the Alpaka theme gives them darker browns, so its
-     * menu reads in layers rather than as one flat color.
+     * The config menu's sidebar column and every window's header strip. Most themes keep them in
+     * the panel's own color; the Alpaka theme paints them in a darker roast, a frame around the
+     * lighter page, so its menus read in layers rather than as one flat brown.
      */
     public static int SIDEBAR = 0xFF131313;
     public static int HEADER = 0xFF131313;
@@ -86,11 +86,12 @@ public final class AlpakaStyle {
         OLED(0xB0000000, 0xFF000000, 0xFF1A1A1A, 0xFF2C2C2C, 0xFF0D0D0D, 0xFF141414, 0xFF1B1B1B, 0xFF0F0F0F,
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF2E2E2E, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF0A0A0A, 0xFFEDEDED,
                 0xFF000000, 0xFFE5534B, 0xFFC9726C, 0xFF000000, 0xFF000000),
-        // Espresso browns with cream text, like the coffee themes of code editors. The sidebar is
-        // the darkest roast and the header strip sits between it and the panel.
-        ALPAKA(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF382C25,
-                0xFFF3E6D8, 0xFFD2BFAB, 0xFF9C8676, 0xFF54443A, 0xFF8A7464, 0xFFA48D7C, 0xFF32271F, 0xFFF3E6D8,
-                0xFF1A1411, 0xFFE5674F, 0xFFC98370, 0xFF1D1612, 0xFF241B16);
+        // Espresso browns with cream text, like the coffee themes of code editors: a dark, slightly
+        // redder roast frames the windows (sidebar and header), the page inside is a milder mocha,
+        // and the cards on it are caramel.
+        ALPAKA(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF4A3B32, 0xFF392B23, 0xFF42322A, 0xFF4B3A2F, 0xFF3A2C24,
+                0xFFF3E6D8, 0xFFD2BFAB, 0xFFA99482, 0xFF54443A, 0xFF8A7464, 0xFFA48D7C, 0xFF32271F, 0xFFF3E6D8,
+                0xFF1A1411, 0xFFE5674F, 0xFFC98370, 0xFF1E1411, 0xFF1E1411);
 
         private final int[] c;
 
@@ -225,8 +226,21 @@ public final class AlpakaStyle {
 
     /** The header: a title on the left, and the hairline that closes it off below. */
     public static void header(GuiGraphicsExtractor graphics, Font font, String title, int x, int y, int w) {
+        headerBand(graphics, x, y, w);
         title(graphics, font, title, x + PAD + 2, y);
         headerLine(graphics, x, y, w);
+    }
+
+    /**
+     * The header's own tone, for a theme that has one: the panel's rounded top in {@link #HEADER},
+     * cut off at the header's bottom. Drawn straight after {@link #panel}, before anything in the
+     * header.
+     */
+    public static void headerBand(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        if (HEADER == PANEL || w <= 0) return;
+        graphics.enableScissor(x, y, x + w, y + HEADER_H);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, HEADER_H + PANEL_RADIUS * 2, PANEL_RADIUS, HEADER);
+        graphics.disableScissor();
     }
 
     /** A window's title, centred in the height of the header whose top is {@code headerY}. */
@@ -234,8 +248,12 @@ public final class AlpakaStyle {
         graphics.text(font, GuiFont.text(title), x, headerY + (HEADER_H - 8) / 2, TEXT, false);
     }
 
-    /** The hairline that closes a header off, along the bottom of the header whose top is {@code y}. */
+    /**
+     * The hairline that closes a header off, along the bottom of the header whose top is {@code y}.
+     * A header in a tone of its own needs none: the change of color is the edge.
+     */
     public static void headerLine(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        if (HEADER != PANEL) return;
         ModernGuiUtils.drawRect(graphics, x + PAD, y + HEADER_H - 1, w - PAD * 2, 1, LINE);
     }
 

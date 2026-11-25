@@ -414,6 +414,7 @@ public class MarketScreen extends ContainerScreen {
         boolean scaling = !continued && AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height);
 
         AlpakaStyle.panel(graphics, x, y, w, h);
+        AlpakaStyle.headerBand(graphics, x, y, w);
 
         sideW = m.hasSidebar() ? Math.max(90, Math.min(122, (int) (w * 0.21))) : 0;
         sideX = x;

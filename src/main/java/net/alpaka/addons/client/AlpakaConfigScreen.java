@@ -486,14 +486,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         hoveredTipTextThisFrame = null;
 
         drawHeader(graphics, mouseX, mouseY, x, y, w, sideW, featX, featW, detailX, detailW);
-        if (AlpakaStyle.SIDEBAR != AlpakaStyle.PANEL && sideW > 0) {
-            // The sidebar is a column of its own color, top to bottom: the line only closes off
-            // the header over the other two columns, in line with their cards.
-            int lineX = featX + 4 - AlpakaStyle.PAD;
-            AlpakaStyle.headerLine(graphics, lineX, y, x + w - lineX);
-        } else {
-            AlpakaStyle.headerLine(graphics, x, y, w);
-        }
+        AlpakaStyle.headerLine(graphics, x, y, w);
         // Folding away in setup mode: clipped to their shrinking widths, and gone once folded.
         if (setupProgress < 0.999f) {
             graphics.enableScissor(x, bodyY, detailX, y + h);
@@ -521,20 +514,23 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
     /**
      * The sidebar column and the header strip in their own tones, where the theme has them: each is
-     * the panel's rounded shape clipped to its part, so it keeps the window's outer corners.
+     * the panel's rounded shape clipped to its part, so it keeps the window's outer corners. Where
+     * the two meet, the page inside gets a rounded corner of its own, so it reads as a sheet set
+     * into the frame rather than a notch cut out of it.
      */
     private void drawZones(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int sideW, int featX) {
         int radius = AlpakaStyle.PANEL_RADIUS;
-        if (AlpakaStyle.HEADER != AlpakaStyle.PANEL && featX < x + w) {
-            graphics.enableScissor(featX, y, x + w, y + HEADER_H);
-            ModernGuiUtils.drawRoundedRect(graphics, featX - radius * 2, y, x + w - featX + radius * 2,
-                    HEADER_H + radius * 2, radius, AlpakaStyle.HEADER);
-            graphics.disableScissor();
-        }
-        if (AlpakaStyle.SIDEBAR != AlpakaStyle.PANEL && sideW > 0) {
+        AlpakaStyle.headerBand(graphics, x, y, w);
+        boolean sidebar = AlpakaStyle.SIDEBAR != AlpakaStyle.PANEL && sideW > 0;
+        if (sidebar) {
             graphics.enableScissor(x, y, x + sideW, y + h);
             ModernGuiUtils.drawRoundedRect(graphics, x, y, sideW + radius * 2, h, radius, AlpakaStyle.SIDEBAR);
             graphics.disableScissor();
+        }
+        if (sidebar && AlpakaStyle.HEADER != AlpakaStyle.PANEL && featX + radius * 2 <= x + w) {
+            int bodyY = y + HEADER_H;
+            ModernGuiUtils.drawRect(graphics, featX, bodyY, radius, radius, AlpakaStyle.HEADER);
+            ModernGuiUtils.drawRoundedRect(graphics, featX, bodyY, radius * 2, radius * 2, radius, AlpakaStyle.PANEL);
         }
     }
 

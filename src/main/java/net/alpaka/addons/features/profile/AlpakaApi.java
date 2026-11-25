@@ -143,6 +143,17 @@ final class AlpakaApi {
     }
 
     /**
+     * Whether the player is online on Hypixel and where: {@code {"online": true, "gameType":
+     * "SKYBLOCK", "mode": "hub"}}. {@code fresh} is the Refresh button.
+     */
+    static CompletableFuture<JsonElement> status(String playerUuid, boolean fresh) {
+        if (!ProfileApi.allowed()) return CompletableFuture.failedFuture(new ProfileApi.NetworkOff());
+        String player = playerUuid == null ? "" : playerUuid.replace("-", "");
+        if (!player.matches("[0-9a-fA-F]{32}")) return CompletableFuture.failedFuture(new ProfileApi.NotFound("No such player."));
+        return get("/v1/status/" + player + (fresh ? "?fresh=1" : ""), true);
+    }
+
+    /**
      * Renews the login in the background when the game is up, for a player who has logged in to the
      * API before (a login is kept on disk) and whose login ran out: the dashboard then opens without
      * the second it takes. Nothing happens for anyone who never opened the dashboard, or with

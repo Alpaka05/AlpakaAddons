@@ -190,6 +190,10 @@ public class ProfileDashboardScreen extends Screen {
     private boolean clipping;
     private ResolvableProfile face;
     private String faceFor;
+    /** The player as a figure on the overview, made once per dashboard. */
+    private final ProfileFigure figure = new ProfileFigure();
+    /** Whether the right mouse button is down, which shows the figure without its armor. */
+    private boolean rightHeld;
 
     private record Hit(int x, int y, int w, int h, Runnable action) {}
 
@@ -776,9 +780,10 @@ public class ProfileDashboardScreen extends Screen {
         } else {
             text(graphics, "Profile", x + PAD, rowY, AlpakaStyle.fade(AlpakaStyle.TEXT_MUTED, wide));
             // The magnifier just after the label opens the item search in its place.
-            // Ten pixels, centered on the label: at eight the glass was too small to read as round.
+            // Ten pixels, centered on the label's capitals rather than its full height with the
+            // descenders, which sat it a pixel low: at eight the glass was too small to read as round.
             int gx = x + PAD + textW("Profile") + 4;
-            int gy = rowY - 1;
+            int gy = rowY - 2;
             boolean hoverGlass = open && AlpakaStyle.inside(mx, my, gx - 2, gy - 2, 14, 14) && !menuOpen;
             MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, gx, gy, 10,
                     AlpakaStyle.fade(hoverGlass ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED, wide));
@@ -987,19 +992,135 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null));
         tiles.add(new Tile(Metrics.SLAYER_TOTAL, "Slayer XP", Coins.compact(d.slayerXp), null));
         tiles.add(new Tile(Metrics.MAGICAL_POWER, "Magical Power", Coins.full(d.magicalPower), null));
-        tiles.add(new Tile(Metrics.PETS_MAXED, "Max Level Pets", d.petsMaxed + " / " + d.pets.size(), null));
+        tiles.add(coinsTile(d));
         tiles.add(d.farmingWeight > 0
                 ? new Tile(Metrics.FARMING_WEIGHT, "Farming Weight", Coins.full(Math.round(d.farmingWeight * 10) / 10.0), null)
-                : new Tile(Metrics.BANK, "Bank", Coins.compact(d.bank + d.personalBank), null));
+                : new Tile(Metrics.RUNS, "Dungeon Runs", Coins.full(d.totalRuns), null));
         y = tiles(graphics, tiles, x, y, w, 4);
 
+        // The player beside the graph, as profile viewers show them, the two as tall as each
+        // other; on the narrowest the graph alone.
         String metric = metricFor(Page.OVERVIEW);
-        y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y + 6, w, 130);
+        int chartH = 150;
+        int figureW = Math.max(100, Math.min(160, w / 5));
+        if (w - figureW - 6 >= 180) {
+            figureCard(graphics, d, x, y + 6, figureW, chartH, now);
+            y = chartCard(graphics, metric, metricMaxLevel(d, metric), x + figureW + 6, y + 6, w - figureW - 6, chartH);
+        } else {
+            y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y + 6, w, 130);
+        }
 
         int colW = (w - 6) / 2;
         int leftEnd = nextUp(graphics, d, x, y + 6, w >= 420 ? colW : w);
         int rightEnd = w >= 420 ? milestones(graphics, d, x + colW + 6, y + 6, colW, now) : milestones(graphics, d, x, leftEnd + 6, w, now);
         return Math.max(leftEnd, rightEnd);
+    }
+
+    /**
+     * The coins on hand: the purse and the bank side by side, and on hover the exact amounts, the
+     * bank split into the co-op's and the player's own when there are both.
+     */
+    private static Tile coinsTile(ProfileData d) {
+        double bank = d.bank + d.personalBank;
+        boolean split = d.bank > 0 && d.personalBank > 0;
+        String tip = "Purse: " + Coins.full(Math.floor(d.purse)) + " coins\nBank: " + Coins.full(Math.floor(bank)) + " coins"
+                + (split ? "\n  Co-op: " + Coins.full(Math.floor(d.bank)) + "\n  Personal: " + Coins.full(Math.floor(d.personalBank)) : "");
+        return pair("Purse", Coins.compact(d.purse), "Bank", Coins.compact(bank), null, tip);
+    }
+
+    /**
+     * The player in the armor they wear, with the pet they have out floating beside them, named in
+     * its tooltip. Outside a world, where no figure can be made, the face instead.
+     */
+    private void figureCard(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w, int h, long now) {
+        card(graphics, x, y, w, h);
+        ProfileData.Pet pet = null;
+        for (ProfileData.Pet p : d.pets) {
+            if (p.active()) {
+                pet = p;
+                break;
+            }
+        }
+        int petSize = w >= 130 ? 32 : 24;
+        int petW = pet != null ? petSize + 2 : 0;
+        int statusH = onlineStatus(graphics, x, y, w);
+        // The figure's box: what is left beside the pet and below the status.
+        int bx = x + 6;
+        int by = y + 8 + statusH;
+        int bw = w - 12 - petW;
+        int bh = h - 14 - statusH;
+        // A player in armor is a little over two blocks tall, turned towards the mouse, and about
+        // one wide, arms included.
+        int scale = (int) Math.max(8, Math.min(bh / 2.5f, bw / 1.1f));
+        String uuid = session.uuid != null ? session.uuid : d.uuid;
+        // Looks at the mouse wherever it is on the screen, the sidebar and header too, as the
+        // inventory's player does; only stopping at the content's edge read as a glitch.
+        float lookX = mx;
+        float lookY = my;
+        // Right mouse held on the card takes the armor off, to show the skin under it.
+        boolean bare = rightHeld && hover(x, y, w, h);
+        boolean drawn = uuid != null && figure.draw(graphics, uuid, bare ? null : session.inventory("armor"), bx, by, bx + bw, by + bh,
+                scale, lookX, lookY);
+        if (drawn && !bare && hover(bx, by, bw, bh)) {
+            // The piece under the mouse shows its tooltip, as in an inventory.
+            String slot = ProfileFigure.pieceAt(mx - (bx + bw / 2f), my - (by + bh / 2f), scale);
+            JsonElement armor = session.inventory("armor");
+            JsonElement item = slot == null || armor == null ? null : Json.obj(armor, "items").get(slot);
+            if (InventoryItems.present(item)) hoveredItem = item;
+        }
+        if (!drawn) {
+            ResolvableProfile profile = face();
+            int size = Math.min(48, Math.min(bw, bh) - 8);
+            if (profile != null && size > 8) {
+                net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(graphics, profile,
+                        bx + (bw - size) / 2, by + (bh - size) / 2, size);
+            }
+        }
+        if (pet == null) return;
+        ItemStack head = PetIcons.icon(pet);
+        // Floating up and down, a little over a second each way. Moved by fractions of a pixel, not
+        // whole ones: stepping a pixel at a time read as lag.
+        float bob = (float) Math.sin(now * (2 * Math.PI / 2600.0)) * petSize * 0.2f;
+        int px = x + w - 6 - petSize;
+        int py = by + Math.max((int) Math.ceil(petSize * 0.2f), (int) (bh / 2 - scale * 0.85f));
+        if (head != null) {
+            graphics.pose().pushMatrix();
+            graphics.pose().translate(px, py + bob);
+            graphics.pose().scale(petSize / 16f, petSize / 16f);
+            graphics.item(head, 0, 0);
+            graphics.pose().popMatrix();
+        }
+        // Over the whole height it floats through, so the tooltip doesn't flicker as it moves.
+        int reach = (int) Math.ceil(petSize * 0.2f);
+        if (hover(px, py - reach, petSize, petSize + 2 * reach)) {
+            String held = pet.heldItem() == null ? "" : "\nHeld Item: " + heldItem(pet.heldItem());
+            tip("figurePet", pet.name() + " · Lvl " + pet.level() + held + "\n" + petTip(pet));
+        }
+    }
+
+    /**
+     * Whether the player is online and where, at the top of the figure's card: a green dot and the
+     * island, or a grey one and "Offline". Nothing while it is asked for, or when it couldn't be. Returns the
+     * height it takes, which is kept either way so the figure doesn't jump when it arrives.
+     */
+    private int onlineStatus(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        int h = 14;
+        PlayerStatus status = session.status;
+        if (status == null) return h;
+        int ty = y + 8;
+        // The green dot says online, so the words can be the place alone: the card is narrow.
+        String where = status.where();
+        String label = AlpakaStyle.ellipsize(this.font, where != null ? where : status.online() ? "Online" : "Offline", w - 16 - 8);
+        int lw = 8 + textW(label);
+        int lx = x + (w - lw) / 2;
+        ModernGuiUtils.drawRoundedRect(graphics, lx, ty + 2, 5, 5, 2, status.online() ? ink(ProfileChart.UP) : AlpakaStyle.TEXT_MUTED);
+        text(graphics, label, lx + 8, ty, status.online() ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+        if (hover(x, y + 4, w, h)) {
+            tip("onlineStatus", status.online()
+                    ? "Online on Hypixel: " + status.fullWhere() + "."
+                    : "Offline, or hiding it: players can turn their online status off in Hypixel's API settings.");
+        }
+        return h;
     }
 
     /** A strip saying what grew since the previous visit; nothing on the first one. */
@@ -1223,7 +1344,19 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Tiles and graphs -----------------------------------------------------------------------
 
     /** A number on a card: its metric (for the sparkline and the graph; null for none), name and value. */
-    private record Tile(String metric, String label, String value, String note) {}
+    private record Tile(String metric, String label, String value, String note, Tile beside, String tip) {
+        Tile(String metric, String label, String value, String note) {
+            this(metric, label, value, note, null, null);
+        }
+    }
+
+    /**
+     * Two numbers in one card, side by side, each with its name; the note goes below both and the
+     * tip shows on hover. Without a graph: neither number has one of its own here.
+     */
+    private static Tile pair(String label, String value, String label2, String value2, String note, String tip) {
+        return new Tile(null, label, value, note, new Tile(null, label2, value2, null), tip);
+    }
 
     private int tiles(GuiGraphicsExtractor graphics, List<Tile> tiles, int x, int y, int w, int columns) {
         int cols = w < 380 ? Math.min(2, columns) : columns;
@@ -1241,8 +1374,35 @@ public class ProfileDashboardScreen extends Screen {
             boolean isSelected = clickable && t.metric().equals(selected != null ? selected : defaultMetric(page));
             ModernGuiUtils.drawRoundedRect(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
             if (isSelected) ModernGuiUtils.drawRoundedOutline(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
-            text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
-            value(graphics, t.value(), tx + 7, ty + 18, tw - 14);
+            if (t.beside() != null) {
+                // Two numbers, each with its name, side by side in the large cut when they fit:
+                // the second halfway, or just after the first when that is wider. Where they don't,
+                // the first stays large like every other card's number and the second goes on the
+                // small line below it, where the others show their change.
+                int inner = tw - 14;
+                int w1 = bigWidth(t.value());
+                int w2 = bigWidth(t.beside().value());
+                if (w1 + 10 + w2 <= inner) {
+                    int x2 = tx + 7 + Math.max(inner / 2, w1 + 10);
+                    int w2max = tx + tw - 7 - x2;
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), x2 - tx - 7 - 4), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.beside().label(), w2max), x2, ty + 6, AlpakaStyle.TEXT_MUTED);
+                    value(graphics, t.value(), tx + 7, ty + 18, w1);
+                    value(graphics, t.beside().value(), x2, ty + 18, w2max);
+                } else {
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
+                    value(graphics, t.value(), tx + 7, ty + 18, inner);
+                    String name = t.beside().label() + " ";
+                    text(graphics, name, tx + 7, ty + th - 13, AlpakaStyle.TEXT_MUTED);
+                    text(graphics, AlpakaStyle.ellipsize(this.font, t.beside().value(), inner - textW(name)), tx + 7 + textW(name),
+                            ty + th - 13, AlpakaStyle.TEXT_SOFT);
+                }
+            } else {
+                text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
+                value(graphics, t.value(), tx + 7, ty + 18, tw - 14);
+            }
+            // Keyed by the label: the tile is made anew every frame, the label stays the same string.
+            if (!clickable && t.tip() != null && hover(tx, ty, tw, th)) tip(t.label().intern(), t.tip());
             if (clickable && session.historyProblem() != null) {
                 // No history to show, so neither a change nor a line; the card still picks the graph,
                 // which then says what it needs.
@@ -1262,7 +1422,7 @@ public class ProfileDashboardScreen extends Screen {
                 String metric = t.metric();
                 hit(tx, ty, tw, th, () -> chosen.put(page, metric));
                 if (hover) {
-                    tip(t, (t.note() != null ? t.note() + " " : "") + (Double.isNaN(change) ? "No history in this range yet."
+                    tip(t.label().intern(), (t.note() != null ? t.note() + " " : "") + (Double.isNaN(change) ? "No history in this range yet."
                             : Metrics.delta(metric, change) + " over the last " + rangeWords() + ".") + " Click for its graph.");
                 }
             } else if (t.note() != null) {
@@ -4915,6 +5075,12 @@ public class ProfileDashboardScreen extends Screen {
      * ({@link GuiFont#title}): the normal text under a scaled pose was resampled, and blurry. The
      * pixel font has no such cut and is scaled as before.
      */
+    /** How wide a number is in the large cut, or in the normal size where there is none. */
+    private int bigWidth(String value) {
+        Component big = GuiFont.title(value);
+        return big != null ? this.font.width(big) : (int) Math.ceil(textW(value) * 1.35f);
+    }
+
     private void value(GuiGraphicsExtractor graphics, String value, int x, int y, int maxW) {
         Component big = GuiFont.title(value);
         if (big != null && this.font.width(big) <= maxW) {
@@ -5103,6 +5269,7 @@ public class ProfileDashboardScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (event.button() == 1) rightHeld = true;
         if (event.button() != 0) return true;
         click = event;
         clickFrom = searchFocused ? search : itemSearchFocused ? itemSearch : null;
@@ -5146,6 +5313,7 @@ public class ProfileDashboardScreen extends Screen {
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         scrollDragging = false;
+        if (event.button() == 1) rightHeld = false;
         return super.mouseReleased(event);
     }
 

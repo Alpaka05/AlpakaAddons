@@ -390,6 +390,12 @@ public final class DevScreenshotTour {
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
+            // The overview with the player as a figure beside the graph, in their armor and with
+            // their pet, which only exist once a world is loaded; the own profile, so a kept one
+            // shows without a login.
+            profile("profile-overview-in-world", "", "OVERVIEW"),
+            // The mouse on the sidebar: the figure still looks at it.
+            new Stop("profile-overview-figure", () -> placeMouse(0.08, 0.2), () -> true, 60),
             // The pets with their heads and skins, which only exist once a world is loaded; then the
             // Skills page with the item icons.
             profile("profile-pets-in-world", "Refraction", "PETS"),

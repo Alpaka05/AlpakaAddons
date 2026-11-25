@@ -44,6 +44,11 @@ public final class ProfileSession {
     /** The numbers at the previous visit, for "since your last visit"; null on the first. */
     public volatile ProfileHistory.Snapshot previousVisit;
     public volatile boolean refreshing;
+    /** Whether the player is online and where; null until it is known, or when it couldn't be. */
+    public volatile PlayerStatus status;
+    /** Whose status that is and when it was asked for, so switching profiles doesn't ask again. */
+    private volatile String statusFor;
+    private volatile long statusAskedAt;
 
     public volatile State networthState;
     public volatile JsonElement networth;
@@ -243,10 +248,30 @@ public final class ProfileSession {
             } else if (own) {
                 keep(loaded, id);
             }
+            loadStatus(fresh);
             loadSoopyHistory(parsed);
             loadSkyKings(parsed);
         });
         return load;
+    }
+
+    /**
+     * Asks whether the player is online and where. It belongs to the player, not the profile, so
+     * switching profiles keeps it for half a minute; Refresh asks again.
+     */
+    private void loadStatus(boolean fresh) {
+        String player = uuid;
+        if (player == null) return;
+        long now = System.currentTimeMillis();
+        if (!fresh && player.equals(statusFor) && now - statusAskedAt < 30_000L) return;
+        if (!player.equals(statusFor)) status = null;
+        statusFor = player;
+        statusAskedAt = now;
+        AlpakaApi.status(player, fresh).whenComplete((answered, failure) -> {
+            if (!player.equals(uuid)) return;
+            // Unknown rather than offline when it couldn't be asked: that would be a guess.
+            status = failure != null ? null : PlayerStatus.read(answered);
+        });
     }
 
     /** The reader the inventories and the museum report one that doesn't read to. */

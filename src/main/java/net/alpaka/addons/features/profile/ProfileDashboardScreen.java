@@ -906,11 +906,12 @@ public class ProfileDashboardScreen extends Screen {
         int captionH = pet != null ? 26 : 0;
         int petSize = w >= 130 ? 32 : 24;
         int petW = pet != null ? petSize + 2 : 0;
-        // The figure's box: what is left beside the pet and above its name.
+        int statusH = onlineStatus(graphics, x, y, w);
+        // The figure's box: what is left beside the pet, below the status and above the pet's name.
         int bx = x + 6;
-        int by = y + 8;
+        int by = y + 8 + statusH;
         int bw = w - 12 - petW;
-        int bh = h - 14 - captionH;
+        int bh = h - 14 - statusH - captionH;
         // A player in armor is a little over two blocks tall, turned towards the mouse, and about
         // one wide, arms included.
         int scale = (int) Math.max(8, Math.min(bh / 2.5f, bw / 1.1f));
@@ -951,6 +952,31 @@ public class ProfileDashboardScreen extends Screen {
         if (hover(px, py, petSize, petSize) || hover(x, ny - 2, w, captionH)) {
             tip("figurePet", name + " · " + level + "\n" + petTip(pet));
         }
+    }
+
+    /**
+     * Whether the player is online and where, at the top of the figure's card: a green dot and the
+     * island, or a grey one and "Offline". Nothing while it is asked for, or when it couldn't be. Returns the
+     * height it takes, which is kept either way so the figure doesn't jump when it arrives.
+     */
+    private int onlineStatus(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        int h = 14;
+        PlayerStatus status = session.status;
+        if (status == null) return h;
+        int ty = y + 8;
+        // The green dot says online, so the words can be the place alone: the card is narrow.
+        String where = status.where();
+        String label = AlpakaStyle.ellipsize(this.font, where != null ? where : status.online() ? "Online" : "Offline", w - 16 - 8);
+        int lw = 8 + textW(label);
+        int lx = x + (w - lw) / 2;
+        ModernGuiUtils.drawRoundedRect(graphics, lx, ty + 2, 5, 5, 2, status.online() ? ink(ProfileChart.UP) : AlpakaStyle.TEXT_MUTED);
+        text(graphics, label, lx + 8, ty, status.online() ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+        if (hover(x, y + 4, w, h)) {
+            tip("onlineStatus", status.online()
+                    ? "Online on Hypixel: " + status.fullWhere() + ". Which server, Hypixel doesn't say."
+                    : "Offline, or hiding it: players can turn their online status off in Hypixel's API settings.");
+        }
+        return h;
     }
 
     /** A strip saying what grew since the previous visit; nothing on the first one. */

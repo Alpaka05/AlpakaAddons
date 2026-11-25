@@ -57,6 +57,11 @@ class ApiTest {
                     return new Api.Upstream.Result(gardenStatus, gardenStatus == 200 ? GARDEN : "{\"success\":false}", remaining, 120);
                 }
                 if (path.startsWith("/v2/skyblock/museum")) return new Api.Upstream.Result(status, MUSEUM, remaining, 120);
+                if (path.startsWith("/v2/status")) {
+                    boolean on = path.endsWith(PLAYER);
+                    return new Api.Upstream.Result(status, "{\"success\":true,\"uuid\":\"x\",\"session\":{\"online\":" + on
+                            + (on ? ",\"gameType\":\"SKYBLOCK\",\"mode\":\"hub\",\"extra\":1" : "") + "}}", remaining, 120);
+                }
                 String uuid = path.substring(path.indexOf("uuid=") + 5);
                 return new Api.Upstream.Result(status, uuid.equals(LEFT) ? "{\"success\":true,\"profiles\":null}" : hypixelProfiles(uuid), remaining, 120);
             },
@@ -394,6 +399,25 @@ class ApiTest {
         assertEquals(401, get("/v1/museum/" + PLAYER + "/" + APPLE, Map.of()).status());
         assertEquals(400, get("/v1/museum/" + PLAYER, auth).status());
         assertEquals(400, get("/v1/museum/" + PLAYER + "/x", auth).status());
+    }
+
+    @Test
+    void whetherAPlayerIsOnlineAndWhereForAMinute() {
+        Map<String, String> auth = auth();
+        Api.Response r = get("/v1/status/" + PLAYER, auth);
+        assertEquals(200, r.status(), r.body());
+        // Only what the overview shows, nothing else Hypixel sends.
+        assertEquals("{\"success\":true,\"online\":true,\"gameType\":\"SKYBLOCK\",\"mode\":\"hub\"}", r.body());
+        assertEquals("{\"success\":true,\"online\":false}", get("/v1/status/" + OTHER, auth).body());
+        assertEquals("HIT", get("/v1/status/" + PLAYER, auth).headers().get("X-Cache"));
+        now.addAndGet(Api.STATUS_REFRESH_AGE_MS + 1);
+        assertEquals("HIT", get("/v1/status/" + PLAYER, auth).headers().get("X-Cache"));
+        assertEquals("MISS", get("/v1/status/" + PLAYER + "?fresh=1", auth).headers().get("X-Cache"));
+        now.addAndGet(Api.STATUS_AGE_MS + 1);
+        assertEquals("MISS", get("/v1/status/" + PLAYER, auth).headers().get("X-Cache"));
+        assertEquals(4, asked.stream().filter(p -> p.startsWith("/v2/status")).count());
+        assertEquals(401, get("/v1/status/" + PLAYER, Map.of()).status());
+        assertEquals(400, get("/v1/status/Alpakaa", auth).status());
     }
 
     @Test

@@ -852,8 +852,6 @@ public class AlpakaConfig {
     public boolean alwaysSprintEnabled = false;
     /** Always sprint stays off on the Garden, where farming wants walking speed. */
     public boolean alwaysSprintIgnoreGarden = false;
-    /** The cursor stays put when Hypixel swaps one menu for the next (backpack pages and the like). */
-    public boolean keepCursorPositionEnabled = true;
     /** Quick Join's main switch. Off for fresh installs: it sends a command nobody typed. */
     public boolean quickJoinEnabled = false;
     /** Quick Join sends /skyblock once after joining Hypixel. */
@@ -2068,7 +2066,6 @@ public class AlpakaConfig {
         this.chatSearchEnabled = false;
         this.chatCopyEnabled = false;
         this.alwaysSprintEnabled = false;
-        this.keepCursorPositionEnabled = false;
         this.quickJoinEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;

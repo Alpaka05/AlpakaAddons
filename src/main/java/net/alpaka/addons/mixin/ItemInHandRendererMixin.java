@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.viewmodel.EmptyHandViewmodel;
 import net.alpaka.addons.features.viewmodel.EquipAnimation;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
@@ -253,12 +254,10 @@ public class ItemInHandRendererMixin {
             if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled) {
                 return;
             }
-            float scale = AlpakaConfig.instance.itemScale;
-            matrices.mulPose(Axis.XP.rotationDegrees(AlpakaConfig.instance.itemRotationX));
-            boolean isLeftHand = (arm == HumanoidArm.LEFT);
-            matrices.mulPose(Axis.YP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationY : AlpakaConfig.instance.itemRotationY));
-            matrices.mulPose(Axis.ZP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationZ : AlpakaConfig.instance.itemRotationZ));
-            matrices.scale(scale, scale, scale);
+            // Scaled about the fist, not the model's origin below the screen, so the hand stays in
+            // view. Not turned: the item rotation points the arm off to the side.
+            EmptyHandViewmodel.apply(matrices.last().pose(), arm == HumanoidArm.LEFT ? -1.0f : 1.0f,
+                    AlpakaConfig.instance.itemScale);
         }
     }
 

@@ -108,4 +108,23 @@ class ProfileHistoryTest {
         assertEquals(List.of("Alpakaa", "Alpine_Dev"), ProfileHistory.recent(players, "alp", null, 2));
         assertEquals(List.of(), ProfileHistory.recent(players, "zzz", null, 8));
     }
+
+    @Test
+    void playersSearchedForComeFirstByWhenTheyWereSearched() {
+        ProfileHistory.Entry own = entry("Alpakaa", 9_000, 0);
+        ProfileHistory.Entry first = entry("Marfy_", 5_000, 100);
+        ProfileHistory.Entry later = entry("by_Niklas", 1_000, 200);
+        ProfileHistory.Entry laterOtherProfile = entry("by_Niklas", 2_000, 0);
+        // Fresher data doesn't put a player ahead of one searched for later.
+        assertEquals(List.of("by_Niklas", "Marfy_", "Alpakaa"), ProfileHistory.players(Map.of(
+                "a:1", own, "m:1", first, "n:1", later, "n:2", laterOtherProfile)));
+    }
+
+    private static ProfileHistory.Entry entry(String player, long t, long searchedAt) {
+        ProfileHistory.Entry e = new ProfileHistory.Entry();
+        e.player = player;
+        e.searchedAt = searchedAt;
+        e.points.add(at(t, 1));
+        return e;
+    }
 }

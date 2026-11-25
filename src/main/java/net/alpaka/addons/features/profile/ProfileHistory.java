@@ -45,6 +45,8 @@ public final class ProfileHistory {
         String profile;
         /** When a look last found this the player's selected profile; 0 for never. */
         long selectedAt;
+        /** When the player was last looked up by name, in the search or with /ap; 0 for never. */
+        long searchedAt;
         List<Snapshot> points = new ArrayList<>();
         /** When the dashboard was last opened on this profile, and the numbers then. */
         long lastViewed;
@@ -252,8 +254,10 @@ public final class ProfileHistory {
     }
 
     /**
-     * The players looked up before, by name, the last looked at first; for completing names. Asked
-     * on the render thread: until the file is read, none, and reading it starts.
+     * The players looked up before, by name, for completing names and the dashboard's recent list:
+     * the last searched for first, then those only ever opened some other way (the own profile from
+     * its key), newest data first. Asked on the render thread: until the file is read, none, and
+     * reading it starts.
      */
     public static synchronized java.util.List<String> players() {
         if (entries == null) {
@@ -265,20 +269,45 @@ public final class ProfileHistory {
 
     static java.util.List<String> players(Map<String, Entry> entries) {
         Map<String, Long> newest = new HashMap<>();
+        Map<String, Long> searched = new HashMap<>();
         Map<String, String> names = new HashMap<>();
         for (Entry entry : entries.values()) {
             if (entry.player == null || entry.points.isEmpty()) continue;
             String key = entry.player.toLowerCase(java.util.Locale.ROOT);
+            // A snapshot's time is when Hypixel last saved the profile, not when it was looked at,
+            // so it only orders the players never searched for.
             long t = entry.points.get(entry.points.size() - 1).t();
             if (t >= newest.getOrDefault(key, Long.MIN_VALUE)) {
                 newest.put(key, t);
                 names.put(key, entry.player);
             }
+            searched.merge(key, entry.searchedAt, Math::max);
         }
         java.util.List<String> out = new ArrayList<>(names.keySet());
-        out.sort((a, b) -> Long.compare(newest.get(b), newest.get(a)));
+        out.sort((a, b) -> {
+            int bySearch = Long.compare(searched.get(b), searched.get(a));
+            return bySearch != 0 ? bySearch : Long.compare(newest.get(b), newest.get(a));
+        });
         out.replaceAll(names::get);
         return out;
+    }
+
+    /** Notes that the player was just looked up by name, for the order of {@link #players()}. */
+    public static synchronized void searched(String uuid) {
+        if (uuid == null) return;
+        long now = System.currentTimeMillis();
+        String prefix = uuid + ":";
+        boolean any = false;
+        for (Map.Entry<String, Entry> e : entries().entrySet()) {
+            if (e.getKey().startsWith(prefix)) {
+                e.getValue().searchedAt = now;
+                any = true;
+            }
+        }
+        if (any) {
+            dirty = true;
+            saveAsync();
+        }
     }
 
     /**

@@ -145,6 +145,11 @@ public class ProfileDashboardScreen extends Screen {
      * picked with the arrow keys (null for none), and where the list is drawn.
      */
     private List<String> recent = List.of();
+    /**
+     * The query of a player looked up by name, noted as searched for once their profile is there;
+     * by query rather than session, so Try Again, which makes a new session, still counts.
+     */
+    private String searchedPending;
     private String recentPicked;
     private int recentX, recentY, recentW;
     private static final int RECENT_MAX = 8;
@@ -286,7 +291,10 @@ public class ProfileDashboardScreen extends Screen {
     /** As above, going back to {@code parent} when closed. */
     public static void open(String player, Screen parent) {
         Minecraft mc = Minecraft.getInstance();
-        mc.gui.setScreen(new ProfileDashboardScreen(session(player), parent));
+        ProfileDashboardScreen screen = new ProfileDashboardScreen(session(player), parent);
+        // Opening the own profile from its key or the config is no search; /ap with a name is.
+        if (player != null && !player.isBlank()) screen.searchedPending = screen.session.query;
+        mc.gui.setScreen(screen);
     }
 
     @Override
@@ -370,6 +378,11 @@ public class ProfileDashboardScreen extends Screen {
         lastFrameMs = now;
 
         session.sync();
+        // The name typed may be in any case, or no player at all: what counts is the profile that came.
+        if (searchedPending != null && searchedPending.equals(session.query) && session.data != null) {
+            ProfileHistory.searched(session.data.uuid);
+            searchedPending = null;
+        }
         int x = panelX();
         int y = panelY();
         int w = panelW();
@@ -5003,6 +5016,7 @@ public class ProfileDashboardScreen extends Screen {
     private void lookUp(String name) {
         if (!name.matches("[A-Za-z0-9_]{1,16}")) return;
         session = session(name);
+        searchedPending = session.query;
         search.setText("");
         searchFocused = false;
         recent = List.of();

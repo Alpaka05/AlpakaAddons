@@ -197,6 +197,67 @@ public class ProfileDashboardScreen extends Screen {
         }
     }
 
+    // ---- Scrollbar ------------------------------------------------------------------------------
+
+    /** The thumb never gets shorter than this, so a page of hundreds of rows still has one to grab. */
+    private static final int SCROLL_MIN_THUMB = 16;
+    /** Where the track is, in the margin right of the content; {@code scrollbarShown} false while the page fits. */
+    private boolean scrollbarShown;
+    private int barX, barTop, barH, thumbH;
+    /** Dragged by the thumb, and where on it it was grabbed, from its top. */
+    private boolean scrollDragging;
+    private double scrollGrab;
+    /** 0 thin, 1 wide: the bar widens under the mouse and while it is dragged. */
+    private float barWide;
+
+    /**
+     * The scrollbar along the content's right edge, for pages that run long - a networth list
+     * folded out to hundreds of items, a wide search. Thin, and wider under the mouse; the thumb
+     * can be dragged, and a press on the track jumps there.
+     */
+    private void drawScrollbar(GuiGraphicsExtractor graphics, float deltaSec) {
+        scrollbarShown = scroll.max > 0;
+        if (!scrollbarShown) {
+            scrollDragging = false;
+            return;
+        }
+        barX = clipX + clipW - 8;
+        barTop = clipY + 4;
+        barH = clipH - 8;
+        double content = clipH + scroll.max;
+        thumbH = Math.min(barH, Math.max(SCROLL_MIN_THUMB, (int) Math.round(barH * (clipH / content))));
+        int thumbY = barTop + (int) Math.round((barH - thumbH) * (scroll.current / scroll.max));
+        boolean near = !menuOpen && AlpakaStyle.inside(mx, my, barX - 2, barTop, 10, barH);
+        barWide = PloppAnimation.interpolate(barWide, near || scrollDragging ? 1.0f : 0.0f, deltaSec, 18.0f);
+        int w = Math.round(2 + 2 * barWide);
+        int x = barX + 6 - w;
+        if (barWide > 0.05f) ModernGuiUtils.drawRoundedRect(graphics, x, barTop, w, barH, w / 2, MarketIcons.fade(AlpakaStyle.TRACK, 0.6f * barWide));
+        boolean onThumb = near && my >= thumbY && my < thumbY + thumbH;
+        int color = scrollDragging ? AlpakaStyle.TEXT : onThumb ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED;
+        ModernGuiUtils.drawRoundedRect(graphics, x, thumbY, w, thumbH, w / 2, color);
+    }
+
+    /** A press on the bar: grabs the thumb, or on the track moves the thumb's middle there first. */
+    private boolean pressScrollbar(double mouseX, double mouseY) {
+        if (!scrollbarShown || !AlpakaStyle.inside(mouseX, mouseY, barX - 2, barTop, 10, barH)) return false;
+        int thumbY = barTop + (int) Math.round((barH - thumbH) * (scroll.current / scroll.max));
+        if (mouseY >= thumbY && mouseY < thumbY + thumbH) {
+            scrollGrab = mouseY - thumbY;
+        } else {
+            scrollGrab = thumbH / 2.0;
+            dragScrollbar(mouseY);
+        }
+        scrollDragging = true;
+        return true;
+    }
+
+    private void dragScrollbar(double mouseY) {
+        double travel = Math.max(1, barH - thumbH);
+        double frac = Math.max(0, Math.min(1, (mouseY - scrollGrab - barTop) / travel));
+        // Straight there, without the glide of the wheel: the thumb stays under the mouse.
+        scroll.current = scroll.target = frac * scroll.max;
+    }
+
     /** Where Escape goes back to: the config, when it was opened from there. */
     private final Screen parent;
 
@@ -354,6 +415,7 @@ public class ProfileDashboardScreen extends Screen {
         if (devScrollToEnd) scroll.current = scroll.target = scroll.max;
         scroll.update(deltaSec);
         AlpakaStyle.scrollFades(graphics, clipX, clipY, clipW, clipH, scroll.offset() > 0, scroll.offset() + 1 < scroll.max);
+        drawScrollbar(graphics, deltaSec);
         graphics.disableScissor();
 
         for (Runnable overlay : overlays) overlay.run();
@@ -4829,7 +4891,8 @@ public class ProfileDashboardScreen extends Screen {
 
     /** Whether the mouse is on this area, and inside the content where the content is drawn. */
     private boolean hover(int x, int y, int w, int h) {
-        if (menuOpen) return false;
+        // Dragging the scrollbar, nothing it passes over lights up.
+        if (menuOpen || scrollDragging) return false;
         if (clipping && !AlpakaStyle.inside(mx, my, clipX, clipY, clipW, clipH)) return false;
         if (clipping && !drawingPin && my >= pinTop && my < pinBottom) return false;
         return AlpakaStyle.inside(mx, my, x, y, w, h);
@@ -4988,6 +5051,7 @@ public class ProfileDashboardScreen extends Screen {
             menuOpen = false;
             return true;
         }
+        if (pressScrollbar(event.x(), event.y())) return true;
         for (int i = hits.size() - 1; i >= 0; i--) {
             Hit hit = hits.get(i);
             if (AlpakaStyle.inside(event.x(), event.y(), hit.x(), hit.y(), hit.w(), hit.h())) {
@@ -4997,6 +5061,21 @@ public class ProfileDashboardScreen extends Screen {
             }
         }
         return true;
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
+        if (scrollDragging) {
+            dragScrollbar(event.y());
+            return true;
+        }
+        return super.mouseDragged(event, deltaX, deltaY);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        scrollDragging = false;
+        return super.mouseReleased(event);
     }
 
     @Override

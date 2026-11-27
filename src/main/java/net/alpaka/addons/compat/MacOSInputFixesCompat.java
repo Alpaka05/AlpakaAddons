@@ -17,8 +17,8 @@ import org.slf4j.LoggerFactory;
  * two tabs a press: past one, then back as it wrapped around. In the chat screen, which only sees
  * what keyPress lets through, Tab already stepped one tab at a time.
  *
- * Mirrors that mod's own check: on a Mac, with its keyboard hook in place (it puts it there whenever
- * the game runs on GLFW), a Tab or Escape arriving outside its re-send is the one to be cancelled.
+ * Mirrors that mod's own check: on a Mac, with its keyboard hook in place (it puts it there only
+ * when the game runs on GLFW), a Tab or Escape arriving outside its re-send is the one to be cancelled.
  *
  * MacOS Input Fixes is not a dependency: its class is only looked up, by name, when it is installed.
  */
@@ -47,6 +47,10 @@ public final class MacOSInputFixesCompat {
         if (resolved) return allowInput != null;
         resolved = true;
         if (!FabricLoader.getInstance().isModLoaded("macos_input_fixes")) return false;
+        // Its doubled Tab and Escape come from a GLFW key callback, and it only hooks keyPress when
+        // GLFW is there. A game on SDL (Minecraft 26.3) has no GLFW and gets every key once; asking
+        // the mod there would call each Tab the discarded copy, and Tab never cycled the chat tabs.
+        if (MacOSInputFixesCompat.class.getClassLoader().getResource("org/lwjgl/glfw/GLFW.class") == null) return false;
         try {
             Class<?> common = Class.forName("com.hamarb123.macos_input_fixes.client.Common");
             if (!common.getField("IS_SYSTEM_MAC").getBoolean(null)) return false;

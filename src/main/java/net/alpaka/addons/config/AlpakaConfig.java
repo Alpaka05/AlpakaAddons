@@ -401,6 +401,8 @@ public class AlpakaConfig {
     public boolean playerModelHideArmor = false;
     /** The name tag above the HUD avatar. */
     public boolean playerModelShowNameTag = true;
+    /** The active SkyBlock pet, floating beside the HUD avatar. */
+    public boolean playerModelShowPet = false;
     public boolean playerModelShowInGuis = false;
 
     /**

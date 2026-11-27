@@ -72,6 +72,16 @@ public final class PetIcons {
         return built;
     }
 
+    /**
+     * The head texture of a pet type ("GOLDEN_DRAGON") without a skin, in this rarity (0 Common to
+     * 5 Mythic) or the nearest one it comes in. Null while it is looked up, or when there is none.
+     * A rarity below 0 is one the caller does not know: Legendary then, which most pets come in.
+     */
+    public static String headTexture(String type, int rarity) {
+        String texture = petTexture(type, rarity < 0 ? 4 : rarity);
+        return texture == null || texture.isEmpty() ? null : texture;
+    }
+
     /** The texture of the pet in its rarity or the nearest one it comes in; null while looking. */
     private static String petTexture(String type, int rarity) {
         String own = texture(type + ";" + Math.max(0, rarity));

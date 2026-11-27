@@ -82,6 +82,12 @@ public final class PetIcons {
         return texture == null || texture.isEmpty() ? null : texture;
     }
 
+    /** The head texture of a pet skin ("GOLDEN_DRAGON_ANCIENT"); null while it is looked up, or when there is none. */
+    public static String skinTexture(String skin) {
+        String texture = texture("PET_SKIN_" + skin);
+        return texture == null || texture.isEmpty() ? null : texture;
+    }
+
     /** The texture of the pet in its rarity or the nearest one it comes in; null while looking. */
     private static String petTexture(String type, int rarity) {
         String own = texture(type + ";" + Math.max(0, rarity));

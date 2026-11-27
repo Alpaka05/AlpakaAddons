@@ -6,18 +6,25 @@ import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
+import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.client.renderer.entity.state.ArmedEntityRenderState
+import net.minecraft.client.renderer.entity.state.ArmorStandRenderState
 import net.minecraft.client.renderer.entity.state.AvatarRenderState
 import net.minecraft.client.renderer.entity.state.EntityRenderState
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Pose
+import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.component.ResolvableProfile
+import net.minecraft.world.level.block.SkullBlock
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import java.lang.ref.WeakReference
 import kotlin.math.atan
+import kotlin.math.sin
 
 /**
  * Draws a miniature 3D avatar of the local player on the HUD. It is either there or not: it used
@@ -57,6 +64,33 @@ object PlayerModelRenderer {
      * intersecting - and so reordering itself against - unrelated HUD elements.
      */
     private const val RENDER_PADDING = 0.8f
+
+    /**
+     * Where the pet floats, as multiples of the scale: the middle of its head, right of the anchor
+     * and above it. That is beside the avatar's head, a little behind the way it faces, which is
+     * where a pet follows its player in the world.
+     */
+    private const val PET_OFFSET_X = 1.05f
+    private const val PET_OFFSET_Y = 1.65f
+
+    /** Half of the room the pet's head takes in the HUD's box; the head is 0.45 blocks wide. */
+    private const val PET_HALF_SIZE = 0.35f
+
+    /**
+     * Half of the pet's *render* rect, which clips like the avatar's ([RENDER_PADDING]): the head
+     * turned on its corner, plus the way it bobs.
+     */
+    private const val PET_RENDER_HALF_SIZE = 0.6f
+
+    /**
+     * How high the middle of the head sits above the feet of the small armor stand wearing it, in
+     * blocks. Measured on the drawn head.
+     */
+    private const val PET_HEAD_HEIGHT = 0.93f
+
+    /** The pet's slow rise and fall, in blocks to either side and the time for one full round. */
+    private const val PET_BOB_BLOCKS = 0.09f
+    private const val PET_BOB_PERIOD_MS = 2600L
 
     /** Vanilla inventory-preview constants, from InventoryScreen.extractEntityInInventoryFollowsMouse. */
     private const val Y_OFFSET = 0.0625f
@@ -196,14 +230,37 @@ object PlayerModelRenderer {
         )
     }
 
+    /**
+     * The HUD's whole box: the avatar's [footprint], and with Show Pet on also the room beside it
+     * where the pet floats. It follows the setting, not whether a pet is out right now, so the box
+     * the editor shows does not change size with every pet swap.
+     */
     @JvmStatic
-    fun renderPlayerModel(graphics: GuiGraphicsExtractor, x: Int, y: Int, scale: Int, player: LocalPlayer) {
+    fun bounds(x: Int, y: Int, scale: Int): HudBounds {
+        val avatar = footprint(x, y, scale)
+        if (!AlpakaConfig.instance.playerModelShowPet) return avatar
+        val petRight = x + (scale * (PET_OFFSET_X + PET_HALF_SIZE)).toInt()
+        return HudBounds(avatar.x0, avatar.y0, maxOf(avatar.x1, petRight), avatar.y1)
+    }
+
+    /**
+     * Draws the avatar with its anchor at ([x], [y]), and beside it the pet when Show Pet is on.
+     * [samplePet] is for the HUD editor: with no pet out it shows a sample one, so the room kept
+     * for the pet is not an empty half of the box.
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun renderPlayerModel(
+        graphics: GuiGraphicsExtractor, x: Int, y: Int, scale: Int, player: LocalPlayer, samplePet: Boolean = false
+    ) {
         val box = footprint(x, y, scale)
         val padding = (scale * RENDER_PADDING).toInt()
 
         // Imaginary cursor position fed through vanilla's look-at math.
         val lookX = x - LOOK_OFFSET_X
         val lookY = y - scale * LOOK_OFFSET_Y_SCALE - LOOK_OFFSET_Y
+        val yaw = atan(((box.x0 + box.x1) / 2.0f - lookX) / LOOK_DIVISOR)
+        val pitch = atan(((box.y0 + box.y1) / 2.0f - lookY) / LOOK_DIVISOR)
 
         try {
             renderAvatar(
@@ -213,10 +270,14 @@ object PlayerModelRenderer {
                 box.x1 + padding,
                 box.y1 + padding,
                 scale,
-                lookX,
-                lookY,
+                yaw,
+                pitch,
                 player
             )
+            if (AlpakaConfig.instance.playerModelShowPet) {
+                val head = CurrentPet.head() ?: if (samplePet) CurrentPet.sampleHead() else null
+                if (head != null) renderPet(graphics, x, y, scale, yaw, pitch, head)
+            }
         } catch (e: Exception) {
             // Safety catch: an invalid render state must never take the game down with it.
         }
@@ -224,7 +285,8 @@ object PlayerModelRenderer {
 
     /**
      * Reimplementation of vanilla's InventoryScreen.extractEntityInInventoryFollowsMouse that
-     * additionally lets us suppress fields of the extracted render state.
+     * additionally lets us suppress fields of the extracted render state. [yaw] and [pitch] are
+     * the angles of vanilla's look-at math.
      */
     private fun renderAvatar(
         graphics: GuiGraphicsExtractor,
@@ -233,13 +295,10 @@ object PlayerModelRenderer {
         x1: Int,
         y1: Int,
         size: Int,
-        lookX: Float,
-        lookY: Float,
+        yaw: Float,
+        pitch: Float,
         entity: LivingEntity
     ) {
-        val yaw = atan(((x0 + x1) / 2.0f - lookX) / LOOK_DIVISOR)
-        val pitch = atan(((y0 + y1) / 2.0f - lookY) / LOOK_DIVISOR)
-
         // Allocated fresh on every submission on purpose: GuiGraphicsExtractor.entity stores
         // these by reference in the deferred GuiRenderState queue, so pooling them into fields
         // would let one submission mutate another's transform (the HUD and the editor screen
@@ -287,6 +346,87 @@ object PlayerModelRenderer {
             y0,
             x1,
             y1
+        )
+    }
+
+    private const val PET_STAND_ID = -0x414C51
+
+    /** The stand the pet is drawn as, one per world; see [renderPet]. */
+    private var petStand = WeakReference<ArmorStand>(null)
+
+    private fun petStand(level: ClientLevel): ArmorStand {
+        petStand.get()?.let { if (it.level() === level) return it }
+        // Never added to the world: it only exists to be asked for a render state. That asks for
+        // its id, which an entity only has once the world gave it one; a negative one is never a
+        // real entity's.
+        return ArmorStand(level, 0.0, 0.0, 0.0).also {
+            it.id = PET_STAND_ID
+            petStand = WeakReference(it)
+        }
+    }
+
+    /**
+     * Draws the pet beside the avatar as the game draws it in the world: Hypixel's pets are small,
+     * invisible armor stands that wear the pet's head. So this is a real armor stand's render state
+     * with exactly that set on it, drawn by vanilla's own renderer, and the head comes out in the
+     * size, the shading and the skin it has next to the player. It faces the way the avatar does
+     * and rises and falls like a pet following its player.
+     *
+     * It gets a rect of its own beside the avatar's: vanilla draws one entity per rect. The view is
+     * the same for both (no perspective, the same angles, vanilla's full light), so it reads as
+     * one scene.
+     */
+    private fun renderPet(
+        graphics: GuiGraphicsExtractor,
+        x: Int,
+        y: Int,
+        size: Int,
+        yaw: Float,
+        pitch: Float,
+        head: ResolvableProfile
+    ) {
+        val mc = Minecraft.getInstance()
+        val level = mc.level ?: return
+        val stand = petStand(level)
+        val state = mc.entityRenderDispatcher.getRenderer(stand).createRenderState(stand, 1.0f)
+        if (state !is ArmorStandRenderState) return
+
+        state.shadowPieces.clear()
+        state.outlineColor = EntityRenderState.NO_OUTLINE
+        state.displayFireAnimation = false
+        state.nameTag = null
+        // Invisible to the player means the body is not drawn at all, only what the stand wears.
+        state.isInvisible = true
+        state.isInvisibleToPlayer = true
+        state.isSmall = true
+        state.isBaby = true
+        state.headItem.clear()
+        state.wornHeadType = SkullBlock.Types.PLAYER
+        state.wornHeadProfile = head
+        state.bodyRot = 180.0f + yaw * LOOK_STRENGTH
+
+        // Fresh per submission, as in renderAvatar: the queue keeps them by reference.
+        val pitchRot = Quaternionf().rotateX(pitch * LOOK_STRENGTH * RAD_PER_DEG)
+        val bodyFlip = Quaternionf().rotateZ(BODY_FLIP_ANGLE).mul(pitchRot)
+
+        // The bob moves the stand inside its rect instead of the rect itself: a rect sits on whole
+        // GUI pixels, and at this size the head would visibly step from one to the next.
+        val phase = (System.currentTimeMillis() % PET_BOB_PERIOD_MS) / PET_BOB_PERIOD_MS.toFloat()
+        val bob = sin(phase * 2.0f * Math.PI.toFloat()) * PET_BOB_BLOCKS
+
+        val centerX = x + (size * PET_OFFSET_X).toInt()
+        val centerY = y - (size * PET_OFFSET_Y).toInt()
+        val half = (size * PET_RENDER_HALF_SIZE).toInt()
+        graphics.entity(
+            state,
+            size.toFloat(),
+            Vector3f(0.0f, PET_HEAD_HEIGHT + bob, 0.0f),
+            bodyFlip,
+            pitchRot,
+            centerX - half,
+            centerY - half,
+            centerX + half,
+            centerY + half
         )
     }
 

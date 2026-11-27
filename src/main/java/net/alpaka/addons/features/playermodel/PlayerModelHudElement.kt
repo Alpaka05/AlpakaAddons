@@ -34,7 +34,7 @@ object PlayerModelHudElement : HudElement {
 
     override fun bounds(): HudBounds {
         val cfg = AlpakaConfig.instance
-        return PlayerModelRenderer.footprint(cfg.playerModelX, cfg.playerModelY, cfg.playerModelScale)
+        return PlayerModelRenderer.bounds(cfg.playerModelX, cfg.playerModelY, cfg.playerModelScale)
     }
 
     override fun adjustScale(notches: Double) {
@@ -56,7 +56,7 @@ object PlayerModelHudElement : HudElement {
         // without a world loaded. The box is still draggable; there is just nothing to draw in it.
         val player = Minecraft.getInstance().player ?: return
         val cfg = AlpakaConfig.instance
-        PlayerModelRenderer.renderPlayerModel(graphics, x, y, cfg.playerModelScale, player)
+        PlayerModelRenderer.renderPlayerModel(graphics, x, y, cfg.playerModelScale, player, samplePet = true)
     }
 
     override fun scaleValue(): Float = AlpakaConfig.instance.playerModelScale.toFloat()

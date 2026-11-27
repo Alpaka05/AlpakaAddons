@@ -991,6 +991,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.playerModelShowNameTag = v; AlpakaConfig.save(); },
                 "player model hud avatar name tag label hide show"));
 
+        OPTIONS.add(new ConfigOption("player_model_show_pet", "Show Pet",
+                "Shows your active SkyBlock pet floating beside the avatar. Read from the tab list's Pet widget and the pet messages in chat.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.playerModelShowPet,
+                v -> { AlpakaConfig.instance.playerModelShowPet = v; AlpakaConfig.save(); },
+                "player model hud avatar pet active current equipped autopet companion head floating skyblock"));
+
         OPTIONS.add(new ConfigOption("player_model_hide_armor", "Hide Armor on Model",
                 "Hides your armor on the player model.",
                 ConfigCategory.VISUALS,

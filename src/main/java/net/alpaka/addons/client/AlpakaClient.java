@@ -67,6 +67,7 @@ public class AlpakaClient implements ClientModInitializer {
         SlayerDropTracker.registerEvents();
         DeployableTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
+        net.alpaka.addons.features.playermodel.CurrentPet.INSTANCE.register();
         // The slayer record waits for its folder when a cloud drive comes up after the game did;
         // polled from the tick so the wait ends even while nothing reads the record.
         // The same tick writes the record once if anything changed it; see AlpakaStats.markDirty.

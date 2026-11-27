@@ -677,6 +677,27 @@ public final class DevScreenshotTour {
             screen("item-value-config", () -> AlpakaConfigScreen.openOn("Markets", "Item Value")),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
+            // The pet beside the player model. No pet is out in the tour's world, so the editor shows
+            // its sample one; the second picture is half a bob later, the head at another height.
+            new Stop("player-model-pet", () -> {
+                AlpakaConfig.instance.playerModelEnabled = true;
+                AlpakaConfig.instance.playerModelShowPet = true;
+                AlpakaConfig.instance.playerModelScale = 45;
+                // Clear of the editor's header and of the other HUDs' previews.
+                AlpakaConfig.instance.playerModelX = 330;
+                AlpakaConfig.instance.playerModelY = 215;
+                Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null));
+            }, () -> true, 80),
+            new Stop("player-model-pet-bob", () -> {}, () -> true, 26),
+            screen("player-model-pet-config", () -> AlpakaConfigScreen.openOnOption(null, "player_model_show_pet")),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.playerModelEnabled = false;
+                AlpakaConfig.instance.playerModelShowPet = false;
+                AlpakaConfig.instance.playerModelScale = net.alpaka.addons.features.playermodel.PlayerModelRenderer.DEFAULT_SCALE;
+                AlpakaConfig.instance.playerModelX = net.alpaka.addons.features.playermodel.PlayerModelRenderer.DEFAULT_X;
+                AlpakaConfig.instance.playerModelY = net.alpaka.addons.features.playermodel.PlayerModelRenderer.DEFAULT_Y;
+                Minecraft.getInstance().gui.setScreen(null);
+            }, () -> true, 5),
             // The inventory buttons: in the inventory, in a large chest, and in their editor.
             new Stop("inventory-buttons", () -> {
                 AlpakaConfig.instance.inventoryButtonsEnabled = true;

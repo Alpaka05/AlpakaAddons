@@ -3094,11 +3094,12 @@ public class AlpakaConfigRegistry {
                 "inventory buttons custom command shortcut chest menu gui icon quick storage pets wardrobe"));
 
         OPTIONS.add(new ConfigOption("inventory_buttons_edit", "Edit Inventory Buttons",
-                "Add buttons, pick their command and icon, and drag them to where you want them.",
+                "Add buttons, pick their command and icon, and drag them to where you want them. "
+                        + "The icons of a SkyBlock menu can be picked once you have opened that menu.",
                 ConfigCategory.SOUND_MISC,
                 "Edit Buttons",
                 parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.InventoryButtonsEditorScreen(parent)),
-                "inventory buttons edit add remove move place icon command editor"));
+                "inventory buttons edit add remove move place icon head menu command editor"));
 
         OPTIONS.add(new ConfigOption("inventory_buttons_skyblock_only", "Only on SkyBlock",
                 "Show the inventory buttons only while you are on Hypixel SkyBlock.",

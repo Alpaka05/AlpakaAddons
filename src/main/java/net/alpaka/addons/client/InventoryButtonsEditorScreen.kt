@@ -31,7 +31,8 @@ import org.lwjgl.glfw.GLFW
  * inventory and the two chest sizes, since a button keeps to the panel edge it is nearest to.
  *
  * The settings sit in a panel at the side, away from the picked button: the list of buttons, or the
- * picked one's command, tooltip, where it shows, and its icon from a searchable grid of every item.
+ * picked one's command, tooltip, where it shows, and its icon from a searchable grid of every item
+ * and of the heads Hypixel's menus use.
  */
 class InventoryButtonsEditorScreen @JvmOverloads constructor(
     private val parent: Screen?,
@@ -373,7 +374,14 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
                 InventoryButtonsFeature.drawIcon(graphics, id, x + 1, y + 1)
             }
         }
-        if (list.isEmpty()) Skin.label(graphics, font, "No item matches.", cx + 4, gy + 6)
+        if (list.isEmpty()) {
+            Skin.label(graphics, font, "No item matches.", cx + 4, gy + 6)
+            // Where the icons of Hypixel's menus come from, for whoever searched for one in vain.
+            MENU_HINT.forEachIndexed { i, line ->
+                val y = gy + 22 + i * 10
+                if (y + 10 <= gy + gh && GuiFont.width(font, line) <= cw - 8) Skin.label(graphics, font, line, cx + 4, y)
+            }
+        }
         if (totalRows > rows) {
             val trackH = gh - 4
             val thumbH = maxOf(8, trackH * rows / totalRows)
@@ -636,6 +644,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         private val CHEST_LOCATION: Identifier = Identifier.withDefaultNamespace("textures/gui/container/generic_54.png")
         private val SHOW_IN = arrayOf("All", "Inventory", "Chests")
         private val LABELS = listOf("Preview", "Command", "Tooltip", "Show In", "Double Click", "Icon")
+        private val MENU_HINT = listOf("A menu's icons are added", "once you have opened it.")
 
         private const val IMAGE_W = 176
         private const val MARGIN = 6

@@ -12,6 +12,7 @@ import net.alpaka.addons.mixin.AbstractContainerScreenAccessor
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents
 import net.minecraft.client.Minecraft
@@ -50,6 +51,8 @@ object InventoryButtonsFeature {
 
     @JvmStatic
     fun register() {
+        MenuIconScan.load()
+        ClientTickEvents.END_CLIENT_TICK.register { client -> MenuIconScan.tick(client) }
         ScreenEvents.AFTER_INIT.register { _, screen, _, _ ->
             if (screen !is AbstractContainerScreen<*>) return@register
             ScreenEvents.afterBackground(screen).register { s, graphics, mouseX, mouseY, _ ->
@@ -230,7 +233,7 @@ object InventoryButtonsFeature {
             graphics.fakeItem(stack, x, y)
         } else {
             val font = Minecraft.getInstance().font
-            val letter = InventoryButtonIcons.path(icon).take(1).uppercase().ifEmpty { "?" }
+            val letter = InventoryButtonIcons.letter(icon)
             graphics.text(font, letter, x + 8 - font.width(letter) / 2, y + 4, 0xFF404040.toInt(), false)
         }
     }
